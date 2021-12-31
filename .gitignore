@@ -1,0 +1,9 @@
+*.exe
+*.o
+*.c~
+*.h~
+*.out
+.vscode
+build
+*.bin
+
