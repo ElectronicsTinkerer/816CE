@@ -65,7 +65,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             {
                 _stackCPU_pushByte(cpu, mem, cpu->PBR);
             }
-            cpu->PC += 2;
+            CPU_UPDATE_PC16(cpu, 2);
             _stackCPU_pushWord(cpu, mem, cpu->PC);
 
             if (cpu->P.E)
@@ -103,7 +103,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             {
                 _stackCPU_pushByte(cpu, mem, cpu->PBR);
             }
-            cpu->PC += 2;
+            CPU_UPDATE_PC16(cpu, 2);
             _stackCPU_pushWord(cpu, mem, cpu->PC);
 
             if (cpu->P.E)
@@ -133,19 +133,22 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             cpu->P.D = 0; // Binary mode (65C02)
             cpu->P.I = 1;
             break;
+
         case 0x20: // JSR addr
-            _stackCPU_pushWord(cpu, mem, cpu->PC + 2);
-            cpu->PC = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2));
+            cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 6;
             break;
+
         case 0x22: // JSL/JSR long
             // ??? Unknown operation in emulation mode. The stack may be treated differently.
             _stackCPU_pushByte(cpu, mem, cpu->PBR);
-            _stackCPU_pushWord(cpu, mem, CPU_GET_EFFECTIVE_PC(cpu) + 3);
-            cpu->PBR = mem[CPU_GET_EFFECTIVE_PC(cpu) + 3] & 0xff;
-            cpu->PC = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+            _stackCPU_pushWord(cpu, mem, CPU_GET_EFFECTIVE_PC24(cpu) + 3);
+            cpu->PBR = mem[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC24(cpu), 3)] & 0xff;
+            cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 8;
             break;
+
         case 0x40: // RTI
             CPU_SET_SR(cpu, _stackCPU_popByte(cpu, mem));
             cpu->PC = _stackCPU_popWord(cpu, mem);
@@ -158,39 +161,74 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             }
 
             break;
+
         case 0x42: // WDM
-            cpu->PC += 2;
+            CPU_UPDATE_PC16(cpu, 2);
             cpu->cycles += 2; // ???
             break;
+
+        case 0x4c: // JMP addr
+            cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+            cpu->cycles += 3;
+            break;
+
+        case 0x5c: // JMP long
+            cpu->PC = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC24(cpu), 3));
+            cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+            cpu->cycles += 4;
+            break;
+
         case 0x60: // RTS
-            cpu->PC = _stackCPU_popWord(cpu, mem) + 1;
+            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem), 1);
             cpu->PBR = _stackCPU_popByte(cpu, mem);
             cpu->cycles += 6;
             break;
+
         case 0x6b: // RTL
             // ??? Unknown operation in emulation mode. The stack may be treated differently.
-            cpu->PC = _stackCPU_popWord(cpu, mem) + 1;
+            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem), 1);
             cpu->PBR = _stackCPU_popByte(cpu, mem);
             cpu->cycles += 6;
             break;
+
+        case 0x6c: // JMP (addr)
+            cpu->PC = _addrCPU_getAbsoluteIndirect(cpu, mem);
+            cpu->cycles += 5;
+            break;
+
+        case 0x7c: // JMP (addr,X)
+            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
+            cpu->cycles += 6;
+            break;
+
+        case 0xdc: // JMP [addr]
+        {
+            int32_t addr = _addrCPU_getAbsoluteIndirectLong(cpu, mem);
+            cpu->PBR = (addr & 0xff0000) >> 16;
+            cpu->PC = addr & 0xffff;
+            cpu->cycles += 6;
+        }
+            break;
+
         case 0xea: // NOP
-            cpu->PC += 1;
+            CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
             break;
+
         case 0xeb: // XBA
             cpu->C = ( (cpu->C << 8) | ( (cpu->C >> 8) & 0xff ) ) & 0xffff;
             cpu->P.N = cpu->C & 0x80 ? 1 : 0;
             cpu->P.Z = cpu->C & 0xff ? 0 : 1;
-            cpu->PC += 1;
+            CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 3;
             break;
+
         case 0xfc: // JSR (addr,X)
-        {
-            _stackCPU_pushWord(cpu, mem, cpu->PC + 2);
+            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2));
             cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 8;
-        }
             break;
+
         default:
             return CPU_ERR_UNKNOWN_OPCODE;
     }
@@ -347,7 +385,7 @@ static int32_t _stackCPU_popByte(CPU_t *cpu, int16_t *mem)
  */
 static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem)
 {
-    int32_t word = 0;
+    int32_t word;
     word = _stackCPU_popByte(cpu, mem);
     word |= (_stackCPU_popByte(cpu, mem) & 0xff) << 8;
     return word;
@@ -355,7 +393,8 @@ static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem)
 
 /**
  * Returns the 16-bit word in memory stored at the (addr, X)
- * from the current instruction.
+ * from the current instruction.(i.e. the PC part of the resultant
+ * indirect addresss)
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the indirect address
  * @return The word in memory at the indirect address (in the current PRB bank)
@@ -363,11 +402,48 @@ static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem)
 static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, int16_t *mem)
 {
     // Get the immediate operand word of the current instruction
-    int32_t address = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
     address += cpu->X;
     address &= 0xffff; // Wraparound
     address |= (cpu->PBR & 0xff) << 16;
 
     // Find and return the resultant indirect address value
-    return CPU_GET_MEM_BYTE(mem, address) | (CPU_GET_MEM_BYTE(mem, address + 1) << 8);
+    return ADDR_GET_MEM_BYTE(mem, address) | (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 1)) << 8);
+}
+
+/**
+ * Returns the 16-bit word in memory stored at the (addr)
+ * from the current instruction. (i.e. the PC part of the resultant
+ * indirect addresss)
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the indirect address
+ * @return The word in memory at the indirect address (in bank 0)
+ */
+static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, int16_t *mem)
+{
+    // Get the immediate operand word of the current instruction
+    // (from Bank 0)
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+
+    // Find and return the resultant indirect address value
+    return ADDR_GET_MEM_BYTE(mem, address) | (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 1)) << 8);
+}
+
+/**
+ * Returns the 24-bit word in memory stored at the [addr]
+ * from the current instruction. (i.e. the PC part of the resultant
+ * indirect addresss)
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the indirect address
+ * @return The word and byte in memory at the indirect address (in bank 0)
+ */
+static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, int16_t *mem)
+{
+    // Get the immediate operand word of the current instruction
+    // (from Bank 0)
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+
+    // Find and return the resultant indirect address value
+    return ADDR_GET_MEM_BYTE(mem, address) | (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 1)) << 8) |
+           (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 2)) << 16);
 }

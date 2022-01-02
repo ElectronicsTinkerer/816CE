@@ -67,19 +67,31 @@ struct CPU_t
 
 // Get a CPU's 24 bit PC address
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_EFFECTIVE_PC(__CPU__) ( ((__CPU__->PBR & 0xff) << 16) | (__CPU__->PC & 0xffff) )
+#define CPU_GET_EFFECTIVE_PC24(__CPU__) ( ((__CPU__->PBR & 0xff) << 16) | (__CPU__->PC & 0xffff) )
+
+// Update a CPU's PC value by an offset
+// Enforces bank wrapping
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_UPDATE_PC16(__CPU__, __OFFSET__) ( __CPU__->PC = (__CPU__->PC + __OFFSET__) & 0xffff )
 
 // Get a byte from memory
 // NOTE: __MEM__ must be a pointer to an int16_t array
-#define CPU_GET_MEM_BYTE(__MEM__, __ADDR__) (__MEM__[__ADDR__] & 0xff)
+#define ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) (__MEM__[__ADDR__] & 0xff)
 
 // Get the byte stored in memory at a CPU's PC+1
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_MEM_IMMD_BYTE(__CPU__, __MEM__) (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff)
+#define ADDR_GET_MEM_IMMD_BYTE(__CPU__, __MEM__) (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff)
 
 // Get the word stored in memory at a CPU's PC+1 and PC+2
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_MEM_IMMD_WORD(__CPU__, __MEM__) ( (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff) | ((__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 2] & 0xff) << 8) )
+#define ADDR_GET_MEM_IMMD_WORD(__CPU__, __MEM__) ( (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff) | ((__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 2] & 0xff) << 8) )
+
+// Add a value to an address, wrapping around the page if necessary
+#define ADDR_ADD_VAL_PAGE_WRAP(__ADDR__, __OFFSET__) ( (__ADDR__ & 0xffff00) | ( (__ADDR__ + __OFFSET__) & 0xff) )
+
+// Add a value to an address, wrapping around the bank if necessary
+#define ADDR_ADD_VAL_BANK_WRAP(__ADDR__, __OFFSET__) ( (__ADDR__ & 0xff0000) | ( (__ADDR__ + __OFFSET__) & 0xffff) )
+
 
 CPU_Error_Code_t resetCPU(CPU_t *);
 CPU_Error_Code_t stepCPU(CPU_t*, int16_t*);
@@ -89,6 +101,7 @@ static int32_t _stackCPU_popByte(CPU_t *, int16_t *mem);
 static int32_t _stackCPU_popWord(CPU_t *, int16_t *mem);
 
 static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, int16_t *mem);
-
+static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, int16_t *mem);
+static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, int16_t *mem);
 
 #endif
