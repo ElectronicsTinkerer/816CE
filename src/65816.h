@@ -18,9 +18,9 @@
 #define CPU_VEC_EMU_IRQ 0xfffe
 
 // CPU "Class"
-typedef struct CPU CPU;
+typedef struct CPU_t CPU_t;
 
-struct CPU 
+struct CPU_t 
 {
     int32_t C;
     int32_t DBR;
@@ -31,6 +31,7 @@ struct CPU
     int32_t PBR;
     int32_t PC;
     struct {
+        // Order matters:
         unsigned char C : 1;   
         unsigned char Z : 1;
         unsigned char I : 1;
@@ -39,6 +40,7 @@ struct CPU
         unsigned char M : 1;
         unsigned char V : 1;
         unsigned char N : 1;
+        // Order no longer matters:
         unsigned char E : 1;
         unsigned char RST : 1; // 1 if the CPU was reset, 0 if reset vector has been jumped to
         unsigned char IRQ : 1; // 1 if IRQ input is asserted, 0 else
@@ -48,18 +50,45 @@ struct CPU
     uint32_t cycles; // Total phi-1 cycles the CPU has run
 };
 
-// Get the value of a CPU's SR
-// NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_SR(__CPU__) (__CPU__->P.C | (__CPU__->P.Z << 1) | (__CPU__->P.I << 2) | \
-                             (__CPU__->P.D << 3) | (__CPU__->P.X << 4) | (__CPU__->P.M << 5) | \
-                             (__CPU__->P.V << 6) | (__CPU__->P.N << 7))
+// Possible error codes from CPU public (non-static) functions
+ typedef enum CPU_Error_Code_t{
+     CPU_ERR_OK = 0,
+     CPU_ERR_UNKNOWN_OPCODE,
+     CPU_ERR_NULL_CPU, // Only used if `CPU_DEBUG_CHECK_NULL` is defined
+ } CPU_Error_Code_t;
 
-void resetCPU(CPU*);
-void stepCPU(CPU*, int16_t*);
-static void _stackCPU_pushByte(CPU *, int16_t *mem, int32_t);
-static void _stackCPU_pushWord(CPU *, int16_t *mem, int32_t);
-static int32_t _stackCPU_popByte(CPU *, int16_t *mem);
-static int32_t _stackCPU_popWord(CPU *, int16_t *mem);
+ // Get the value of a CPU's SR
+ // NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_GET_SR(__CPU__) (*(uint8_t*)&(__CPU__->P))
+
+// Set the value of the CPU's SR
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_SET_SR(__CPU__, __BYTE__) ( (*(uint8_t*)&__CPU__->P) = __BYTE__)
+
+// Get a CPU's 24 bit PC address
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_GET_EFFECTIVE_PC(__CPU__) ( ((__CPU__->PBR & 0xff) << 16) | (__CPU__->PC & 0xffff) )
+
+// Get a byte from memory
+// NOTE: __MEM__ must be a pointer to an int16_t array
+#define CPU_GET_MEM_BYTE(__MEM__, __ADDR__) (__MEM__[__ADDR__] & 0xff)
+
+// Get the byte stored in memory at a CPU's PC+1
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_GET_MEM_IMMD_BYTE(__CPU__, __MEM__) (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff)
+
+// Get the word stored in memory at a CPU's PC+1 and PC+2
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_GET_MEM_IMMD_WORD(__CPU__, __MEM__) ( (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff) | ((__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 2] & 0xff) << 8) )
+
+CPU_Error_Code_t resetCPU(CPU_t *);
+CPU_Error_Code_t stepCPU(CPU_t*, int16_t*);
+static void _stackCPU_pushByte(CPU_t *, int16_t *mem, int32_t);
+static void _stackCPU_pushWord(CPU_t *, int16_t *mem, int32_t);
+static int32_t _stackCPU_popByte(CPU_t *, int16_t *mem);
+static int32_t _stackCPU_popWord(CPU_t *, int16_t *mem);
+
+static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, int16_t *mem);
 
 
 #endif

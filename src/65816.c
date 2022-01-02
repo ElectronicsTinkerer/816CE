@@ -5,8 +5,15 @@
  * Resets a CPU to its post-/RST value
  * @param cpu The CPU to be reset
  */
-void resetCPU(CPU *cpu)
+CPU_Error_Code_t resetCPU(CPU_t *cpu)
 {
+#ifdef CPU_DEBUG_CHECK_NULL
+    if (cpu == NULL)
+    {
+        return CPU_ERR_NULL_CPU;
+    }
+#endif
+
     cpu->D = 0x0000;
     cpu->DBR = 0x00;
     cpu->PBR = 0x00;
@@ -23,6 +30,8 @@ void resetCPU(CPU *cpu)
     // Internal use only, tell the sim that the CPU just reset
     cpu->P.RST = 1;
     cpu->cycles = 0;
+
+    return CPU_ERR_OK;
 }
 
 /**
@@ -30,13 +39,20 @@ void resetCPU(CPU *cpu)
  * @param cpu The CPU to be stepped
  * @param mem The memory array which is to be connected to the CPU
  */
-void stepCPU(CPU *cpu, int16_t *mem)
+CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
 {
+#ifdef CPU_DEBUG_CHECK_NULL
+    if (cpu == NULL)
+    {
+        return CPU_ERR_NULL_CPU;
+    }
+#endif
+
     // Handle CPU reset
     if (cpu->P.RST)
     {
         cpu->PC = mem[CPU_VEC_RESET];
-        return;
+        return CPU_ERR_OK;
     }
 
     // Fetch, decode, execute instruction
@@ -117,9 +133,45 @@ void stepCPU(CPU *cpu, int16_t *mem)
             cpu->P.D = 0; // Binary mode (65C02)
             cpu->P.I = 1;
             break;
+        case 0x20: // JSR addr
+            _stackCPU_pushWord(cpu, mem, cpu->PC + 2);
+            cpu->PC = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+            cpu->cycles += 6;
+            break;
+        case 0x22: // JSL/JSR long
+            // ??? Unknown operation in emulation mode. The stack may be treated differently.
+            _stackCPU_pushByte(cpu, mem, cpu->PBR);
+            _stackCPU_pushWord(cpu, mem, CPU_GET_EFFECTIVE_PC(cpu) + 3);
+            cpu->PBR = mem[CPU_GET_EFFECTIVE_PC(cpu) + 3] & 0xff;
+            cpu->PC = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+            cpu->cycles += 8;
+            break;
+        case 0x40: // RTI
+            CPU_SET_SR(cpu, _stackCPU_popByte(cpu, mem));
+            cpu->PC = _stackCPU_popWord(cpu, mem);
+            cpu->cycles += 6;
+
+            if (!cpu->P.E)
+            {
+                cpu->PBR = _stackCPU_popByte(cpu, mem);
+                cpu->cycles += 1;
+            }
+
+            break;
         case 0x42: // WDM
             cpu->PC += 2;
-            cpu->cycles += 2; //????
+            cpu->cycles += 2; // ???
+            break;
+        case 0x60: // RTS
+            cpu->PC = _stackCPU_popWord(cpu, mem) + 1;
+            cpu->PBR = _stackCPU_popByte(cpu, mem);
+            cpu->cycles += 6;
+            break;
+        case 0x6b: // RTL
+            // ??? Unknown operation in emulation mode. The stack may be treated differently.
+            cpu->PC = _stackCPU_popWord(cpu, mem) + 1;
+            cpu->PBR = _stackCPU_popByte(cpu, mem);
+            cpu->cycles += 6;
             break;
         case 0xea: // NOP
             cpu->PC += 1;
@@ -132,9 +184,15 @@ void stepCPU(CPU *cpu, int16_t *mem)
             cpu->PC += 1;
             cpu->cycles += 3;
             break;
-        default:
-            printf("Unknown opcode: %d\n", mem[cpu->PC]);
+        case 0xfc: // JSR (addr,X)
+        {
+            _stackCPU_pushWord(cpu, mem, cpu->PC + 2);
+            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
+            cpu->cycles += 8;
+        }
             break;
+        default:
+            return CPU_ERR_UNKNOWN_OPCODE;
     }
 
 
@@ -175,9 +233,9 @@ void stepCPU(CPU *cpu, int16_t *mem)
         }
 
         cpu->P.D = 0; // Binary mode (65C02)
-        cpu->P.I = 1;
+        // cpu->P.I = 1; // IRQ flag is not set: https://softpixel.com/~cwright/sianse/docs/65816NFO.HTM#7.00
 
-        return;
+        return CPU_ERR_OK;
     }
     if (cpu->P.IRQ && !cpu->P.I)
     {
@@ -216,8 +274,11 @@ void stepCPU(CPU *cpu, int16_t *mem)
         cpu->P.D = 0; // Binary mode (65C02)
         cpu->P.I = 1;
 
-        return;
+        return CPU_ERR_OK;
     }
+
+
+    return CPU_ERR_OK;
 }
 
 /**
@@ -226,12 +287,12 @@ void stepCPU(CPU *cpu, int16_t *mem)
  * @param mem The memory array which is to be connected to the CPU
  * @param byte The byte to be pushed onto the stack
  */
-static void _stackCPU_pushByte(CPU *cpu, int16_t *mem, int32_t byte)
+static void _stackCPU_pushByte(CPU_t *cpu, int16_t *mem, int32_t byte)
 {
     mem[cpu->SP] = byte;
 
     // Correct SP if in emulation mode
-    if ( cpu->P.E && (cpu->SP & 0xff == 0) )
+    if ( cpu->P.E && ((cpu->SP & 0xff) == 0) )
     {
         cpu->SP = 0x01ff;
     }
@@ -247,7 +308,7 @@ static void _stackCPU_pushByte(CPU *cpu, int16_t *mem, int32_t byte)
  * @param mem The memory array which is to be connected to the CPU
  * @param word The word to be pushed onto the stack
  */
-static void _stackCPU_pushWord(CPU *cpu, int16_t *mem, int32_t word)
+static void _stackCPU_pushWord(CPU_t *cpu, int16_t *mem, int32_t word)
 {
     _stackCPU_pushByte(cpu, mem, (word & 0xff00) >> 8);
     _stackCPU_pushByte(cpu, mem, word & 0xff);
@@ -259,9 +320,23 @@ static void _stackCPU_pushWord(CPU *cpu, int16_t *mem, int32_t word)
  * @param mem The memory array which is to be connected to the CPU
  * @return The value popped off the stack
  */
-static int32_t _stackCPU_popByte(CPU *cpu, int16_t *mem)
+static int32_t _stackCPU_popByte(CPU_t *cpu, int16_t *mem)
 {
+    int32_t byte;
 
+    byte = mem[cpu->SP] & 0xff;
+
+    // Correct SP if in emulation mode
+    if (cpu->P.E && ((cpu->SP & 0xff) == 0xff))
+    {
+        cpu->SP = 0x0100;
+    }
+    else
+    {
+        cpu->SP += 1;
+    }
+
+    return byte;
 }
 
 /**
@@ -270,25 +345,29 @@ static int32_t _stackCPU_popByte(CPU *cpu, int16_t *mem)
  * @param mem The memory array which is to be connected to the CPU
  * @return The value popped off the stack
  */
-static int32_t _stackCPU_popWord(CPU *cpu, int16_t *mem)
+static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem)
 {
-
+    int32_t word = 0;
+    word = _stackCPU_popByte(cpu, mem);
+    word |= (_stackCPU_popByte(cpu, mem) & 0xff) << 8;
+    return word;
 }
 
 /**
- * Decrement a reg's value depending on if the CPU is in
-static int32_t regCPU_dec(CPU *cpu, int32_t val)
+ * Returns the 16-bit word in memory stored at the (addr, X)
+ * from the current instruction.
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the indirect address
+ * @return The word in memory at the indirect address (in the current PRB bank)
+ */
+static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, int16_t *mem)
 {
-    if (cpu->P.E)
-    {
-        uint8_t temp = cpu->SP;
-        temp -= 1;
-        val &= ~0xff;
-        val |= temp;
-    }
-    else
-    {
-        val -= 1;
-    }
-    return val;
-}*/
+    // Get the immediate operand word of the current instruction
+    int32_t address = CPU_GET_MEM_IMMD_WORD(cpu, mem);
+    address += cpu->X;
+    address &= 0xffff; // Wraparound
+    address |= (cpu->PBR & 0xff) << 16;
+
+    // Find and return the resultant indirect address value
+    return CPU_GET_MEM_BYTE(mem, address) | (CPU_GET_MEM_BYTE(mem, address + 1) << 8);
+}
