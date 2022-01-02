@@ -134,6 +134,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             cpu->P.I = 1;
             break;
 
+        case 0x18: // CLC
+            cpu->P.C = 0;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0x20: // JSR addr
             _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2));
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
@@ -147,6 +153,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             cpu->PBR = mem[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC24(cpu), 3)] & 0xff;
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 8;
+            break;
+
+        case 0x38: // SEC
+            cpu->P.C = 1;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0x40: // RTI
@@ -170,6 +182,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
         case 0x4c: // JMP addr
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 3;
+            break;
+
+        case 0x58: // CLI
+            cpu->P.I = 0;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0x5c: // JMP long
@@ -196,9 +214,46 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             cpu->cycles += 5;
             break;
 
+        case 0x78: // SEI
+            cpu->P.I = 1;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0x7c: // JMP (addr,X)
             cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 6;
+            break;
+
+        case 0xb8: // CLV
+            cpu->P.V = 0;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0xc2: // REP
+        {
+            uint8_t sr = CPU_GET_SR(cpu);
+            uint8_t val = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 1));
+
+            if (cpu->P.E)
+            {
+                CPU_SET_SR(cpu, sr & ((~val) | 0b00110000)); // Bits 4 and 5 are unaffected by operation in emulation mode
+            }
+            else
+            {
+                CPU_SET_SR(cpu, sr & (~val));
+            }
+
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 3;
+        }
+            break;
+
+        case 0xd8: // CLD
+            cpu->P.D = 0;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0xdc: // JMP [addr]
@@ -210,17 +265,42 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
         }
             break;
 
+        case 0xe2: // SEP
+        {
+            uint8_t sr = CPU_GET_SR(cpu);
+            uint8_t val = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 1));
+
+            if (cpu->P.E)
+            {
+                CPU_SET_SR(cpu, sr | (val & 0b11001111)); // Bits 4 and 5 are unaffected by operation in emulation mode
+            }
+            else
+            {
+                CPU_SET_SR(cpu, sr | val);
+            }
+
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 3;
+        }
+            break;
+
         case 0xea: // NOP
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
             break;
 
         case 0xeb: // XBA
-            cpu->C = ( (cpu->C << 8) | ( (cpu->C >> 8) & 0xff ) ) & 0xffff;
+            cpu->C = ((cpu->C << 8) | ((cpu->C >> 8) & 0xff)) & 0xffff;
             cpu->P.N = cpu->C & 0x80 ? 1 : 0;
             cpu->P.Z = cpu->C & 0xff ? 0 : 1;
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 3;
+            break;
+
+        case 0xf8: // SED
+            cpu->P.D = 1;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0xfc: // JSR (addr,X)
