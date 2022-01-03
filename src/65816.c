@@ -55,6 +55,11 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         return CPU_ERR_OK;
     }
 
+    if (cpu->P.STP)
+    {
+        return CPU_ERR_STP;
+    }
+
     // Fetch, decode, execute instruction
     switch (mem[cpu->PC])
     {
@@ -441,6 +446,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             CPU_UPDATE_PC16(cpu, 1);
 
+            break;
+
+        case 0xdb: // STP
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 3;
+            cpu->P.STP = 1;
             break;
 
         case 0xdc: // JMP [addr]

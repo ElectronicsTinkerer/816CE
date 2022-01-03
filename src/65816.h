@@ -45,6 +45,7 @@ struct CPU_t
         unsigned char RST : 1; // 1 if the CPU was reset, 0 if reset vector has been jumped to
         unsigned char IRQ : 1; // 1 if IRQ input is asserted, 0 else
         unsigned char NMI : 1; // 1 if NMI input is asserted, 0 else
+        unsigned char STP : 1; // 1 if CPU has executed a STP instruction, 0 else
         // unsigned char ABT : 1; // 1 if ABORT input is asserted, 0 else
     } P;
     uint32_t cycles; // Total phi-1 cycles the CPU has run
@@ -55,6 +56,7 @@ struct CPU_t
  {
      CPU_ERR_OK = 0,
      CPU_ERR_UNKNOWN_OPCODE,
+     CPU_ERR_STP, // Returned if stepCPU() is called on a CPU which is in the SToPped state due to a STP instruction
      CPU_ERR_NULL_CPU, // Only used if `CPU_DEBUG_CHECK_NULL` is defined
  } CPU_Error_Code_t;
 
