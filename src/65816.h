@@ -51,11 +51,20 @@ struct CPU_t
 };
 
 // Possible error codes from CPU public (non-static) functions
- typedef enum CPU_Error_Code_t{
+ typedef enum CPU_Error_Code_t
+ {
      CPU_ERR_OK = 0,
      CPU_ERR_UNKNOWN_OPCODE,
      CPU_ERR_NULL_CPU, // Only used if `CPU_DEBUG_CHECK_NULL` is defined
  } CPU_Error_Code_t;
+
+// Used to specify if the call to stack operations should allow
+// keeping the stack within page 1 while a CPU is in emulation mode
+ typedef enum
+ {
+     CPU_ESTACK_DISABLE = 0,
+     CPU_ESTACK_ENABLE
+ } emul_stack_mod_t;
 
  // Get the value of a CPU's SR
  // NOTE: __CPU__ must be a pointer to a CPU struct
@@ -67,7 +76,7 @@ struct CPU_t
 
 // Get a CPU's 24 bit PC address
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_EFFECTIVE_PC24(__CPU__) ( ((__CPU__->PBR & 0xff) << 16) | (__CPU__->PC & 0xffff) )
+#define CPU_GET_EFFECTIVE_PC(__CPU__) ( ((__CPU__->PBR & 0xff) << 16) | (__CPU__->PC & 0xffff) )
 
 // Update a CPU's PC value by an offset
 // Enforces bank wrapping
@@ -94,14 +103,14 @@ struct CPU_t
 
 
 CPU_Error_Code_t resetCPU(CPU_t *);
-CPU_Error_Code_t stepCPU(CPU_t*, int16_t*);
-static void _stackCPU_pushByte(CPU_t *, int16_t *mem, int32_t);
-static void _stackCPU_pushWord(CPU_t *, int16_t *mem, int32_t);
-static int32_t _stackCPU_popByte(CPU_t *, int16_t *mem);
-static int32_t _stackCPU_popWord(CPU_t *, int16_t *mem);
+CPU_Error_Code_t stepCPU(CPU_t *, int16_t *);
+static void _stackCPU_pushByte(CPU_t *, int16_t *, int32_t, emul_stack_mod_t);
+static void _stackCPU_pushWord(CPU_t *, int16_t *, int32_t, emul_stack_mod_t);
+static int32_t _stackCPU_popByte(CPU_t *, int16_t *, emul_stack_mod_t);
+static int32_t _stackCPU_popWord(CPU_t *, int16_t *, emul_stack_mod_t);
 
-static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, int16_t *mem);
-static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, int16_t *mem);
-static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, int16_t *mem);
+static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, int16_t *);
+static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, int16_t *);
+static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, int16_t *);
 
 #endif

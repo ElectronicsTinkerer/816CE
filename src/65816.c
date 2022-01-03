@@ -63,18 +63,18 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             // Push PC and SR
             if (!cpu->P.E)
             {
-                _stackCPU_pushByte(cpu, mem, cpu->PBR);
+                _stackCPU_pushByte(cpu, mem, cpu->PBR, CPU_ESTACK_DISABLE);
             }
             CPU_UPDATE_PC16(cpu, 2);
-            _stackCPU_pushWord(cpu, mem, cpu->PC);
+            _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
 
             if (cpu->P.E)
             {
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) | 0x10); // B gets set on the stack
+                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) | 0x10, CPU_ESTACK_ENABLE); // B gets set on the stack
             }
             else
             {
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
+                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu), CPU_ESTACK_DISABLE);
             }
 
             // Jump to ISR
@@ -101,18 +101,18 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             // Push PC and SR
             if (!cpu->P.E)
             {
-                _stackCPU_pushByte(cpu, mem, cpu->PBR);
+                _stackCPU_pushByte(cpu, mem, cpu->PBR, CPU_ESTACK_DISABLE);
             }
             CPU_UPDATE_PC16(cpu, 2);
-            _stackCPU_pushWord(cpu, mem, cpu->PC);
+            _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
 
             if (cpu->P.E)
             {
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef); // ??? Unknown: the state of the B flag in ISR for COP (assumed to be 0)
+                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef, CPU_ESTACK_ENABLE); // ??? Unknown: the state of the B flag in ISR for COP (assumed to be 0)
             }
             else
             {
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
+                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu), CPU_ESTACK_DISABLE);
             }
 
             // Jump to ISR
@@ -141,16 +141,16 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             break;
 
         case 0x20: // JSR addr
-            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2));
+            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), CPU_ESTACK_ENABLE);
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 6;
             break;
 
         case 0x22: // JSL/JSR long
             // ??? Unknown operation in emulation mode. The stack may be treated differently.
-            _stackCPU_pushByte(cpu, mem, cpu->PBR);
-            _stackCPU_pushWord(cpu, mem, CPU_GET_EFFECTIVE_PC24(cpu) + 3);
-            cpu->PBR = mem[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC24(cpu), 3)] & 0xff;
+            _stackCPU_pushByte(cpu, mem, cpu->PBR, CPU_ESTACK_DISABLE);
+            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 3), CPU_ESTACK_DISABLE);
+            cpu->PBR = mem[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(cpu), 3)] & 0xff;
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 8;
             break;
@@ -162,13 +162,13 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             break;
 
         case 0x40: // RTI
-            CPU_SET_SR(cpu, _stackCPU_popByte(cpu, mem));
-            cpu->PC = _stackCPU_popWord(cpu, mem);
+            CPU_SET_SR(cpu, _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE));
+            cpu->PC = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
             cpu->cycles += 6;
 
             if (!cpu->P.E)
             {
-                cpu->PBR = _stackCPU_popByte(cpu, mem);
+                cpu->PBR = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
                 cpu->cycles += 1;
             }
 
@@ -191,21 +191,20 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             break;
 
         case 0x5c: // JMP long
-            cpu->PC = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC24(cpu), 3));
+            cpu->PC = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(cpu), 3));
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 4;
             break;
 
         case 0x60: // RTS
-            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem), 1);
-            cpu->PBR = _stackCPU_popByte(cpu, mem);
+            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE), 1);
             cpu->cycles += 6;
             break;
 
         case 0x6b: // RTL
             // ??? Unknown operation in emulation mode. The stack may be treated differently.
-            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem), 1);
-            cpu->PBR = _stackCPU_popByte(cpu, mem);
+            cpu->PC = ADDR_ADD_VAL_BANK_WRAP(_stackCPU_popWord(cpu, mem, CPU_ESTACK_DISABLE), 1);
+            cpu->PBR = _stackCPU_popByte(cpu, mem, CPU_ESTACK_DISABLE);
             cpu->cycles += 6;
             break;
 
@@ -238,7 +237,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
 
             if (cpu->P.E)
             {
-                CPU_SET_SR(cpu, sr & ((~val) | 0b00110000)); // Bits 4 and 5 are unaffected by operation in emulation mode
+                CPU_SET_SR(cpu, sr & ((~val) | 0x30)); // Bits 4 and 5 are unaffected by operation in emulation mode
             }
             else
             {
@@ -272,7 +271,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
 
             if (cpu->P.E)
             {
-                CPU_SET_SR(cpu, sr | (val & 0b11001111)); // Bits 4 and 5 are unaffected by operation in emulation mode
+                CPU_SET_SR(cpu, sr | (val & 0xcf)); // Bits 4 and 5 are unaffected by operation in emulation mode
             }
             else
             {
@@ -304,7 +303,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
             break;
 
         case 0xfc: // JSR (addr,X)
-            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2));
+            _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), CPU_ESTACK_DISABLE);
             cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 8;
             break;
@@ -322,17 +321,17 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
         // Push PC and SR
         if (!cpu->P.E)
         {
-            _stackCPU_pushByte(cpu, mem, cpu->PBR);
+            _stackCPU_pushByte(cpu, mem, cpu->PBR, CPU_ESTACK_DISABLE);
         }
-        _stackCPU_pushWord(cpu, mem, cpu->PC);
+        _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
 
         if (cpu->P.E)
         {
-            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef); // B gets reset on the stack
+            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef, CPU_ESTACK_ENABLE); // B gets reset on the stack
         }
         else
         {
-            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
+            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu), CPU_ESTACK_DISABLE);
         }
 
         // Jump to ISR
@@ -362,18 +361,19 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
         // Push PC and SR
         if (!cpu->P.E)
         {
-            _stackCPU_pushByte(cpu, mem, cpu->PBR);
+            _stackCPU_pushByte(cpu, mem, cpu->PBR, CPU_ESTACK_DISABLE);
         }
-        _stackCPU_pushWord(cpu, mem, cpu->PC);
+        _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
 
         if (cpu->P.E)
         {
-            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef); // B gets reset on the stack
+            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) & 0xef, CPU_ESTACK_ENABLE); // B gets reset on the stack
         }
         else
         {
-            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
+            _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu), CPU_ESTACK_DISABLE);
         }
+
         // Jump to ISR
         if (cpu->P.E)
         {
@@ -404,20 +404,22 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, int16_t *mem)
  * @param cpu The cpu to use for the operation
  * @param mem The memory array which is to be connected to the CPU
  * @param byte The byte to be pushed onto the stack
+ * @param emulationStack 1 if the stack should be limited to page 1, 
+ *                       0 for new instructions/native mode
  */
-static void _stackCPU_pushByte(CPU_t *cpu, int16_t *mem, int32_t byte)
+static void _stackCPU_pushByte(CPU_t *cpu, int16_t *mem, int32_t byte, emul_stack_mod_t emulationStack)
 {
-    mem[cpu->SP] = byte;
-
-    // Correct SP if in emulation mode
-    if ( cpu->P.E && ((cpu->SP & 0xff) == 0) )
+    if ( cpu->P.E && emulationStack )
     {
-        cpu->SP = 0x01ff;
+        mem[ (cpu->SP & 0xff) | 0x0100 ] = byte;
+        cpu->SP = ( (cpu->SP - 1) & 0xff ) | 0x0100;
     }
     else
     {
+        mem[cpu->SP] = byte;
         cpu->SP -= 1;
     }
+    cpu->SP &= 0xffff;
 }
 
 /**
@@ -425,49 +427,50 @@ static void _stackCPU_pushByte(CPU_t *cpu, int16_t *mem, int32_t byte)
  * @param cpu The cpu to use for the operation
  * @param mem The memory array which is to be connected to the CPU
  * @param word The word to be pushed onto the stack
+ * @param emulationStack 1 if the stack should be limited to page 1,
+ *                       0 for new instructions/native mode
  */
-static void _stackCPU_pushWord(CPU_t *cpu, int16_t *mem, int32_t word)
+static void _stackCPU_pushWord(CPU_t *cpu, int16_t *mem, int32_t word, emul_stack_mod_t emulationStack)
 {
-    _stackCPU_pushByte(cpu, mem, (word & 0xff00) >> 8);
-    _stackCPU_pushByte(cpu, mem, word & 0xff);
+    _stackCPU_pushByte(cpu, mem, (word & 0xff00) >> 8, emulationStack);
+    _stackCPU_pushByte(cpu, mem, word & 0xff, emulationStack);
 }
 
 /**
  * Pop a byte (8-bits) off the CPU's stack and return it
  * @param cpu The cpu to use for the operation
  * @param mem The memory array which is to be connected to the CPU
+ * @param emulationStack 1 if the stack should be limited to page 1,
+ *                       0 for new instructions/native mode
  * @return The value popped off the stack
  */
-static int32_t _stackCPU_popByte(CPU_t *cpu, int16_t *mem)
+static int32_t _stackCPU_popByte(CPU_t *cpu, int16_t *mem, emul_stack_mod_t emulationStack)
 {
-    int32_t byte;
-
-    byte = mem[cpu->SP] & 0xff;
-
-    // Correct SP if in emulation mode
-    if (cpu->P.E && ((cpu->SP & 0xff) == 0xff))
+    if ( cpu->P.E && emulationStack )
     {
-        cpu->SP = 0x0100;
+        cpu->SP = ( (cpu->SP + 1) & 0xff) | 0x0100;
     }
     else
     {
         cpu->SP += 1;
     }
-
-    return byte;
+    cpu->SP &= 0xffff;
+    return mem[cpu->SP] & 0xff;
 }
 
 /**
  * Pop a word (16-bits) off the CPU's stack and return it
  * @param cpu The cpu to use for the operation
  * @param mem The memory array which is to be connected to the CPU
+ * @param emulationStack 1 if the stack should be limited to page 1,
+ *                       0 for new instructions/native mode
  * @return The value popped off the stack
  */
-static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem)
+static int32_t _stackCPU_popWord(CPU_t *cpu, int16_t *mem, emul_stack_mod_t emulationStack)
 {
     int32_t word;
-    word = _stackCPU_popByte(cpu, mem);
-    word |= (_stackCPU_popByte(cpu, mem) & 0xff) << 8;
+    word = _stackCPU_popByte(cpu, mem, emulationStack);
+    word |= (_stackCPU_popByte(cpu, mem, emulationStack) & 0xff) << 8;
     return word;
 }
 
