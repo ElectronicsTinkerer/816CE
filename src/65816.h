@@ -60,11 +60,11 @@ struct CPU_t
 
 // Used to specify if the call to stack operations should allow
 // keeping the stack within page 1 while a CPU is in emulation mode
- typedef enum
+ typedef enum Emul_Stack_Mod_t
  {
      CPU_ESTACK_DISABLE = 0,
      CPU_ESTACK_ENABLE
- } emul_stack_mod_t;
+ } Emul_Stack_Mod_t;
 
  // Get the value of a CPU's SR
  // NOTE: __CPU__ must be a pointer to a CPU struct
@@ -89,13 +89,13 @@ struct CPU_t
 
 // Get the byte stored in memory at a CPU's PC+1
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define ADDR_GET_MEM_IMMD_BYTE(__CPU__, __MEM__) (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff)
+#define ADDR_GET_MEM_IMMD_BYTE(__CPU__, __MEM__) (__MEM__[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(__CPU__), 1)] & 0xff)
 
 // Get the word stored in memory at a CPU's PC+1 and PC+2
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define ADDR_GET_MEM_IMMD_WORD(__CPU__, __MEM__) ( (__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 1] & 0xff) | ((__MEM__[CPU_GET_EFFECTIVE_PC(__CPU__) + 2] & 0xff) << 8) )
+#define ADDR_GET_MEM_IMMD_WORD(__CPU__, __MEM__) ((__MEM__[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(__CPU__), 1)] & 0xff) | ((__MEM__[ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(__CPU__), 2)] & 0xff) << 8))
 
-// Add a value to an address, wrapping around the page if necessary
+ // Add a value to an address, wrapping around the page if necessary
 #define ADDR_ADD_VAL_PAGE_WRAP(__ADDR__, __OFFSET__) ( (__ADDR__ & 0xffff00) | ( (__ADDR__ + __OFFSET__) & 0xff) )
 
 // Add a value to an address, wrapping around the bank if necessary
@@ -104,10 +104,10 @@ struct CPU_t
 
 CPU_Error_Code_t resetCPU(CPU_t *);
 CPU_Error_Code_t stepCPU(CPU_t *, int16_t *);
-static void _stackCPU_pushByte(CPU_t *, int16_t *, int32_t, emul_stack_mod_t);
-static void _stackCPU_pushWord(CPU_t *, int16_t *, int32_t, emul_stack_mod_t);
-static int32_t _stackCPU_popByte(CPU_t *, int16_t *, emul_stack_mod_t);
-static int32_t _stackCPU_popWord(CPU_t *, int16_t *, emul_stack_mod_t);
+static void _stackCPU_pushByte(CPU_t *, int16_t *, int32_t, Emul_Stack_Mod_t);
+static void _stackCPU_pushWord(CPU_t *, int16_t *, int32_t, Emul_Stack_Mod_t);
+static int32_t _stackCPU_popByte(CPU_t *, int16_t *, Emul_Stack_Mod_t);
+static int32_t _stackCPU_popWord(CPU_t *, int16_t *, Emul_Stack_Mod_t);
 
 static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, int16_t *);
 static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, int16_t *);
