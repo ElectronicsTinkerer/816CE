@@ -238,7 +238,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
         case 0x42: // WDM
             CPU_UPDATE_PC16(cpu, 2);
-            cpu->cycles += 2; // ???
+            cpu->cycles += 2; // http://www.6502.org/tutorials/65c816opcodes.html#6.7
             break;
 
         case 0x48: // PHA
