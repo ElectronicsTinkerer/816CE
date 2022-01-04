@@ -124,5 +124,6 @@ static int32_t _addrCPU_getAbsolute(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
+static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *, uint8_t *);
 
 #endif

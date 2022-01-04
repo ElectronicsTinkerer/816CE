@@ -477,6 +477,21 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 2);
             break;
 
+        case 0x86: // STX dp
+            mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->X & 0xff;
+            cpu->cycles += 3;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[(_addrCPU_getDirectPage(cpu, mem) + 1) & 0xffff] = (cpu->X >> 8) & 0xff; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            break;
+
         case 0x8a: // TXA
             if (cpu->P.E)
             {
@@ -527,12 +542,38 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 3);
             break;
 
+        case 0x8e: // STX addr
+            mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->X & 0xff;
+            cpu->cycles += 4;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->X >> 8) & 0xff; // No bank wrapping
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            break;
+
         case 0x94: // STY dp,X
             mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = cpu->Y & 0xff;
             cpu->cycles += 4;
             if (!cpu->P.E && !cpu->P.X) // 16-bit
             {
                 mem[(_addrCPU_getDirectPageIndexedX(cpu, mem) + 1) & 0xffff] = (cpu->Y >> 8) & 0xff; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            break;
+
+        case 0x96: // STX dp,Y
+            mem[_addrCPU_getDirectPageIndexedY(cpu, mem)] = cpu->X & 0xff;
+            cpu->cycles += 4;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[(_addrCPU_getDirectPageIndexedY(cpu, mem) + 1) & 0xffff] = (cpu->X >> 8) & 0xff; // Bank wrapping
                 cpu->cycles += 1;
             }
             if (cpu->D & 0xff)
@@ -1336,5 +1377,29 @@ static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *cpu, uint8_t *mem)
         address += cpu->X; // No wraparound
     }
 
-    return address;
+    return address & 0xffff; // Inevitable bank wrap
+}
+/**
+ * Returns the 24-bit address pointed to the dp, Y-indexed address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *cpu, uint8_t *mem)
+{
+    // Get the immediate operand word of the current instruction and bank 0
+    int32_t address = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+
+    if (cpu->P.E && ((cpu->D & 0xff) == 0))
+    {
+        address = ADDR_ADD_VAL_PAGE_WRAP(cpu->D, address + cpu->Y);
+    }
+    else
+    {
+        address += cpu->D;
+        address += cpu->Y;
+    }
+
+    return address & 0xffff; // Inevitable bank wrap
 }
