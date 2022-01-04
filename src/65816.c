@@ -842,6 +842,29 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             break;
 
+        case 0xfb: // XCE
+        {
+            unsigned char temp = cpu->P.E;
+            cpu->P.E = cpu->P.C;
+            cpu->P.C = temp;
+        }
+            if (cpu->P.E)
+            {
+                cpu->P.M = 1;
+                cpu->X &= 0xff;
+                cpu->Y &= 0xff;
+                cpu->SP = (cpu->SP & 0xff) | 0x0100;
+            }
+            else
+            {
+                cpu->P.M = 1;
+                cpu->P.X = 1;
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0xfc: // JSR (addr,X)
             _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), CPU_ESTACK_DISABLE);
             cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
