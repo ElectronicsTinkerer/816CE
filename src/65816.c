@@ -337,6 +337,21 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         }
             break;
 
+        case 0x64: // STZ dp
+            mem[_addrCPU_getDirectPage(cpu, mem)] = 0;
+            cpu->cycles += 3;
+            if (!cpu->P.M) // 16-bit
+            {
+                mem[ (_addrCPU_getDirectPage(cpu, mem) + 1) & 0xffff] = 0; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            break;
+
         case 0x68: // PLA
             if (cpu->P.E)
             {
@@ -379,6 +394,21 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         case 0x6c: // JMP (addr)
             cpu->PC = _addrCPU_getAbsoluteIndirect(cpu, mem);
             cpu->cycles += 5;
+            break;
+
+        case 0x74: // STZ dp
+            mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = 0;
+            cpu->cycles += 4;
+            if (!cpu->P.M) // 16-bit
+            {
+                mem[(_addrCPU_getDirectPageIndexedX(cpu, mem) + 1) & 0xffff] = 0; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
             break;
 
         case 0x78: // SEI
@@ -548,6 +578,28 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             }
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
+            break;
+
+        case 0x9c: // STZ addr
+            mem[_addrCPU_getAbsolute(cpu, mem)] = 0;
+            cpu->cycles += 4;
+            if (!cpu->P.M) // 16-bit
+            {
+                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = 0; // No bank wrapping
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            break;
+
+        case 0x9e: // STZ addr,x
+            mem[_addrCPU_getAbsoluteIndexedX(cpu, mem)] = 0;
+            cpu->cycles += 5;
+            if (!cpu->P.M) // 16-bit
+            {
+                mem[_addrCPU_getAbsoluteIndexedX(cpu, mem) + 1] = 0; // No bank wrapping
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
             break;
 
         case 0xa8: // TAY
@@ -780,6 +832,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             else
             {
                 CPU_SET_SR(cpu, sr | val);
+
+                if (cpu->P.X)
+                {
+                    cpu->X &= 0xff;
+                    cpu->Y &= 0xff;
+                }
             }
 
             CPU_UPDATE_PC16(cpu, 2);
@@ -1144,10 +1202,10 @@ static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, uint8_t *mem)
 static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, uint8_t *mem)
 {
     // Get the immediate operand word of the current instruction
-    // (from Bank 0)
     int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
 
     // Find and return the resultant indirect address value
+    // (from Bank 0)
     return ADDR_GET_MEM_BYTE(mem, address) | (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 1)) << 8);
 }
 
@@ -1162,10 +1220,80 @@ static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, uint8_t *mem)
 static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, uint8_t *mem)
 {
     // Get the immediate operand word of the current instruction
-    // (from Bank 0)
     int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
 
     // Find and return the resultant indirect address value
+    // (from Bank 0)
     return ADDR_GET_MEM_BYTE(mem, address) | (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 1)) << 8) |
            (ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(address, 2)) << 16);
+}
+
+/**
+ * Returns the 24-bit address pointed to the absolute address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getAbsolute(CPU_t *cpu, uint8_t *mem)
+{
+    // Get the immediate operand word of the current instruction
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+
+    // Find and return the resultant address value
+    return CPU_GET_DBR_SHIFTED(cpu) | address;
+}
+
+/**
+ * Returns the 24-bit address pointed to the direct page address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getDirectPage(CPU_t *cpu, uint8_t *mem)
+{
+    // Find and return the resultant address value
+    return ADDR_ADD_VAL_BANK_WRAP(cpu->D, ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
+}
+
+/**
+ * Returns the 24-bit address pointed to the absolute, X-indexed address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *cpu, uint8_t *mem)
+{
+    // Get the immediate operand word of the current instruction and the current data bank
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem) | CPU_GET_DBR_SHIFTED(cpu);
+    address += cpu->X; // No wraparound
+
+    return address;
+}
+
+/**
+ * Returns the 24-bit address pointed to the dp, X-indexed address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *cpu, uint8_t *mem)
+{
+    // Get the immediate operand word of the current instruction and bank 0
+    int32_t address = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+
+    if (cpu->P.E && ((cpu->D & 0xff) == 0))
+    {
+        address = ADDR_ADD_VAL_PAGE_WRAP(cpu->D, address + cpu->X);
+    }
+    else
+    {
+        address += cpu->D;
+        address += cpu->X; // No wraparound
+    }
+
+    return address;
 }

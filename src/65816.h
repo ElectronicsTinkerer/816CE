@@ -76,9 +76,13 @@ struct CPU_t
 // NOTE: __CPU__ must be a pointer to a CPU struct
 #define CPU_SET_SR(__CPU__, __BYTE__) ( (*(uint8_t*)&(__CPU__)->P) = (__BYTE__))
 
+// Get the CPU's BANK, shifted to be bits 16..23 of the value
+// NOTE: __CPU__ must be a pointer to a CPU struct
+#define CPU_GET_DBR_SHIFTED(__CPU__) (((__CPU__)->PBR & 0xff) << 16)
+
 // Get a CPU's 24 bit PC address
 // NOTE: __CPU__ must be a pointer to a CPU struct
-#define CPU_GET_EFFECTIVE_PC(__CPU__) ( (((__CPU__)->PBR & 0xff) << 16) | ((__CPU__)->PC & 0xffff) )
+#define CPU_GET_EFFECTIVE_PC(__CPU__) ( (CPU_GET_DBR_SHIFTED(__CPU__)) | ((__CPU__)->PC & 0xffff) )
 
 // Update a CPU's PC value by an offset
 // Enforces bank wrapping
@@ -116,5 +120,9 @@ static int32_t _stackCPU_pop24(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, uint8_t *);
 static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, uint8_t *);
+static int32_t _addrCPU_getAbsolute(CPU_t *, uint8_t *);
+static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
+static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *, uint8_t *);
+static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
 
 #endif
