@@ -135,6 +135,20 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 2;
             break;
 
+        case 0x1b: // TCS
+            if (cpu->P.E)
+            {
+                cpu->SP = (cpu->C & 0xff) | 0x0100;
+            }
+            else // 16-bit transfer
+            {
+                cpu->SP = cpu->C;
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0x20: // JSR addr
             _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), CPU_ESTACK_ENABLE);
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
@@ -179,6 +193,23 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
         case 0x38: // SEC
             cpu->P.C = 1;
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0x3b: // TSC
+            if (cpu->P.E)
+            {
+                cpu->C = (cpu->SP & 0xff) | 0x0100;
+            }
+            else // 16-bit transfer
+            {
+                cpu->C = cpu->SP;
+            }
+
+            cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+            cpu->P.Z = ((cpu->C & 0xffff) == 0);
+
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
             break;
@@ -275,6 +306,16 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             break;
 
+        case 0x5b: // TCD
+            // 16-bit transfer
+            cpu->D = cpu->C;
+            cpu->P.Z = ((cpu->D & 0xffff) == 0);
+            cpu->P.N = ((cpu->D & 0x8000) == 0x8000);
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0x5c: // JMP long
             cpu->PC = ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(CPU_GET_EFFECTIVE_PC(cpu), 3));
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
@@ -297,19 +338,29 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             break;
 
         case 0x68: // PLA
-            if (cpu->P.E || cpu->P.M)
+            if (cpu->P.E)
             {
                 cpu->C = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
                 cpu->cycles += 4;
                 cpu->P.Z = ((cpu->C & 0xff) == 0);
                 cpu->P.N = ((cpu->C & 0x80) == 0x80);
             }
-            else // 16-bit A
+            else
             {
-                cpu->C = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
-                cpu->cycles += 5;
-                cpu->P.Z = ((cpu->C & 0xffff) == 0);
-                cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+                if (cpu->P.M)
+                {
+                    cpu->C = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 4;
+                    cpu->P.Z = ((cpu->C & 0xff) == 0);
+                    cpu->P.N = ((cpu->C & 0x80) == 0x80);
+                }
+                else // 16-bit A
+                {
+                    cpu->C = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 5;
+                    cpu->P.Z = ((cpu->C & 0xffff) == 0);
+                    cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+                }
             }
 
             CPU_UPDATE_PC16(cpu, 1);
@@ -337,23 +388,43 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             break;
 
         case 0x7a: // PLY
-            if (cpu->P.E || cpu->P.X)
+            if (cpu->P.E)
             {
                 cpu->Y = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
                 cpu->cycles += 4;
                 cpu->P.Z = ((cpu->Y & 0xff) == 0);
                 cpu->P.N = ((cpu->Y & 0x80) == 0x80);
             }
-            else // 16-bit A
+            else
             {
-                cpu->Y = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
-                cpu->cycles += 5;
-                cpu->P.Z = ((cpu->Y & 0xffff) == 0);
-                cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                if (cpu->P.X)
+                {
+                    cpu->Y = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 4;
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else // 16-bit A
+                {
+                    cpu->Y = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 5;
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                }
             }
-
+           
             CPU_UPDATE_PC16(cpu, 1);
 
+            break;
+
+        case 0x7b: // TDC
+            // 16-bit transfer
+            cpu->C = cpu->D;
+            cpu->P.Z = ((cpu->C & 0xffff) == 0);
+            cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0x7c: // JMP (addr,X)
@@ -361,10 +432,176 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 6;
             break;
 
+        case 0x8a: // TXA
+            if (cpu->P.E)
+            {
+                cpu->C = cpu->X & 0xff;
+                cpu->P.Z = ((cpu->C & 0xff) == 0);
+                cpu->P.N = ((cpu->C & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.M) // 8-bit A and 8/16-bit X
+                {
+                    cpu->C = (cpu->X & 0xff) | (cpu->C & 0xff00);
+                    cpu->P.Z = ((cpu->C & 0xff) == 0);
+                    cpu->P.N = ((cpu->C & 0x80) == 0x80);
+                }
+                else if (cpu->P.X && !cpu->P.M) // 8-bit X, 16-bit A
+                {
+                    cpu->C = cpu->X & 0xff;
+                    cpu->P.Z = ((cpu->C & 0xff) == 0);
+                    cpu->P.N = ((cpu->C & 0x80) == 0x80);
+                }
+                else // 16-bit A and X
+                {
+                    cpu->C = cpu->X;
+                    cpu->P.Z = ((cpu->C & 0xffff) == 0);
+                    cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+                }
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0x8b: // PHB
             _stackCPU_pushByte(cpu, mem, cpu->DBR);
             cpu->cycles += 3;
             CPU_UPDATE_PC16(cpu, 1);
+            break;
+
+        case 0x98: // TYA
+            if (cpu->P.E)
+            {
+                cpu->C = cpu->Y & 0xff;
+                cpu->P.Z = ((cpu->C & 0xff) == 0);
+                cpu->P.N = ((cpu->C & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.M) // 8-bit A and 8/16-bit X
+                {
+                    cpu->C = (cpu->Y & 0xff) | (cpu->C & 0xff00);
+                    cpu->P.Z = ((cpu->C & 0xff) == 0);
+                    cpu->P.N = ((cpu->C & 0x80) == 0x80);
+                }
+                else if (cpu->P.X && !cpu->P.M) // 8-bit X, 16-bit A
+                {
+                    cpu->C = cpu->Y & 0xff;
+                    cpu->P.Z = ((cpu->C & 0xff) == 0);
+                    cpu->P.N = ((cpu->C & 0x80) == 0x80);
+                }
+                else // 16-bit A and X
+                {
+                    cpu->C = cpu->X;
+                    cpu->P.Z = ((cpu->C & 0xffff) == 0);
+                    cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+                }
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0x9a: // TXS
+            if (cpu->P.E)
+            {
+                cpu->SP = (cpu->X & 0xff) | 0x0100;
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->SP = (cpu->X & 0xff);
+                }
+                else // 16-bit X
+                {
+                    cpu->SP = (cpu->X & 0xffff);
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0x9b: // TXY
+            if (cpu->P.E)
+            {
+                cpu->Y = cpu->X & 0xff;
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = cpu->X & 0xff;
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else // 16-bit
+                {
+                    cpu->Y = cpu->X;
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0xa8: // TAY
+            if (cpu->P.E)
+            {
+                cpu->Y = cpu->C & 0xff;
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = cpu->C & 0xff;
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else // 16-bit X
+                {
+                    cpu->Y = cpu->C;
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                }
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0xaa: // TAX
+            if (cpu->P.E)
+            {
+                cpu->X = cpu->C & 0xff;
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = cpu->C & 0xff;
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else // 16-bit X
+                {
+                    cpu->X = cpu->C;
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                }
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
             break;
 
         case 0xab: // PLB
@@ -383,6 +620,59 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 2;
             break;
 
+        case 0xba: // TSX
+            if (cpu->P.E)
+            {
+                cpu->X = cpu->SP & 0xff;
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = cpu->SP & 0xff;
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = cpu->SP & 0xffff;
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                }
+            }
+
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
+        case 0xbb: // TYX
+            if (cpu->P.E)
+            {
+                cpu->X = cpu->Y & 0xff;
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = cpu->Y & 0xff;
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else // 16-bit
+                {
+                    cpu->X = cpu->Y;
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 1);
+            cpu->cycles += 2;
+            break;
+
         case 0xc2: // REP
         {
             uint8_t sr = CPU_GET_SR(cpu);
@@ -395,6 +685,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             else
             {
                 CPU_SET_SR(cpu, sr & (~val));
+
+                if (cpu->P.X)
+                {
+                    cpu->X &= 0xff;
+                    cpu->Y &= 0xff;
+                }
             }
 
             CPU_UPDATE_PC16(cpu, 2);
@@ -508,19 +804,29 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             break;
 
         case 0xfa: // PLX
-            if (cpu->P.E || cpu->P.X)
+            if (cpu->P.E)
             {
                 cpu->X = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
                 cpu->cycles += 4;
                 cpu->P.Z = ((cpu->X & 0xff) == 0);
                 cpu->P.N = ((cpu->X & 0x80) == 0x80);
             }
-            else // 16-bit A
+            else
             {
-                cpu->X = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
-                cpu->cycles += 5;
-                cpu->P.Z = ((cpu->X & 0xffff) == 0);
-                cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                if (cpu->P.X)
+                {
+                    cpu->X = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 4;
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else // 16-bit A
+                {
+                    cpu->X = _stackCPU_popWord(cpu, mem, CPU_ESTACK_ENABLE);
+                    cpu->cycles += 5;
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                }
             }
 
             CPU_UPDATE_PC16(cpu, 1);
