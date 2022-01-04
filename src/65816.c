@@ -396,7 +396,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 5;
             break;
 
-        case 0x74: // STZ dp
+        case 0x74: // STZ dp,X
             mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = 0;
             cpu->cycles += 4;
             if (!cpu->P.M) // 16-bit
@@ -462,6 +462,21 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 6;
             break;
 
+        case 0x84: // STY dp
+            mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->Y & 0xff;
+            cpu->cycles += 3;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[(_addrCPU_getDirectPage(cpu, mem) + 1) & 0xffff] = (cpu->Y >> 8) & 0xff; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            break;
+
         case 0x8a: // TXA
             if (cpu->P.E)
             {
@@ -499,6 +514,32 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             _stackCPU_pushByte(cpu, mem, cpu->DBR);
             cpu->cycles += 3;
             CPU_UPDATE_PC16(cpu, 1);
+            break;
+
+        case 0x8c: // STY addr
+            mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->Y & 0xff;
+            cpu->cycles += 4;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->Y >> 8) & 0xff; // No bank wrapping
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            break;
+
+        case 0x94: // STY dp,X
+            mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = cpu->Y & 0xff;
+            cpu->cycles += 4;
+            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            {
+                mem[(_addrCPU_getDirectPageIndexedX(cpu, mem) + 1) & 0xffff] = (cpu->Y >> 8) & 0xff; // Bank wrapping
+                cpu->cycles += 1;
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
             break;
 
         case 0x98: // TYA
