@@ -698,6 +698,15 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         }
             break;
 
+        case 0xcb: // WAI
+            if (cpu->P.NMI || cpu->P.IRQ)
+            {
+                cpu->cycles += 3;
+                CPU_UPDATE_PC16(cpu, 1);
+                // Jump to NMI or IRQ handler will happen at end of the step() function
+            }
+            break;
+
         case 0xd4: // PEI (dp)
         {
             int32_t addr_dp = ADDR_ADD_VAL_BANK_WRAP((cpu->D & 0xffff), ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
