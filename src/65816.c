@@ -768,6 +768,36 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 3);
             break;
 
+        case 0xa0: // LDY #const
+        {
+            if (cpu->P.E)
+            {
+                cpu->Y = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->Y = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                    CPU_UPDATE_PC16(cpu, 1);
+                    cpu->cycles += 1;
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 2;
+        }
+            break;
+
         case 0xa2: // LDX #const
         {
             if (cpu->P.E)
@@ -795,6 +825,41 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             }
             CPU_UPDATE_PC16(cpu, 2);
             cpu->cycles += 2;
+        }
+            break;
+
+        case 0xa4: // LDY dp
+        {
+            int32_t addr = _addrCPU_getDirectPage(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->Y = ADDR_GET_MEM_DP_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 3;
         }
             break;
 
@@ -897,6 +962,37 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             break;
 
+        case 0xac: // LDY addr
+        {
+            int32_t addr = _addrCPU_getAbsolute(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->Y = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            cpu->cycles += 4;
+        }
+            break;
+
         case 0xae: // LDX addr
         {
             int32_t addr = _addrCPU_getAbsolute(cpu, mem);
@@ -924,6 +1020,41 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 }
             }
             CPU_UPDATE_PC16(cpu, 3);
+            cpu->cycles += 4;
+        }
+            break;
+
+        case 0xb4: // LDY dp,X
+        {
+            int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->Y = ADDR_GET_MEM_DP_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
             cpu->cycles += 4;
         }
             break;
@@ -1020,6 +1151,43 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             }
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
+            break;
+
+        case 0xbc: // LDY addr,X
+        {
+            int32_t addr = _addrCPU_getAbsoluteIndexedX(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->Y = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->Y = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->Y & 0xffff) == 0);
+                    cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+
+            // If page boundary is crossed, add a cycle
+            if ( (ADDR_GET_MEM_IMMD_WORD(cpu, mem) & 0xff00) != (addr & 0xff00) )
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            cpu->cycles += 4;
+        }
             break;
 
         case 0xbe: // LDX addr,Y
