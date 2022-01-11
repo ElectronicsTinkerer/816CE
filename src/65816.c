@@ -129,6 +129,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 1);
             break;
 
+        case 0x10: // BPL nearlabel
+            if (!cpu->P.N)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
+            break;
+
         case 0x18: // CLC
             cpu->P.C = 0;
             CPU_UPDATE_PC16(cpu, 1);
@@ -217,6 +237,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             CPU_UPDATE_PC16(cpu, 1);
 
+            break;
+
+        case 0x30: // BMI nearlabel
+            if (cpu->P.N)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
             break;
 
         case 0x38: // SEC
@@ -330,6 +370,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         case 0x4c: // JMP addr
             cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
             cpu->cycles += 3;
+            break;
+
+        case 0x50: // BVC nearlabel
+            if (!cpu->P.V)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
             break;
 
         case 0x58: // CLI
@@ -452,6 +512,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 5;
             break;
 
+        case 0x70: // BVS nearlabel
+            if (cpu->P.V)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
+            break;
+
         case 0x74: // STZ dp,X
             mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = 0;
             cpu->cycles += 4;
@@ -516,6 +596,25 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         case 0x7c: // JMP (addr,X)
             cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 6;
+            break;
+
+        case 0x80: // BRA nearlabel    
+        {
+            int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+            cpu->cycles += 3;
+
+            // Add a cycle if page boundary crossed in emulation mode
+            if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+            {
+                cpu->cycles += 1;
+            }
+            cpu->PC = new_PC;
+        }
+            break;
+
+        case 0x82: // BRL label    
+            cpu->PC = _addrCPU_getRelative16(cpu, mem);
+            cpu->cycles += 4;
             break;
 
         case 0x84: // STY dp
@@ -635,6 +734,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 cpu->cycles += 1;
             }
             CPU_UPDATE_PC16(cpu, 3);
+            break;
+
+        case 0x90: // BCC nearlabel
+            if (!cpu->P.C)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
             break;
 
         case 0x94: // STY dp,X
@@ -1024,6 +1143,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         }
             break;
 
+        case 0xb0: // BCS nearlabel
+            if (cpu->P.C)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
+            break;
+
         case 0xb4: // LDY dp,X
         {
             int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
@@ -1385,6 +1524,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
         }
             break;
 
+        case 0xd0: // BNE nearlabel
+            if (!cpu->P.Z)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
+            break;
+
         case 0xd4: // PEI (dp)
         {
             int32_t addr_dp = ADDR_ADD_VAL_BANK_WRAP((cpu->D & 0xffff), ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
@@ -1648,6 +1807,26 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 3);
             cpu->cycles += 6;
         }
+            break;
+
+        case 0xf0: // BEQ nearlabel
+            if (cpu->P.Z)
+            {
+                int32_t new_PC = _addrCPU_getRelative8(cpu, mem);
+                cpu->cycles += 1;
+
+                // Add a cycle if page boundary crossed in emulation mode
+                if (cpu->P.E && ( (new_PC & 0xff00) != (cpu->PC & 0xff00) ))
+                {
+                    cpu->cycles += 1;
+                }
+                cpu->PC = new_PC;
+            }
+            else
+            {
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            cpu->cycles += 2;
             break;
 
         case 0xf4: // PEA addr
@@ -2197,4 +2376,36 @@ static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *cpu, uint8_t *mem)
     }
 
     return address & 0xffff; // Inevitable bank wrap
+}
+
+/**
+ * Returns the 16-bit PC value if a relative-8 branch at the 
+ * current CPU's PC is taken.
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the relative offset
+ * @return The 16-bit PC address as a result of adding the signed
+ *         8-bit relative offset
+ */
+static int32_t _addrCPU_getRelative8(CPU_t *cpu, uint8_t *mem)
+{
+    int16_t offset = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+    if (offset & 0x80)
+    {
+        offset |= 0xff00; // Sign extension
+    }
+    return ADDR_ADD_VAL_BANK_WRAP(ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), offset);
+}
+
+/**
+ * Returns the 16-bit PC value if a relative-16 branch at the
+ * current CPU's PC is taken.
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the relative offset
+ * @return The 16-bit PC address as a result of adding the signed
+ *         16-bit relative offset
+ */
+static int32_t _addrCPU_getRelative16(CPU_t *cpu, uint8_t *mem)
+{
+    int16_t offset = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+    return ADDR_ADD_VAL_BANK_WRAP(ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), offset);
 }

@@ -131,5 +131,7 @@ struct CPU_t
  static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getRelative8(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getRelative16(CPU_t *, uint8_t *);
 
 #endif
