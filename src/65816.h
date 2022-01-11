@@ -107,23 +107,27 @@ struct CPU_t
 // Add a value to an address, wrapping around the bank if necessary
 #define ADDR_ADD_VAL_BANK_WRAP(__ADDR__, __OFFSET__) ( ((__ADDR__) & 0xff0000) | ( ((__ADDR__) + (__OFFSET__)) & 0xffff) )
 
+ // Get a word in memory with no wrapping.
+#define ADDR_GET_MEM_ABS_WORD(__MEM__, __ADDR__) ((ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) | (ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) << 8)) & 0xffff)
 
-CPU_Error_Code_t resetCPU(CPU_t *);
-CPU_Error_Code_t stepCPU(CPU_t *, uint8_t *);
-static void _stackCPU_pushByte(CPU_t *, uint8_t *, int32_t);
-static void _stackCPU_pushWord(CPU_t *, uint8_t *, int32_t, Emul_Stack_Mod_t);
-static void _stackCPU_push24(CPU_t *, uint8_t *, int32_t);
-static int32_t _stackCPU_popByte(CPU_t *, uint8_t *, Emul_Stack_Mod_t);
-static int32_t _stackCPU_popWord(CPU_t *, uint8_t *, Emul_Stack_Mod_t);
-static int32_t _stackCPU_pop24(CPU_t *, uint8_t *);
 
-static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getAbsolute(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
-static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *, uint8_t *);
+
+ CPU_Error_Code_t resetCPU(CPU_t *);
+ CPU_Error_Code_t stepCPU(CPU_t *, uint8_t *);
+ static void _stackCPU_pushByte(CPU_t *, uint8_t *, int32_t);
+ static void _stackCPU_pushWord(CPU_t *, uint8_t *, int32_t, Emul_Stack_Mod_t);
+ static void _stackCPU_push24(CPU_t *, uint8_t *, int32_t);
+ static int32_t _stackCPU_popByte(CPU_t *, uint8_t *, Emul_Stack_Mod_t);
+ static int32_t _stackCPU_popWord(CPU_t *, uint8_t *, Emul_Stack_Mod_t);
+ static int32_t _stackCPU_pop24(CPU_t *, uint8_t *);
+
+ static int32_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getAbsolute(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *, uint8_t *);
 
 #endif
