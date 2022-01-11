@@ -768,6 +768,71 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             CPU_UPDATE_PC16(cpu, 3);
             break;
 
+        case 0xa2: // LDX #const
+        {
+            if (cpu->P.E)
+            {
+                cpu->X = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                    CPU_UPDATE_PC16(cpu, 1);
+                    cpu->cycles += 1;
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 2;
+        }
+            break;
+
+        case 0xa6: // LDX dp
+        {
+            int32_t addr = _addrCPU_getDirectPage(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = ADDR_GET_MEM_DP_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 3;
+        }
+            break;
+
         case 0xa8: // TAY
             if (cpu->P.E)
             {
@@ -832,6 +897,72 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             break;
 
+        case 0xae: // LDX addr
+        {
+            int32_t addr = _addrCPU_getAbsolute(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            cpu->cycles += 4;
+        }
+            break;
+
+        case 0xb6: // LDX dp,Y
+        {
+            int32_t addr = _addrCPU_getDirectPageIndexedY(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = ADDR_GET_MEM_DP_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 2);
+            cpu->cycles += 4;
+        }
+            break;
+
         case 0xb8: // CLV
             cpu->P.V = 0;
             CPU_UPDATE_PC16(cpu, 1);
@@ -891,6 +1022,43 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 2;
             break;
 
+        case 0xbe: // LDX addr,Y
+        {
+            int32_t addr = _addrCPU_getAbsoluteIndexedY(cpu, mem);
+
+            if (cpu->P.E)
+            {
+                cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                if (cpu->P.X)
+                {
+                    cpu->X = ADDR_GET_MEM_BYTE(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xff) == 0);
+                    cpu->P.N = ((cpu->X & 0x80) == 0x80);
+                }
+                else
+                {
+                    cpu->X = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->P.Z = ((cpu->X & 0xffff) == 0);
+                    cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                    cpu->cycles += 1;
+                }
+            }
+
+            // If page boundary is crossed, add a cycle
+            if ( (ADDR_GET_MEM_IMMD_WORD(cpu, mem) & 0xff00) != (addr & 0xff00) )
+            {
+                cpu->cycles += 1;
+            }
+            CPU_UPDATE_PC16(cpu, 3);
+            cpu->cycles += 4;
+        }
+            break;
+
         case 0xc2: // REP
         {
             uint8_t sr = CPU_GET_SR(cpu);
@@ -935,7 +1103,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 }
                 else // 16-bit
                 {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) - 1) & 0xffff;
+                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) - 1) & 0xffff;
                     mem[addr] = val & 0xff;
                     mem[addr+1] = (val >> 8) & 0xff;
                     cpu->P.N = val & 0x8000 ? 1 : 0;
@@ -1085,7 +1253,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 }
                 else // 16-bit
                 {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) - 1) & 0xffff;
+                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) - 1) & 0xffff;
                     mem[addr] = val & 0xff;
                     mem[addr+1] = (val >> 8) & 0xff;
                     cpu->P.N = val & 0x8000 ? 1 : 0;
@@ -1224,7 +1392,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 }
                 else // 16-bit
                 {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) + 1) & 0xffff;
+                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) + 1) & 0xffff;
                     mem[addr] = val & 0xff;
                     mem[addr+1] = (val >> 8) & 0xff;
                     cpu->P.N = val & 0x8000 ? 1 : 0;
@@ -1339,7 +1507,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 }
                 else // 16-bit
                 {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) + 1) & 0xffff;
+                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) + 1) & 0xffff;
                     mem[addr] = val & 0xff;
                     mem[addr+1] = (val >> 8) & 0xff;
                     cpu->P.N = val & 0x8000 ? 1 : 0;
@@ -1769,19 +1937,6 @@ static int32_t _addrCPU_getAbsolute(CPU_t *cpu, uint8_t *mem)
 }
 
 /**
- * Returns the 24-bit address pointed to the direct page address of
- * the current instruction's operand
- * @param cpu The cpu to use for the operation
- * @param mem The memory which will provide the operand address
- * @return The 24-bit effective address of the current instruction
- */
-static int32_t _addrCPU_getDirectPage(CPU_t *cpu, uint8_t *mem)
-{
-    // Find and return the resultant address value
-    return ADDR_ADD_VAL_BANK_WRAP(cpu->D, ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
-}
-
-/**
  * Returns the 24-bit address pointed to the absolute, X-indexed address of
  * the current instruction's operand
  * @param cpu The cpu to use for the operation
@@ -1795,6 +1950,35 @@ static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *cpu, uint8_t *mem)
     address += cpu->X; // No wraparound
 
     return address;
+}
+
+/**
+ * Returns the 24-bit address pointed to the absolute, Y-indexed address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getAbsoluteIndexedY(CPU_t *cpu, uint8_t *mem)
+{
+    // Get the immediate operand word of the current instruction and the current data bank
+    int32_t address = ADDR_GET_MEM_IMMD_WORD(cpu, mem) | CPU_GET_DBR_SHIFTED(cpu);
+    address += cpu->Y; // No wraparound
+
+    return address;
+}
+
+/**
+ * Returns the 24-bit address pointed to the direct page address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+static int32_t _addrCPU_getDirectPage(CPU_t *cpu, uint8_t *mem)
+{
+    // Find and return the resultant address value
+    return ADDR_ADD_VAL_BANK_WRAP(cpu->D, ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
 }
 
 /**
@@ -1821,6 +2005,7 @@ static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *cpu, uint8_t *mem)
 
     return address & 0xffff; // Inevitable bank wrap
 }
+
 /**
  * Returns the 24-bit address pointed to the dp, Y-indexed address of
  * the current instruction's operand

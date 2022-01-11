@@ -108,9 +108,10 @@ struct CPU_t
 #define ADDR_ADD_VAL_BANK_WRAP(__ADDR__, __OFFSET__) ( ((__ADDR__) & 0xff0000) | ( ((__ADDR__) + (__OFFSET__)) & 0xffff) )
 
  // Get a word in memory with no wrapping.
-#define ADDR_GET_MEM_ABS_WORD(__MEM__, __ADDR__) ((ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) | (ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) << 8)) & 0xffff)
+#define ADDR_GET_MEM_ABS_WORD(__MEM__, __ADDR__) ((ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) | (ADDR_GET_MEM_BYTE(__MEM__, __ADDR__ + 1) << 8)) & 0xffff)
 
-
+ // Get a word in memory with bank wrapping.
+#define ADDR_GET_MEM_DP_WORD(__MEM__, __ADDR__) ((ADDR_GET_MEM_BYTE(__MEM__, __ADDR__) | (ADDR_ADD_VAL_BANK_WRAP(ADDR_GET_MEM_BYTE(__MEM__, __ADDR__), 1) << 8)) & 0xffff)
 
  CPU_Error_Code_t resetCPU(CPU_t *);
  CPU_Error_Code_t stepCPU(CPU_t *, uint8_t *);
@@ -125,8 +126,9 @@ struct CPU_t
  static int32_t _addrCPU_getAbsoluteIndirect(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getAbsolute(CPU_t *, uint8_t *);
- static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getAbsoluteIndexedX(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getAbsoluteIndexedY(CPU_t *, uint8_t *);
+ static int32_t _addrCPU_getDirectPage(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getDirectPageIndexedX(CPU_t *, uint8_t *);
  static int32_t _addrCPU_getDirectPageIndexedY(CPU_t *, uint8_t *);
 
