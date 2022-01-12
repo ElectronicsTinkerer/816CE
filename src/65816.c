@@ -210,6 +210,36 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
             cpu->cycles += 8;
             break;
 
+        case 0x24: // BIT dp
+        {
+            int32_t addr = _addrCPU_getDirectPage(cpu, mem);
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+            {
+                uint8_t val = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x80) ? 1 : 0;
+                cpu->P.V = (val & 0x40) ? 1 : 0;
+                cpu->cycles += 3;
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            else // 16-bit
+            {
+                uint16_t val = ADDR_GET_MEM_DP_WORD(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x8000) ? 1 : 0;
+                cpu->P.V = (val & 0x4000) ? 1 : 0;
+                cpu->cycles += 4;
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+
+            // If DL != 0, add a cycle
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+        }
+            break;
+
         case 0x28: // PLP
         {
             uint8_t sr = CPU_GET_SR(cpu);
@@ -239,6 +269,30 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             break;
 
+        case 0x2c: // BIT addr
+        {
+            int32_t addr = _addrCPU_getAbsolute(cpu, mem);
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+            {
+                uint8_t val = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x80) ? 1 : 0;
+                cpu->P.V = (val & 0x40) ? 1 : 0;
+                cpu->cycles += 4;
+                CPU_UPDATE_PC16(cpu, 3);
+            }
+            else // 16-bit
+            {
+                uint16_t val = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x8000) ? 1 : 0;
+                cpu->P.V = (val & 0x4000) ? 1 : 0;
+                cpu->cycles += 5;
+                CPU_UPDATE_PC16(cpu, 3);
+            }
+        }
+            break;
+
         case 0x30: // BMI nearlabel
             if (cpu->P.N)
             {
@@ -257,6 +311,36 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
                 CPU_UPDATE_PC16(cpu, 2);
             }
             cpu->cycles += 2;
+            break;
+
+        case 0x34: // BIT dp,X
+        {
+            int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+            {
+                uint8_t val = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x80) ? 1 : 0;
+                cpu->P.V = (val & 0x40) ? 1 : 0;
+                cpu->cycles += 4;
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            else // 16-bit
+            {
+                uint16_t val = ADDR_GET_MEM_DP_WORD(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x8000) ? 1 : 0;
+                cpu->P.V = (val & 0x4000) ? 1 : 0;
+                cpu->cycles += 5;
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+
+            // If DL != 0, add a cycle
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+        }
             break;
 
         case 0x38: // SEC
@@ -308,6 +392,36 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
+            break;
+
+        case 0x3c: // BIT addr,X
+        {
+            int32_t addr = _addrCPU_getAbsoluteIndexedX(cpu, mem);
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+            {
+                uint8_t val = ADDR_GET_MEM_BYTE(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x80) ? 1 : 0;
+                cpu->P.V = (val & 0x40) ? 1 : 0;
+                cpu->cycles += 4;
+                CPU_UPDATE_PC16(cpu, 3);
+            }
+            else // 16-bit
+            {
+                uint16_t val = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
+                cpu->P.N = (val & 0x8000) ? 1 : 0;
+                cpu->P.V = (val & 0x4000) ? 1 : 0;
+                cpu->cycles += 5;
+                CPU_UPDATE_PC16(cpu, 3);
+            }
+
+            // If page boundary is crossed, add a cycle
+            if ( (ADDR_GET_MEM_IMMD_WORD(cpu, mem) & 0xff00) != (addr & 0xff00) )
+            {
+                cpu->cycles += 1;
+            }
+        }
             break;
 
         case 0x40: // RTI
@@ -673,6 +787,21 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
 
             CPU_UPDATE_PC16(cpu, 1);
             cpu->cycles += 2;
+            break;
+
+        case 0x89: // BIT #const
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+            {
+                cpu->P.Z = ((cpu->C & 0xff) & ADDR_GET_MEM_IMMD_BYTE(cpu, mem)) ? 0 : 1;
+                cpu->cycles += 2;
+                CPU_UPDATE_PC16(cpu, 2);
+            }
+            else // 16-bit
+            {
+                cpu->P.Z = ((cpu->C & 0xffff) & ADDR_GET_MEM_IMMD_WORD(cpu, mem)) ? 0 : 1;
+                cpu->cycles += 3;
+                CPU_UPDATE_PC16(cpu, 3);
+            }
             break;
 
         case 0x8a: // TXA
