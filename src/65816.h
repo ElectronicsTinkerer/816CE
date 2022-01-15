@@ -31,7 +31,7 @@ struct CPU_t
     int32_t PBR;
     int32_t PC;
     struct {
-        // Order matters:
+        // Order matters (keep in sync with SR in CPU):
         unsigned char C : 1;   
         unsigned char Z : 1;
         unsigned char I : 1;
