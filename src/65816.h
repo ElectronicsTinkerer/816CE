@@ -52,7 +52,7 @@ struct CPU_t
 };
 
 // Possible error codes from CPU public (non-static) functions
- typedef enum CPU_Error_Code_t
+typedef enum CPU_Error_Code_t
  {
      CPU_ERR_OK = 0,
      CPU_ERR_UNKNOWN_OPCODE,
@@ -62,16 +62,15 @@ struct CPU_t
 
 // Used to specify if the call to stack operations should allow
 // keeping the stack within page 1 while a CPU is in emulation mode
- typedef enum Emul_Stack_Mod_t
+typedef enum Emul_Stack_Mod_t
  {
      CPU_ESTACK_DISABLE = 0,
      CPU_ESTACK_ENABLE
  } Emul_Stack_Mod_t;
 
- typedef memory_t uint8_t;
+typedef uint8_t memory_t;
 
-
- CPU_Error_Code_t resetCPU(CPU_t *);
- CPU_Error_Code_t stepCPU(CPU_t *, memory_t *);
+CPU_Error_Code_t resetCPU(CPU_t *);
+CPU_Error_Code_t stepCPU(CPU_t *, memory_t *);
 
 #endif

@@ -1,7 +1,7 @@
 
 #include "65816.h"
-#include "65816-ops.c"
-#include "65816-util.c"
+#include "65816-ops.h"
+#include "65816-util.h"
 
 /**
  * Resets a CPU to its post-/RST value
@@ -41,7 +41,7 @@ CPU_Error_Code_t resetCPU(CPU_t *cpu)
  * @param cpu The CPU to be stepped
  * @param mem The memory array which is to be connected to the CPU
  */
-CPU_Error_Code_t stepCPU(CPU_t *cpu, uint8_t *mem)
+CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 {
 #ifdef CPU_DEBUG_CHECK_NULL
     if (cpu == NULL)
