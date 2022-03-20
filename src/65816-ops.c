@@ -1,4 +1,5 @@
 
+#include "65816-ops.h"
 
 /**
  * Push a byte (8-bits) onto the CPU's stack
