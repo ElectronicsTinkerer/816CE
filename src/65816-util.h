@@ -38,10 +38,10 @@ uint8_t _stackCPU_popByte(CPU_t *, memory_t *, Emul_Stack_Mod_t);
 uint16_t _stackCPU_popWord(CPU_t *, memory_t *, Emul_Stack_Mod_t);
 uint32_t _stackCPU_pop24(CPU_t *, memory_t *);
 
-// Get memory
-uint16_t _addrCPU_mem_getAbsoluteIndexedIndirectX(CPU_t *, memory_t *);
-uint16_t _addrCPU_mem_getAbsoluteIndirect(CPU_t *, memory_t *);
-uint32_t _addrCPU_mem_getAbsoluteIndirectLong(CPU_t *, memory_t *);
+// Get memory (still an address - just indirect)
+uint16_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *, memory_t *);
+uint16_t _addrCPU_getAbsoluteIndirect(CPU_t *, memory_t *);
+uint32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *, memory_t *);
 
 // Get address
 uint32_t _addrCPU_getAbsolute(CPU_t *, memory_t *);

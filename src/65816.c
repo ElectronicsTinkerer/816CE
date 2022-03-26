@@ -479,11 +479,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x48: i_pha(cpu, mem); break;
 
         case 0x4b: i_phk(cpu, mem); break;
-
-        case 0x4c: // JMP addr
-            cpu->PC = _cpu_get_immd_word(cpu, mem);
-            cpu->cycles += 3;
-            break;
+        case 0x4c: i_jmp(cpu, mem, 3, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
         case 0x50: i_bvc(cpu, mem); break;
 
@@ -491,12 +487,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x5a: i_phy(cpu, mem); break;
         case 0x5b: i_tcd(cpu); break;
-
-        case 0x5c: // JMP long
-            cpu->PC = _get_mem_byte(mem, _addr_add_val_bank_wrap(CPU_GET_EFFECTIVE_PC(cpu), 3));
-            cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
-            cpu->cycles += 4;
-            break;
+        case 0x5c: i_jmp(cpu, mem, 4, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
 
         case 0x60: i_rts(cpu, mem); break;
 
@@ -507,11 +498,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x68: i_pla(cpu, mem); break;
 
         case 0x6b: i_rtl(cpu, mem); break;
-
-        case 0x6c: // JMP (addr)
-            cpu->PC = _addrCPU_mem_getAbsoluteIndirect(cpu, mem);
-            cpu->cycles += 5;
-            break;
+        case 0x6c: i_jmp(cpu, mem, 5, CPU_ADDR_INDABS, _addrCPU_getAbsoluteIndirect(cpu, mem)); break;
 
         case 0x70: i_bvs(cpu, mem); break;
 
@@ -521,11 +508,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x7a: i_ply(cpu, mem); break;
         case 0x7b: i_tdc(cpu); break;
-
-        case 0x7c: // JMP (addr,X)
-            cpu->PC = _addrCPU_mem_getAbsoluteIndexedIndirectX(cpu, mem);
-            cpu->cycles += 6;
-            break;
+        case 0x7c: i_jmp(cpu, mem, 6, CPU_ADDR_ABSINDX, _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem)); break;
 
         case 0x80: i_bra(cpu, mem); break;
 
@@ -1018,17 +1001,8 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xda: i_phx(cpu, mem); break;
         case 0xdb: i_stp(cpu); break;
-
+        case 0xdc: i_jmp(cpu, mem, 6, CPU_ADDR_ABSINDL, _addrCPU_getAbsoluteIndirectLong(cpu, mem)); break;
         case 0xde: i_dec(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
-
-        case 0xdc: // JMP [addr]
-        {
-            int32_t addr = _addrCPU_mem_getAbsoluteIndirectLong(cpu, mem);
-            cpu->PBR = (addr & 0xff0000) >> 16;
-            cpu->PC = addr & 0xffff;
-            cpu->cycles += 6;
-        }
-            break;
 
         case 0xe0: // CPX #const
             if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
@@ -1129,7 +1103,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xfc: // JSR (addr,X)
             _stackCPU_pushWord(cpu, mem, _addr_add_val_bank_wrap(cpu->PC, 2), CPU_ESTACK_DISABLE);
-            cpu->PC = _addrCPU_mem_getAbsoluteIndexedIndirectX(cpu, mem);
+            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 8;
             break;
 

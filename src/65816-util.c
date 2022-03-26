@@ -330,14 +330,15 @@ uint32_t _stackCPU_pop24(CPU_t *cpu, memory_t *mem)
 }
 
 /**
- * Returns the 16-bit word in memory stored at the (addr, X)
+ * Returns the 16-bit word in memory stored at the addr,X
  * from the current instruction.(i.e. the PC part of the resultant
  * indirect address)
+ * This will BANK WRAP when reading the word from memory
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the indirect address
  * @return The word in memory at the indirect address (in the current PRB bank)
  */
-uint16_t _addrCPU_mem_getAbsoluteIndexedIndirectX(CPU_t *cpu, memory_t *mem)
+uint16_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, memory_t *mem)
 {
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_immd_word(cpu, mem);
@@ -352,14 +353,15 @@ uint16_t _addrCPU_mem_getAbsoluteIndexedIndirectX(CPU_t *cpu, memory_t *mem)
 }
 
 /**
- * Returns the 16-bit word in memory stored at the (addr)
+ * Returns the 16-bit word in memory stored at the addr
  * from the current instruction. (i.e. the PC part of the resultant
  * indirect address)
+ * This will BANK WRAP when reading the word from memory
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the indirect address
  * @return The word in memory at the indirect address (in bank 0)
  */
-uint16_t _addrCPU_mem_getAbsoluteIndirect(CPU_t *cpu, memory_t *mem)
+uint16_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, memory_t *mem)
 {
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_immd_word(cpu, mem);
@@ -372,14 +374,15 @@ uint16_t _addrCPU_mem_getAbsoluteIndirect(CPU_t *cpu, memory_t *mem)
 }
 
 /**
- * Returns the 24-bit word in memory stored at the [addr]
+ * Returns the 24-bit word in memory stored at the addr
  * from the current instruction. (i.e. the PC part of the resultant
  * indirect address)
+ * This will BANK WRAP when reading the word from memory
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the indirect address
  * @return The word and byte in memory at the indirect address (in bank 0)
  */
-uint32_t _addrCPU_mem_getAbsoluteIndirectLong(CPU_t *cpu, memory_t *mem)
+uint32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, memory_t *mem)
 {
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_immd_word(cpu, mem);

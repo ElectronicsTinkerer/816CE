@@ -571,6 +571,16 @@ void i_iny(CPU_t *cpu)
     cpu->cycles += 2;
 }
 
+void i_jmp(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_ABSL)
+    {
+        cpu->PBR = (addr >> 16) & 0xff;
+    }
+    cpu->PC = addr & 0xffff;
+    cpu->cycles += cycles;
+}
+
 void i_nop(CPU_t *cpu)
 {
     _cpu_update_pc(cpu, 1);
