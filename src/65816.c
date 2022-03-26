@@ -67,36 +67,11 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     {
         // case 0xea: status = i_nop(cpu);
         // case 0xnn: status = i_cmp(_addrCPU_relevantAddressingModeEffectiveAddressCalculation, cpu, mem);
-        case 0x00: // BRK
-
-            CPU_UPDATE_PC16(cpu, 2);
-
-            if (cpu->P.E)
-            {
-                _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu) | 0x10); // B flag is set for BRK in emulation mode
-                cpu->PC = mem[CPU_VEC_EMU_IRQ];
-                cpu->PC |= mem[CPU_VEC_EMU_IRQ + 1] << 8;
-                cpu->PBR = 0;
-                cpu->cycles += 7;
-            }
-            else
-            {
-                _stackCPU_push24(cpu, mem, CPU_GET_EFFECTIVE_PC(cpu));
-                _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
-                cpu->PC = mem[CPU_VEC_NATIVE_BRK];
-                cpu->PC |= mem[CPU_VEC_NATIVE_BRK + 1] << 8;
-                cpu->PBR = 0;
-                cpu->cycles += 8;
-            }
-
-            cpu->P.D = 0; // Binary mode (65C02)
-            cpu->P.I = 1;
-            break;
+        case 0x00: i_brk(cpu, mem); break;
 
         case 0x02: // COP
 
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
 
             if (cpu->P.E)
             {
@@ -124,13 +99,13 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x08: // PHP
             _stackCPU_pushByte(cpu, mem, CPU_GET_SR(cpu));
             cpu->cycles += 3;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             break;
 
         case 0x0b: // PHD
             _stackCPU_pushWord(cpu, mem, cpu->D, CPU_ESTACK_DISABLE);
             cpu->cycles += 4;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             break;
 
         case 0x10: // BPL nearlabel
@@ -148,14 +123,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
 
         case 0x18: // CLC
             cpu->P.C = 0;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -183,7 +158,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -197,7 +172,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->SP = cpu->C;
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -224,7 +199,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x80) ? 1 : 0;
                 cpu->P.V = (val & 0x40) ? 1 : 0;
                 cpu->cycles += 3;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             else // 16-bit
             {
@@ -233,7 +208,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
                 cpu->cycles += 4;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
 
             // If DL != 0, add a cycle
@@ -252,7 +227,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 3;
             }
             else // 16-bit
@@ -260,7 +235,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_DP_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 4;
             }
 
@@ -280,7 +255,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 6;
             }
             else // 16-bit
@@ -288,7 +263,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 7;
             }
 
@@ -315,7 +290,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             cpu->cycles += 4;
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -325,7 +300,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_IMMD_BYTE(cpu, mem));
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 2;
             }
             else // 16-bit
@@ -333,20 +308,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_IMMD_WORD(cpu, mem);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 3;
             }
             break;
 
-        case 0x2b: // PLD
-            cpu->D = _stackCPU_popWord(cpu, mem, CPU_ESTACK_DISABLE);
-            cpu->cycles += 5;
-            cpu->P.Z = ((cpu->DBR & 0xffff) == 0);
-            cpu->P.N = ((cpu->DBR & 0x8000) == 0x8000);
-
-            CPU_UPDATE_PC16(cpu, 1);
-
-            break;
+        case 0x2b: i_pld(cpu, mem); break;
 
         case 0x2c: // BIT addr
         {
@@ -358,7 +325,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x80) ? 1 : 0;
                 cpu->P.V = (val & 0x40) ? 1 : 0;
                 cpu->cycles += 4;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
             }
             else // 16-bit
             {
@@ -367,7 +334,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
                 cpu->cycles += 5;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
             }
         }
             break;
@@ -380,7 +347,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -388,7 +355,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 5;
             }
         }
@@ -402,7 +369,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 4);
+                _cpu_update_pc(cpu, 4);
                 cpu->cycles += 5;
             }
             else // 16-bit
@@ -410,7 +377,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 4);
+                _cpu_update_pc(cpu, 4);
                 cpu->cycles += 6;
             }
         }
@@ -431,7 +398,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -444,7 +411,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 5;
             }
             else // 16-bit
@@ -452,7 +419,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 6;
             }
 
@@ -474,7 +441,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x80) ? 1 : 0;
                 cpu->P.V = (val & 0x40) ? 1 : 0;
                 cpu->cycles += 4;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             else // 16-bit
             {
@@ -483,7 +450,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
                 cpu->cycles += 5;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
 
             // If DL != 0, add a cycle
@@ -502,7 +469,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -510,7 +477,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_DP_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 5;
             }
 
@@ -524,7 +491,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x38: // SEC
             cpu->P.C = 1;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -536,7 +503,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -544,7 +511,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 5;
             }
 
@@ -580,7 +547,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -597,7 +564,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
             cpu->P.Z = ((cpu->C & 0xffff) == 0);
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -611,7 +578,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x80) ? 1 : 0;
                 cpu->P.V = (val & 0x40) ? 1 : 0;
                 cpu->cycles += 4;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
             }
             else // 16-bit
             {
@@ -620,7 +587,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
                 cpu->cycles += 5;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
             }
 
             // If page boundary is crossed, add a cycle
@@ -639,7 +606,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -647,7 +614,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 5;
             }
 
@@ -667,7 +634,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & ADDR_GET_MEM_BYTE(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 4);
+                _cpu_update_pc(cpu, 4);
                 cpu->cycles += 5;
             }
             else // 16-bit
@@ -675,7 +642,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 4);
+                _cpu_update_pc(cpu, 4);
                 cpu->cycles += 6;
             }
         }
@@ -704,7 +671,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             break;
 
         case 0x42: // WDM
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 2; // http://www.6502.org/tutorials/65c816opcodes.html#6.7
             break;
 
@@ -728,14 +695,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
         case 0x4b: // PHK
             _stackCPU_pushByte(cpu, mem, cpu->PBR);
             cpu->cycles += 3;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             break;
 
         case 0x4c: // JMP addr
@@ -758,14 +725,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
 
         case 0x58: // CLI
             cpu->P.I = 0;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -789,7 +756,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -799,7 +766,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->P.Z = ((cpu->D & 0xffff) == 0);
             cpu->P.N = ((cpu->D & 0x8000) == 0x8000);
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -817,7 +784,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x62: // PER label
         {
             int16_t displacement = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             _stackCPU_pushWord(cpu, mem, (cpu->PC + displacement) & 0xffff, CPU_ESTACK_DISABLE);
 
             cpu->cycles += 6;
@@ -836,7 +803,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x68: // PLA
@@ -865,7 +832,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -898,7 +865,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -915,12 +882,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x78: // SEI
             cpu->P.I = 1;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -950,7 +917,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
            
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -960,7 +927,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->P.Z = ((cpu->C & 0xffff) == 0);
             cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1000,7 +967,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x86: // STX dp
@@ -1015,7 +982,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x88: // DEY
@@ -1042,7 +1009,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1051,13 +1018,13 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->P.Z = ((cpu->C & 0xff) & ADDR_GET_MEM_IMMD_BYTE(cpu, mem)) ? 0 : 1;
                 cpu->cycles += 2;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             else // 16-bit
             {
                 cpu->P.Z = ((cpu->C & 0xffff) & ADDR_GET_MEM_IMMD_WORD(cpu, mem)) ? 0 : 1;
                 cpu->cycles += 3;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
             }
             break;
 
@@ -1090,14 +1057,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
         case 0x8b: // PHB
             _stackCPU_pushByte(cpu, mem, cpu->DBR);
             cpu->cycles += 3;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             break;
 
         case 0x8c: // STY addr
@@ -1108,7 +1075,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->Y >> 8) & 0xff; // No bank wrapping
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             break;
 
         case 0x8e: // STX addr
@@ -1119,7 +1086,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->X >> 8) & 0xff; // No bank wrapping
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             break;
 
         case 0x90: // BCC nearlabel
@@ -1137,7 +1104,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -1154,7 +1121,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x96: // STX dp,Y
@@ -1169,7 +1136,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             break;
 
         case 0x98: // TYA
@@ -1201,7 +1168,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1221,7 +1188,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->SP = (cpu->X & 0xffff);
                 }
             }
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1247,7 +1214,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
                 }
             }
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1259,7 +1226,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 mem[_addrCPU_getAbsolute(cpu, mem) + 1] = 0; // No bank wrapping
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             break;
 
         case 0x9e: // STZ addr,x
@@ -1270,7 +1237,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 mem[_addrCPU_getAbsoluteIndexedX(cpu, mem) + 1] = 0; // No bank wrapping
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             break;
 
         case 0xa0: // LDY #const
@@ -1294,11 +1261,11 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->Y = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
                     cpu->P.Z = ((cpu->Y & 0xffff) == 0);
                     cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
-                    CPU_UPDATE_PC16(cpu, 1);
+                    _cpu_update_pc(cpu, 1);
                     cpu->cycles += 1;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 2;
         }
             break;
@@ -1324,11 +1291,11 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->X = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
                     cpu->P.Z = ((cpu->X & 0xffff) == 0);
                     cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
-                    CPU_UPDATE_PC16(cpu, 1);
+                    _cpu_update_pc(cpu, 1);
                     cpu->cycles += 1;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 2;
         }
             break;
@@ -1363,7 +1330,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 3;
         }
             break;
@@ -1398,7 +1365,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 3;
         }
             break;
@@ -1426,7 +1393,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1453,7 +1420,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1463,7 +1430,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->P.Z = ((cpu->DBR & 0xff) == 0);
             cpu->P.N = ((cpu->DBR & 0x80) == 0x80);
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -1493,7 +1460,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 1;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 4;
         }
             break;
@@ -1524,7 +1491,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 1;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 4;
         }
             break;
@@ -1544,7 +1511,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -1579,7 +1546,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 4;
         }
             break;
@@ -1614,14 +1581,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 4;
         }
             break;
 
         case 0xb8: // CLV
             cpu->P.V = 0;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1648,7 +1615,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1674,7 +1641,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
                 }
             }
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1710,7 +1677,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 4;
         }
             break;
@@ -1747,7 +1714,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 4;
         }
             break;
@@ -1759,7 +1726,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 2;
             }
             else // 16-bit
@@ -1768,7 +1735,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 3;
             }
             break;
@@ -1793,7 +1760,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 3;
         }
             break;
@@ -1807,7 +1774,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 3;
             }
             else // 16-bit
@@ -1816,7 +1783,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 4;
             }
 
@@ -1859,7 +1826,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 5;
         }
             break;
@@ -1888,7 +1855,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1916,7 +1883,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -1924,7 +1891,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             if (cpu->P.NMI || cpu->P.IRQ)
             {
                 cpu->cycles += 3;
-                CPU_UPDATE_PC16(cpu, 1);
+                _cpu_update_pc(cpu, 1);
                 // Jump to NMI or IRQ handler will happen at end of the step() function
             }
             break;
@@ -1938,7 +1905,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -1947,7 +1914,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 5;
             }
         }
@@ -1980,7 +1947,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 2;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 6;
         }
             break;
@@ -2000,7 +1967,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -2012,7 +1979,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             addr_ind |= ADDR_GET_MEM_BYTE(mem, ADDR_ADD_VAL_BANK_WRAP(addr_dp, 1));
             _stackCPU_pushWord(cpu, mem, addr_ind, CPU_ESTACK_DISABLE);
             
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 6;
             if (cpu->D & 0xff) // Add a cycle if DL != 0
             {
@@ -2053,7 +2020,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 6;
         }
             break;
@@ -2061,7 +2028,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xd8: // CLD
             cpu->P.D = 0;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -2085,12 +2052,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
         case 0xdb: // STP
-            //CPU_UPDATE_PC16(cpu, 1); // ???
+            //_cpu_update_pc(cpu, 1); // ???
             cpu->cycles += 3;
             cpu->P.STP = 1;
             break;
@@ -2122,7 +2089,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 2;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 7;
         }
             break;
@@ -2143,7 +2110,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 2;
             }
             else // 16-bit
@@ -2152,7 +2119,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 3;
             }
             break;
@@ -2177,7 +2144,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 3;
         }
             break;
@@ -2191,7 +2158,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 3;
             }
             else // 16-bit
@@ -2200,7 +2167,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
                 cpu->cycles += 4;
             }
 
@@ -2243,7 +2210,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 5;
         }
             break;
@@ -2272,12 +2239,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
         case 0xea: // NOP
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -2285,7 +2252,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->C = ((cpu->C << 8) | ((cpu->C >> 8) & 0xff)) & 0xffff;
             cpu->P.N = cpu->C & 0x80 ? 1 : 0;
             cpu->P.Z = cpu->C & 0xff ? 0 : 1;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 3;
             break;
 
@@ -2298,7 +2265,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x80) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 4;
             }
             else // 16-bit
@@ -2307,7 +2274,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xffff) < res) ? 0 : 1;
-                CPU_UPDATE_PC16(cpu, 3);
+                _cpu_update_pc(cpu, 3);
                 cpu->cycles += 5;
             }
         }
@@ -2340,7 +2307,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 2;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 6;
         }
             break;
@@ -2360,7 +2327,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                CPU_UPDATE_PC16(cpu, 2);
+                _cpu_update_pc(cpu, 2);
             }
             cpu->cycles += 2;
             break;
@@ -2368,7 +2335,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xf4: // PEA addr
             _stackCPU_pushWord(cpu, mem, ADDR_GET_MEM_IMMD_WORD(cpu, mem), CPU_ESTACK_DISABLE);
             cpu->cycles += 5;
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             break;
 
         case 0xf6: // INC dp,X
@@ -2402,14 +2369,14 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             {
                 cpu->cycles += 1;
             }
-            CPU_UPDATE_PC16(cpu, 2);
+            _cpu_update_pc(cpu, 2);
             cpu->cycles += 6;
         }
             break;
 
         case 0xf8: // SED
             cpu->P.D = 1;
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -2439,7 +2406,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
 
             break;
 
@@ -2462,7 +2429,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 cpu->P.X = 1;
             }
 
-            CPU_UPDATE_PC16(cpu, 1);
+            _cpu_update_pc(cpu, 1);
             cpu->cycles += 2;
             break;
 
@@ -2499,7 +2466,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                     cpu->cycles += 2;
                 }
             }
-            CPU_UPDATE_PC16(cpu, 3);
+            _cpu_update_pc(cpu, 3);
             cpu->cycles += 7;
         }
             break;
