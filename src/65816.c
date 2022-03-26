@@ -65,6 +65,8 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     // Fetch, decode, execute instruction
     switch (mem[cpu->PC])
     {
+        // case 0xea: status = i_nop(cpu);
+        // case 0xnn: status = i_cmp(_addrCPU_relevantAddressingModeEffectiveAddressCalculation, cpu, mem);
         case 0x00: // BRK
 
             CPU_UPDATE_PC16(cpu, 2);
@@ -877,7 +879,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             break;
 
         case 0x6c: // JMP (addr)
-            cpu->PC = _addrCPU_getAbsoluteIndirect(cpu, mem);
+            cpu->PC = _addrCPU_mem_getAbsoluteIndirect(cpu, mem);
             cpu->cycles += 5;
             break;
 
@@ -963,7 +965,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             break;
 
         case 0x7c: // JMP (addr,X)
-            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
+            cpu->PC = _addrCPU_mem_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 6;
             break;
 
@@ -2127,7 +2129,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xdc: // JMP [addr]
         {
-            int32_t addr = _addrCPU_getAbsoluteIndirectLong(cpu, mem);
+            int32_t addr = _addrCPU_mem_getAbsoluteIndirectLong(cpu, mem);
             cpu->PBR = (addr & 0xff0000) >> 16;
             cpu->PC = addr & 0xffff;
             cpu->cycles += 6;
@@ -2466,7 +2468,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xfc: // JSR (addr,X)
             _stackCPU_pushWord(cpu, mem, ADDR_ADD_VAL_BANK_WRAP(cpu->PC, 2), CPU_ESTACK_DISABLE);
-            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
+            cpu->PC = _addrCPU_mem_getAbsoluteIndexedIndirectX(cpu, mem);
             cpu->cycles += 8;
             break;
 

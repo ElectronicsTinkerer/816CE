@@ -4,4 +4,6 @@
 
 #include "65816.h"
 
+void i_nop(void *);
+
 #endif
