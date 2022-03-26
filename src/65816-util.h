@@ -55,6 +55,7 @@ uint32_t _addrCPU_getDirectPageIndexedX(CPU_t *, memory_t *);
 uint32_t _addrCPU_getDirectPageIndexedY(CPU_t *, memory_t *);
 uint32_t _addrCPU_getRelative8(CPU_t *, memory_t *);
 uint32_t _addrCPU_getRelative16(CPU_t *, memory_t *);
-int32_t _addrCPU_getLong(CPU_t *, memory_t *);
+uint32_t _addrCPU_getLong(CPU_t *, memory_t *);
+uint32_t _addrCPU_getImmediate(CPU_t *, memory_t *);
 
 #endif

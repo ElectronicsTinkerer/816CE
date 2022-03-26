@@ -270,6 +270,114 @@ void i_cop(CPU_t *cpu, memory_t *mem)
     cpu->P.I = 1;
 }
 
+void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            uint8_t res = (cpu->X & 0xff) - _get_mem_byte(mem, addr);
+            cpu->P.N = (res & 0x80) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = ((cpu->X & 0xff) < res) ? 0 : 1;
+            
+        }
+        else // 16-bit
+        {
+            uint16_t res = _get_mem_byte(mem, addr);
+            res |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+            res = cpu->X - res;
+            cpu->P.N = (res & 0x8000) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = (cpu->X < res) ? 0 : 1;
+            cpu->cycles += 1;
+            if (mode == CPU_ADDR_IMMD)
+            {
+                size += 1; // One extra byte in operand
+            }
+        }
+        // If DL != 0, add a cycle
+        if (mode == CPU_ADDR_DP && cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            uint8_t res = (cpu->X & 0xff) - _get_mem_byte(mem, addr);
+            cpu->P.N = (res & 0x80) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = ((cpu->X & 0xff) < res) ? 0 : 1;
+            
+        }
+        else // 16-bit
+        {
+            uint16_t res = cpu->X - _get_mem_word(mem, addr);
+            cpu->P.N = (res & 0x8000) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = (cpu->X < res) ? 0 : 1;
+            cpu->cycles += 1;
+        }
+    }
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
+void i_cpy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            uint8_t res = (cpu->Y & 0xff) - _get_mem_byte(mem, addr);
+            cpu->P.N = (res & 0x80) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = ((cpu->Y & 0xff) < res) ? 0 : 1;
+        }
+        else // 16-bit
+        {
+            uint16_t res = _get_mem_byte(mem, addr);
+            res |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+            res = cpu->Y - res;
+            cpu->P.N = (res & 0x8000) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = (cpu->Y < res) ? 0 : 1;
+            cpu->cycles += 1;
+            if (mode == CPU_ADDR_IMMD)
+            {
+                size += 1; // One extra byte in operand
+            }
+        }
+        // If DL != 0, add a cycle
+        if (mode == CPU_ADDR_DP && cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            uint8_t res = (cpu->Y & 0xff) - _get_mem_byte(mem, addr);
+            cpu->P.N = (res & 0x80) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = ((cpu->Y & 0xff) < res) ? 0 : 1;
+        }
+        else // 16-bit
+        {
+            uint16_t res = cpu->Y - _get_mem_word(mem, addr);
+            cpu->P.N = (res & 0x8000) ? 1 : 0;
+            cpu->P.Z = res ? 0 : 1;
+            cpu->P.C = (cpu->Y < res) ? 0 : 1;
+            cpu->cycles += 1;
+        }
+    }
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
 void i_dea(CPU_t *cpu)
 {
     if (cpu->P.E)

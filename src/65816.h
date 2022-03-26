@@ -83,6 +83,7 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_ABSL,    // Absolute Long -> abs_long
     CPU_ADDR_ABSINDL, // Absolute Indirect Long -> [abs]
     CPU_ADDR_ABSINDX, // Absolute Indirect Indexed X -> (abs,X)
+    CPU_ADDR_IMMD,    // Immediate -> #val
 } CPU_Addr_Mode_t;
 
 typedef uint8_t memory_t;
