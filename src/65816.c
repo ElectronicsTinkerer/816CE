@@ -502,20 +502,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x62: i_per(cpu, mem); break;
 
-        case 0x64: // STZ dp
-            mem[_addrCPU_getDirectPage(cpu, mem)] = 0;
-            cpu->cycles += 3;
-            if (!cpu->P.M) // 16-bit
-            {
-                mem[ _addr_add_val_bank_wrap(_addrCPU_getDirectPage(cpu, mem), 1)] = 0; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
+        case 0x64: i_stz(cpu, mem, 2, 3, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
 
         case 0x68: i_pla(cpu, mem); break;
 
@@ -528,20 +515,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x70: i_bvs(cpu, mem); break;
 
-        case 0x74: // STZ dp,X
-            mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = 0;
-            cpu->cycles += 4;
-            if (!cpu->P.M) // 16-bit
-            {
-                mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPageIndexedX(cpu, mem), 1)] = 0; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
+        case 0x74: i_stz(cpu, mem, 2, 4, CPU_ADDR_DPINX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
         case 0x78: i_sei(cpu); break;
 
@@ -666,28 +640,9 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x9a: i_txs(cpu); break;
         case 0x9b: i_txy(cpu); break;
+        case 0x9c: i_stz(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
-        case 0x9c: // STZ addr
-            mem[_addrCPU_getAbsolute(cpu, mem)] = 0;
-            cpu->cycles += 4;
-            if (!cpu->P.M) // 16-bit
-            {
-                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = 0; // No bank wrapping
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 3);
-            break;
-
-        case 0x9e: // STZ addr,x
-            mem[_addrCPU_getAbsoluteIndexedX(cpu, mem)] = 0;
-            cpu->cycles += 5;
-            if (!cpu->P.M) // 16-bit
-            {
-                mem[_addrCPU_getAbsoluteIndexedX(cpu, mem) + 1] = 0; // No bank wrapping
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 3);
-            break;
+        case 0x9e: i_stz(cpu, mem, 3, 5, CPU_ADDR_ABS, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
         case 0xa0: // LDY #const
         {

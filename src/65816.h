@@ -71,6 +71,15 @@ typedef enum Emul_Stack_Mod_t
      CPU_ESTACK_ENABLE
  } Emul_Stack_Mod_t;
 
+ // Specifies the addressing mode for use when performing an operation
+ typedef enum CPU_Addr_Mode_t
+ {
+     CPU_ADDR_DP = 0,   // Direct page
+     CPU_ADDR_DPINX,    // Direct page indexed X
+     CPU_ADDR_ABS,      // Absolute
+     CPU_ADDR_ABSX      // Absolute indexed X
+ } CPU_Addr_Mode_t;
+
 typedef uint8_t memory_t;
 
 CPU_Error_Code_t resetCPU(CPU_t *);
