@@ -298,6 +298,77 @@ void i_dea(CPU_t *cpu)
     cpu->cycles += 2;
 }
 
+void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    {
+        if (cpu->P.E)
+        {
+            uint8_t val = _get_mem_byte(mem, addr) - 1;
+            _set_mem_byte(mem, addr, val);
+            cpu->P.N = val & 0x80 ? 1 : 0;
+            cpu->P.Z = val ? 0 : 1;
+        }
+        else
+        {
+            if (cpu->P.M)
+            {
+                uint8_t val = _get_mem_byte(mem, addr) - 1;
+                _set_mem_byte(mem, addr, val);
+                cpu->P.N = val & 0x80 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+            }
+            else // 16-bit
+            {
+                uint32_t addr_high = _addr_add_val_bank_wrap(addr, 1);
+                uint16_t val = _get_mem_byte(mem, addr);
+                val |= _get_mem_byte(mem, addr_high) << 8;
+                val -= 1;
+                _set_mem_byte(mem, addr, val & 0xff);
+                _set_mem_byte(mem, addr_high, (val >> 8) & 0xff);
+                cpu->P.N = val & 0x8000 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+                cpu->cycles += 2;
+            }
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
+    {
+        if (cpu->P.E)
+        {
+            uint8_t val = _get_mem_byte(mem, addr) - 1;
+            _set_mem_byte(mem, addr, val);
+            cpu->P.N = val & 0x80 ? 1 : 0;
+            cpu->P.Z = val ? 0 : 1;
+        }
+        else
+        {
+            if (cpu->P.M)
+            {
+                uint8_t val = _get_mem_byte(mem, addr) - 1;
+                _set_mem_byte(mem, addr, val);
+                cpu->P.N = val & 0x80 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+            }
+            else // 16-bit
+            {
+                uint16_t val = _get_mem_word(mem, addr) - 1;
+                _set_mem_word(mem, addr, val);
+                cpu->P.N = val & 0x8000 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+                cpu->cycles += 2;
+            }
+        }
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
 void i_dex(CPU_t *cpu)
 {
     if (cpu->P.E)
@@ -371,6 +442,77 @@ void i_ina(CPU_t *cpu)
 
     _cpu_update_pc(cpu, 1);
     cpu->cycles += 2;
+}
+
+void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    {
+        if (cpu->P.E)
+        {
+            uint8_t val = _get_mem_byte(mem, addr) + 1;
+            _set_mem_byte(mem, addr, val);
+            cpu->P.N = val & 0x80 ? 1 : 0;
+            cpu->P.Z = val ? 0 : 1;
+        }
+        else
+        {
+            if (cpu->P.M)
+            {
+                uint8_t val = _get_mem_byte(mem, addr) + 1;
+                _set_mem_byte(mem, addr, val);
+                cpu->P.N = val & 0x80 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+            }
+            else // 16-bit
+            {
+                uint32_t addr_high = _addr_add_val_bank_wrap(addr, 1);
+                uint16_t val = _get_mem_byte(mem, addr);
+                val |= _get_mem_byte(mem, addr_high) << 8;
+                val += 1;
+                _set_mem_byte(mem, addr, val & 0xff);
+                _set_mem_byte(mem, addr_high, (val >> 8) & 0xff);
+                cpu->P.N = val & 0x8000 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+                cpu->cycles += 2;
+            }
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
+    {
+        if (cpu->P.E)
+        {
+            uint8_t val = _get_mem_byte(mem, addr) + 1;
+            _set_mem_byte(mem, addr, val);
+            cpu->P.N = val & 0x80 ? 1 : 0;
+            cpu->P.Z = val ? 0 : 1;
+        }
+        else
+        {
+            if (cpu->P.M)
+            {
+                uint8_t val = _get_mem_byte(mem, addr) + 1;
+                _set_mem_byte(mem, addr, val);
+                cpu->P.N = val & 0x80 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+            }
+            else // 16-bit
+            {
+                uint16_t val = _get_mem_word(mem, addr) + 1;
+                _set_mem_word(mem, addr, val);
+                cpu->P.N = val & 0x8000 ? 1 : 0;
+                cpu->P.Z = val ? 0 : 1;
+                cpu->cycles += 2;
+            }
+        }
+    }
+  
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
 }
 
 void i_inx(CPU_t *cpu)

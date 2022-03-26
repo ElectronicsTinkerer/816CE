@@ -165,7 +165,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 2);
@@ -217,7 +217,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                uint16_t val = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                uint16_t val = _get_mem_word(mem, addr);
                 cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
@@ -240,7 +240,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 3);
@@ -262,7 +262,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 4);
@@ -286,7 +286,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 2);
@@ -374,7 +374,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 3);
@@ -406,7 +406,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                uint16_t val = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                uint16_t val = _get_mem_word(mem, addr);
                 cpu->P.Z = ((cpu->C & 0xffff) & val) ? 0 : 1;
                 cpu->P.N = (val & 0x8000) ? 1 : 0;
                 cpu->P.V = (val & 0x4000) ? 1 : 0;
@@ -435,7 +435,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 3);
@@ -463,7 +463,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                cpu->C = (cpu->C & 0xffff) & ADDR_GET_MEM_ABS_WORD(mem, addr);
+                cpu->C = (cpu->C & 0xffff) & _get_mem_word(mem, addr);
                 cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
                 cpu->P.Z = (cpu->C & 0xffff) ? 0 : 1;
                 _cpu_update_pc(cpu, 4);
@@ -728,7 +728,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
                 else
                 {
-                    cpu->Y = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->Y = _get_mem_word(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xffff) == 0);
                     cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
                     cpu->cycles += 1;
@@ -759,7 +759,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
                 else
                 {
-                    cpu->X = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->X = _get_mem_word(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xffff) == 0);
                     cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
                     cpu->cycles += 1;
@@ -867,7 +867,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
                 else
                 {
-                    cpu->Y = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->Y = _get_mem_word(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xffff) == 0);
                     cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
                     cpu->cycles += 1;
@@ -904,7 +904,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
                 }
                 else
                 {
-                    cpu->X = ADDR_GET_MEM_ABS_WORD(mem, addr);
+                    cpu->X = _get_mem_word(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xffff) == 0);
                     cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
                     cpu->cycles += 1;
@@ -975,41 +975,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             break;
 
-        case 0xc6: // DEC dp
-        {
-            int32_t addr = _addrCPU_getDirectPage(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) - 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            if (cpu->D & 0xff) 
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            cpu->cycles += 5;
-        }
-            break;
+        case 0xc6: i_dec(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
 
         case 0xc8: i_iny(cpu); break;
 
@@ -1030,7 +996,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                uint16_t res = ((cpu->Y & 0xffff) - ADDR_GET_MEM_ABS_WORD(mem, addr) ) & 0xffff;
+                uint16_t res = ((cpu->Y & 0xffff) - _get_mem_word(mem, addr) ) & 0xffff;
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->Y & 0xffff) < res) ? 0 : 1;
@@ -1040,116 +1006,20 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             break;
 
-        case 0xce: // DEC addr
-        {
-            int32_t addr = _addrCPU_getAbsolute(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) - 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            _cpu_update_pc(cpu, 3);
-            cpu->cycles += 6;
-        }
-            break;
-
+        case 0xce: i_dec(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
+      
         case 0xd0: i_bne(cpu, mem); break;
 
         case 0xd4: i_pei(cpu, mem); break;
 
-
-        case 0xd6: // DEC dp,X
-        {
-            int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.XB)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) - 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            if (cpu->D & 0xff) 
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            cpu->cycles += 6;
-        }
-            break;
-
+        case 0xd6: i_dec(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
         case 0xd8: i_cld(cpu); break;
 
         case 0xda: i_phx(cpu, mem); break;
         case 0xdb: i_stp(cpu); break;
 
-        case 0xde: // DEC addr,X
-        {
-            int32_t addr = _addrCPU_getAbsoluteIndexedX(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.XB)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) - 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr + 1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            _cpu_update_pc(cpu, 3);
-            cpu->cycles += 7;
-        }
-            break;
+        case 0xde: i_dec(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
         case 0xdc: // JMP [addr]
         {
@@ -1213,41 +1083,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             break;
 
-        case 0xe6: // INC dp
-        {
-            int32_t addr = _addrCPU_getDirectPage(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) + 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            if (cpu->D & 0xff) 
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            cpu->cycles += 5;
-        }
-            break;
+        case 0xe6: i_inc(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
 
         case 0xe8: i_inx(cpu); break;
 
@@ -1268,7 +1104,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else // 16-bit
             {
-                uint16_t res = ((cpu->X & 0xffff) - ADDR_GET_MEM_ABS_WORD(mem, addr) ) & 0xffff;
+                uint16_t res = ((cpu->X & 0xffff) - _get_mem_word(mem, addr) ) & 0xffff;
                 cpu->P.N = (res & 0x8000) ? 1 : 0;
                 cpu->P.Z = res ? 0 : 1;
                 cpu->P.C = ((cpu->X & 0xffff) < res) ? 0 : 1;
@@ -1278,77 +1114,13 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             break;
 
-        case 0xee: // INC addr
-        {
-            int32_t addr = _addrCPU_getAbsolute(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) + 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff; // No bank wrap
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            _cpu_update_pc(cpu, 3);
-            cpu->cycles += 6;
-        }
-            break;
+        case 0xee: i_inc(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
         case 0xf0: i_beq(cpu, mem); break;
 
         case 0xf4: i_pea(cpu, mem); break;
 
-        case 0xf6: // INC dp,X
-        {
-            int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_DP_WORD(mem, addr) + 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            if (cpu->D & 0xff) 
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            cpu->cycles += 6;
-        }
-            break;
+        case 0xf6: i_inc(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
         case 0xf8: i_sed(cpu); break;
 
@@ -1361,37 +1133,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             cpu->cycles += 8;
             break;
 
-        case 0xfe: // INC addr,X
-        {
-            int32_t addr = _addrCPU_getAbsoluteIndexedX(cpu, mem);
-            if (cpu->P.E)
-            {
-                mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-            }
-            else
-            {
-                if (cpu->P.M)
-                {
-                    mem[addr] = (_get_mem_byte(mem, addr) + 1) & 0xff;
-                    cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
-                    cpu->P.Z = _get_mem_byte(mem, addr) & 0xff ? 0 : 1;
-                }
-                else // 16-bit
-                {
-                    int32_t val = (ADDR_GET_MEM_ABS_WORD(mem, addr) + 1) & 0xffff;
-                    mem[addr] = val & 0xff;
-                    mem[addr+1] = (val >> 8) & 0xff;
-                    cpu->P.N = val & 0x8000 ? 1 : 0;
-                    cpu->P.Z = val & 0xffff ? 0 : 1;
-                    cpu->cycles += 2;
-                }
-            }
-            _cpu_update_pc(cpu, 3);
-            cpu->cycles += 7;
-        }
-            break;
+        case 0xfe: i_inc(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
         default:
             return CPU_ERR_UNKNOWN_OPCODE;
