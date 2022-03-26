@@ -48,7 +48,10 @@ struct CPU_t
         unsigned char STP : 1; // 1 if CPU has executed a STP instruction, 0 else
         // unsigned char ABT : 1; // 1 if ABORT input is asserted, 0 else
     } P;
-    uint64_t cycles; // Total phi-1 cycles the CPU has run
+
+    // Total phi-1 cycles the CPU has run
+    // Just prepairing for the end of the Universe ... don't worry about it :)
+    uint64_t cycles;
 };
 
 // Possible error codes from CPU public (non-static) functions
