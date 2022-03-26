@@ -148,8 +148,8 @@ void i_brk(CPU_t *cpu, memory_t *mem)
     {
         _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
         _stackCPU_pushByte(cpu, mem, _cpu_get_sr(cpu) | 0x10); // B flag is set for BRK in emulation mode
-        cpu->PC = _get_mem_byte(cpu, CPU_VEC_EMU_IRQ);
-        cpu->PC |= _get_mem_byte(cpu, CPU_VEC_EMU_IRQ + 1) << 8;
+        cpu->PC = _get_mem_byte(mem, CPU_VEC_EMU_IRQ);
+        cpu->PC |= _get_mem_byte(mem, CPU_VEC_EMU_IRQ + 1) << 8;
         cpu->PBR = 0;
         cpu->cycles += 7;
     }
@@ -157,8 +157,8 @@ void i_brk(CPU_t *cpu, memory_t *mem)
     {
         _stackCPU_push24(cpu, mem, _cpu_get_effective_pc(cpu));
         _stackCPU_pushByte(cpu, mem, _cpu_get_sr(cpu));
-        cpu->PC = _get_mem_byte(cpu, CPU_VEC_NATIVE_BRK);
-        cpu->PC |= _get_mem_byte(cpu, CPU_VEC_NATIVE_BRK + 1) << 8;
+        cpu->PC = _get_mem_byte(mem, CPU_VEC_NATIVE_BRK);
+        cpu->PC |= _get_mem_byte(mem, CPU_VEC_NATIVE_BRK + 1) << 8;
         cpu->PBR = 0;
         cpu->cycles += 8;
     }
@@ -251,8 +251,8 @@ void i_cop(CPU_t *cpu, memory_t *mem)
     {
         _stackCPU_pushWord(cpu, mem, cpu->PC, CPU_ESTACK_ENABLE);
         _stackCPU_pushByte(cpu, mem, _cpu_get_sr(cpu) & 0xef); // ??? Unknown: the state of the B flag in ISR for COP (assumed to be 0)
-        cpu->PC = _get_mem_byte(cpu, CPU_VEC_EMU_COP);
-        cpu->PC |= _get_mem_byte(cpu, CPU_VEC_EMU_COP + 1) << 8;
+        cpu->PC = _get_mem_byte(mem, CPU_VEC_EMU_COP);
+        cpu->PC |= _get_mem_byte(mem, CPU_VEC_EMU_COP + 1) << 8;
         cpu->PBR = 0;
         cpu->cycles += 7;
     }
@@ -260,8 +260,8 @@ void i_cop(CPU_t *cpu, memory_t *mem)
     {
         _stackCPU_push24(cpu, mem, _cpu_get_effective_pc(cpu));
         _stackCPU_pushByte(cpu, mem, _cpu_get_sr(cpu));
-        cpu->PC = _get_mem_byte(cpu, CPU_VEC_NATIVE_COP);
-        cpu->PC |= _get_mem_byte(cpu, CPU_VEC_NATIVE_COP + 1) << 8;
+        cpu->PC = _get_mem_byte(mem, CPU_VEC_NATIVE_COP);
+        cpu->PC |= _get_mem_byte(mem, CPU_VEC_NATIVE_COP + 1) << 8;
         cpu->PBR = 0;
         cpu->cycles += 8;
     }
@@ -308,7 +308,7 @@ void i_dex(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = (cpu->X - 1) & 0xff;
             cpu->P.N = cpu->X & 0x80 ? 1 : 0;
@@ -328,7 +328,7 @@ void i_dex(CPU_t *cpu)
 
 void i_dey(CPU_t *cpu)
 {
-    if (cpu->P.E || (!cpu->P.E && cpu->P.X))
+    if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
     {
         cpu->Y = (cpu->Y - 1) & 0xff;
         cpu->P.N = cpu->Y & 0x80 ? 1 : 0;
@@ -383,7 +383,7 @@ void i_inx(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = (cpu->X + 1) & 0xff;
             cpu->P.N = cpu->X & 0x80 ? 1 : 0;
@@ -411,7 +411,7 @@ void i_iny(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->Y = (cpu->Y + 1) & 0xff;
             cpu->P.N = cpu->Y & 0x80 ? 1 : 0;
@@ -445,7 +445,7 @@ void i_tax(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = cpu->C & 0xff;
             cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -473,7 +473,7 @@ void i_tay(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->Y = cpu->C & 0xff;
             cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -556,7 +556,7 @@ void i_tsx(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = cpu->SP & 0xff;
             cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -590,7 +590,7 @@ void i_txa(CPU_t *cpu)
             cpu->P.Z = ((cpu->C & 0xff) == 0);
             cpu->P.N = ((cpu->C & 0x80) == 0x80);
         }
-        else if (cpu->P.X && !cpu->P.M) // 8-bit X, 16-bit A
+        else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
         {
             cpu->C = cpu->X & 0xff;
             cpu->P.Z = ((cpu->C & 0xff) == 0);
@@ -616,7 +616,7 @@ void i_txs(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->SP = (cpu->X & 0xff); // Zero high byte of SP
         }
@@ -639,7 +639,7 @@ void i_txy(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->Y = cpu->X & 0xff;
             cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -672,7 +672,7 @@ void i_tya(CPU_t *cpu)
             cpu->P.Z = ((cpu->C & 0xff) == 0);
             cpu->P.N = ((cpu->C & 0x80) == 0x80);
         }
-        else if (cpu->P.X && !cpu->P.M) // 8-bit X, 16-bit A
+        else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
         {
             cpu->C = cpu->Y & 0xff;
             cpu->P.Z = ((cpu->C & 0xff) == 0);
@@ -700,7 +700,7 @@ void i_tyx(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = cpu->Y & 0xff;
             cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -801,7 +801,7 @@ void i_phx(CPU_t *cpu, memory_t *mem)
     }
     else
     {
-        if (cpu->P.X) // 8-bit X
+        if (cpu->P.XB) // 8-bit X
         {
             _stackCPU_pushByte(cpu, mem, cpu->X);
             cpu->cycles += 3;
@@ -818,7 +818,7 @@ void i_phx(CPU_t *cpu, memory_t *mem)
 
 void i_phy(CPU_t *cpu, memory_t *mem)
 {
-    if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit X
+    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit X
     {
         _stackCPU_pushByte(cpu, mem, cpu->Y);
         cpu->cycles += 3;
@@ -910,7 +910,7 @@ void i_plx(CPU_t *cpu, memory_t *mem)
     }
     else
     {
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
             cpu->cycles += 4;
@@ -931,7 +931,7 @@ void i_plx(CPU_t *cpu, memory_t *mem)
 
 void i_ply(CPU_t *cpu, memory_t *mem)
 {
-    if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit X
+    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit X
     {
         cpu->Y = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE);
         cpu->cycles += 4;
@@ -962,7 +962,7 @@ void i_rep(CPU_t *cpu, memory_t *mem)
     {
         _cpu_set_sr(cpu, sr & (~val));
 
-        if (cpu->P.X) // Short X = zero top byte
+        if (cpu->P.XB) // Short X = zero top byte
         {
             cpu->X &= 0xff;
             cpu->Y &= 0xff;
@@ -1029,7 +1029,7 @@ void i_sei(CPU_t *cpu)
     cpu->cycles += 2;
 }
 
-void i_stp(CPU_t *cpu, memory_t *mem)
+void i_sep(CPU_t *cpu, memory_t *mem)
 {
     uint8_t sr = _cpu_get_sr(cpu);
     uint8_t val = _get_mem_byte(mem, _addr_add_val_bank_wrap(cpu->PC, 1));
@@ -1042,7 +1042,7 @@ void i_stp(CPU_t *cpu, memory_t *mem)
     {
         _cpu_set_sr(cpu, sr | val);
 
-        if (cpu->P.X)
+        if (cpu->P.XB)
         {
             cpu->X &= 0xff;
             cpu->Y &= 0xff;
@@ -1053,7 +1053,7 @@ void i_stp(CPU_t *cpu, memory_t *mem)
     cpu->cycles += 3;
 }
 
-void t_stp(CPU_t *cpu)
+void i_stp(CPU_t *cpu)
 {
     //_cpu_update_pc(cpu, 1); // ???
     cpu->cycles += 3;
@@ -1101,7 +1101,7 @@ void i_xce(CPU_t *cpu)
     else
     {
         cpu->P.M = 1; // ??? when staying in native mode
-        cpu->P.X = 1; // ??? when staying in native mode
+        cpu->P.XB = 1; // ??? when staying in native mode
     }
 
     _cpu_update_pc(cpu, 1);

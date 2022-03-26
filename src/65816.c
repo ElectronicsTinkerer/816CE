@@ -24,7 +24,7 @@ CPU_Error_Code_t resetCPU(CPU_t *cpu)
     cpu->X &= 0x00ff;
     cpu->Y &= 0x00ff;
     cpu->P.M = 1;
-    cpu->P.X = 1;
+    cpu->P.XB = 1;
     cpu->P.D = 0;
     cpu->P.I = 1;
     cpu->P.E = 1;
@@ -127,7 +127,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x25: // AND dp
         {
             int32_t addr = _addrCPU_getDirectPage(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -155,7 +155,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x27: // AND [dp]
         {
             int32_t addr = _addrCPU_getDirectPageIndirectLong(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -183,7 +183,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x28: i_plp(cpu, mem); break;
 
         case 0x29: // AND #const
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _cpu_get_immd_byte(cpu, mem));
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -230,7 +230,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x2d: // AND addr
         {
             int32_t addr = _addrCPU_getAbsolute(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -252,7 +252,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x2f: // AND long
         {
             int32_t addr = _addrCPU_getLong(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -276,7 +276,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x32: // AND (dp)
         {
             int32_t addr = _addrCPU_getDirectPageIndirect(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -334,7 +334,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x35: // AND dp,X
         {
             int32_t addr = _addrCPU_getDirectPageIndexedX(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -364,7 +364,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x39: // AND addr,Y
         {
             int32_t addr = _addrCPU_getAbsoluteIndexedY(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -425,7 +425,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x3d: // AND addr,X
         {
             int32_t addr = _addrCPU_getAbsoluteIndexedX(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -453,7 +453,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x3f: // AND long,X
         {
             int32_t addr = _addrCPU_getLongIndexedX(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 cpu->C = (cpu->C & 0xff00) | ( (cpu->C & 0xff) & _get_mem_byte(mem, addr) );
                 cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -560,7 +560,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x84: // STY dp
             mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->Y & 0xff;
             cpu->cycles += 3;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPage(cpu, mem), 1)] = (cpu->Y >> 8) & 0xff; // Bank wrapping
                 cpu->cycles += 1;
@@ -575,7 +575,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x86: // STX dp
             mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->X & 0xff;
             cpu->cycles += 3;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPage(cpu, mem), 1)] = (cpu->X >> 8) & 0xff; // Bank wrapping
                 cpu->cycles += 1;
@@ -611,7 +611,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x8c: // STY addr
             mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->Y & 0xff;
             cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->Y >> 8) & 0xff; // No bank wrapping
                 cpu->cycles += 1;
@@ -622,7 +622,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x8e: // STX addr
             mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->X & 0xff;
             cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->X >> 8) & 0xff; // No bank wrapping
                 cpu->cycles += 1;
@@ -635,7 +635,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x94: // STY dp,X
             mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = cpu->Y & 0xff;
             cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPageIndexedX(cpu, mem), 1)] = (cpu->Y >> 8) & 0xff; // Bank wrapping
                 cpu->cycles += 1;
@@ -650,7 +650,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x96: // STX dp,Y
             mem[_addrCPU_getDirectPageIndexedY(cpu, mem)] = cpu->X & 0xff;
             cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.X) // 16-bit
+            if (!cpu->P.E && !cpu->P.XB) // 16-bit
             {
                 mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPageIndexedY(cpu, mem), 1)] = (cpu->X >> 8) & 0xff; // Bank wrapping
                 cpu->cycles += 1;
@@ -699,7 +699,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->Y = _cpu_get_immd_byte(cpu, mem);
                     cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -729,7 +729,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->X = _cpu_get_immd_byte(cpu, mem);
                     cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -761,7 +761,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->Y = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -796,7 +796,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->X = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -822,7 +822,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xa8: i_tay(cpu); break;
 
         case 0xaa: i_tax(cpu); break;
-        case 0xab: i_plb(cpu); break;
+        case 0xab: i_plb(cpu, mem); break;
 
         case 0xac: // LDY addr
         {
@@ -836,7 +836,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->Y = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -867,7 +867,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->X = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -900,7 +900,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->Y = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -935,7 +935,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->X = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -975,7 +975,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->Y = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->Y & 0xff) == 0);
@@ -1012,7 +1012,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     cpu->X = _get_mem_byte(mem, addr);
                     cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -1038,7 +1038,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             break;
 
         case 0xc0: // CPY #const
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->Y & 0xff) - _cpu_get_immd_byte(cpu, mem) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -1064,7 +1064,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xc4: // CPY dp
         {
             int32_t addr = _addrCPU_getDirectPage(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->Y & 0xff) - _get_mem_byte(mem, addr) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -1135,7 +1135,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xcc: // CPY addr
         {
             int32_t addr = _addrCPU_getAbsolute(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->Y & 0xff) - _get_mem_byte(mem, addr) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -1188,7 +1188,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         }
             break;
 
-        case 0xd0: i_bne(cpu); break;
+        case 0xd0: i_bne(cpu, mem); break;
 
         case 0xd4: i_pei(cpu, mem); break;
 
@@ -1204,7 +1204,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
                     cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
@@ -1246,7 +1246,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             }
             else
             {
-                if (cpu->P.X)
+                if (cpu->P.XB)
                 {
                     mem[addr] = (_get_mem_byte(mem, addr) - 1) & 0xff;
                     cpu->P.N = _get_mem_byte(mem, addr) & 0x80 ? 1 : 0;
@@ -1277,7 +1277,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             break;
 
         case 0xe0: // CPX #const
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->X & 0xff) - _cpu_get_immd_byte(cpu, mem) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -1302,7 +1302,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xe4: // CPX dp
         {
             int32_t addr = _addrCPU_getDirectPage(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->X & 0xff) - _get_mem_byte(mem, addr) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -1373,7 +1373,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xec: // CPX addr
         {
             int32_t addr = _addrCPU_getAbsolute(cpu, mem);
-            if (cpu->P.E || (!cpu->P.E && cpu->P.X)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
             {
                 uint8_t res = ( (cpu->X & 0xff) - _get_mem_byte(mem, addr) ) & 0xff;
                 cpu->P.N = (res & 0x80) ? 1 : 0;

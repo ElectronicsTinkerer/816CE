@@ -31,9 +31,9 @@ void _set_mem_byte(memory_t *mem, uint32_t addr, uint8_t val);
 void _set_mem_word(memory_t *mem, uint32_t addr, uint16_t val);
 
 // CPU-Addressing Modes
-void _stackCPU_pushByte(CPU_t *, memory_t *, int8_t);
+void _stackCPU_pushByte(CPU_t *, memory_t *, uint8_t);
 void _stackCPU_pushWord(CPU_t *, memory_t *, uint16_t, Emul_Stack_Mod_t);
-void _stackCPU_push24(CPU_t *, memory_t *, int32_t);
+void _stackCPU_push24(CPU_t *, memory_t *, uint32_t);
 uint8_t _stackCPU_popByte(CPU_t *, memory_t *, Emul_Stack_Mod_t);
 uint16_t _stackCPU_popWord(CPU_t *, memory_t *, Emul_Stack_Mod_t);
 uint32_t _stackCPU_pop24(CPU_t *, memory_t *);

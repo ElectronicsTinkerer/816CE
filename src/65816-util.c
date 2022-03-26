@@ -75,7 +75,7 @@ uint32_t _cpu_get_dbr(CPU_t *cpu)
  * @param cpu A pointer to the CPU struct from which to retrieve the 24-bit PC address
  * @return The cpu's PC concatenated with the PBR
  */
-uint32_t _cpu_get_effective_pc(CPU_t *)
+uint32_t _cpu_get_effective_pc(CPU_t *cpu)
 {
     return _cpu_get_pbr(cpu) | cpu->PC;
 }
@@ -160,7 +160,7 @@ uint16_t _get_mem_word_bank_wrap(memory_t *mem, uint32_t addr)
 {
     uint16_t val = _get_mem_byte(mem, addr);
     val |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
-    return ;
+    return val;
 }
 
 /**
@@ -264,7 +264,7 @@ void _stackCPU_pushWord(CPU_t *cpu, memory_t *mem, uint16_t word, Emul_Stack_Mod
  * @param mem The memory array which is to be connected to the CPU
  * @param data The word to be pushed onto the stack
  */
-void _stackCPU_push24(CPU_t *cpu, memory_t *mem, int32_t data)
+void _stackCPU_push24(CPU_t *cpu, memory_t *mem, uint32_t data)
 {
     _set_mem_byte(mem, cpu->SP, (data >> 16) & 0xff);
     _set_mem_word(mem, _addr_add_val_bank_wrap(cpu->SP, -2), data & 0xffff);
@@ -508,7 +508,7 @@ uint32_t _addrCPU_getDirectPageIndirectLong(CPU_t *cpu, memory_t *mem)
     address = _addr_add_val_bank_wrap(cpu->D, address);
     address = _get_mem_byte(mem, address);
     address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
-    address | = _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 2)) << 16; // 24-bit pointer
+    address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 2)) << 16; // 24-bit pointer
 
     return address;
 }

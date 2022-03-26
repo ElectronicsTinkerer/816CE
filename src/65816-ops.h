@@ -64,7 +64,7 @@ void i_sec(CPU_t *);
 void i_sed(CPU_t *);
 void i_sei(CPU_t *);
 void i_sep(CPU_t *, memory_t *);
-void t_stp(CPU_t *);
+void i_stp(CPU_t *);
 void i_wai(CPU_t *);
 void i_wdm(CPU_t *);
 void i_xba(CPU_t *);
