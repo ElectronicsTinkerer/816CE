@@ -581,6 +581,22 @@ void i_jmp(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint
     cpu->cycles += cycles;
 }
 
+void i_jsr(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    _stackCPU_pushWord(cpu, mem, _addr_add_val_bank_wrap(cpu->PC, 2), CPU_ESTACK_ENABLE);
+    cpu->PC = addr;
+    cpu->cycles += cycles;
+}
+
+void i_jsl(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    uint32_t ret_addr = _addr_add_val_bank_wrap(_cpu_get_effective_pc(cpu), 3);
+    _stackCPU_push24(cpu, mem, ret_addr);
+    cpu->PBR = _get_mem_byte(mem, (addr >> 16) & 0xff);
+    cpu->PC = addr & 0xffff;
+    cpu->cycles += cycles;
+}
+
 void i_nop(CPU_t *cpu)
 {
     _cpu_update_pc(cpu, 1);

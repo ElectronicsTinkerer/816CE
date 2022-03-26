@@ -81,18 +81,9 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x1a: i_ina(cpu); break;
     case 0x1b: i_tcs(cpu); break;
 
-    case 0x20: // JSR addr
-        _stackCPU_pushWord(cpu, mem, _addr_add_val_bank_wrap(cpu->PC, 2), CPU_ESTACK_ENABLE);
-        cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
-        cpu->cycles += 6;
-        break;
+    case 0x20: i_jsr(cpu, mem, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
-    case 0x22: // JSL/JSR long
-        _stackCPU_push24(cpu, mem, _addr_add_val_bank_wrap(CPU_GET_EFFECTIVE_PC(cpu), 3));
-        cpu->PBR = mem[_addr_add_val_bank_wrap(CPU_GET_EFFECTIVE_PC(cpu), 3)] & 0xff;
-        cpu->PC = ADDR_GET_MEM_IMMD_WORD(cpu, mem);
-        cpu->cycles += 8;
-        break;
+    case 0x22: i_jsl(cpu, mem, 6, CPU_ADDR_ABS, _addrCPU_getLong(cpu, mem)); break;
 
     case 0x24: // BIT dp
     {
@@ -1100,12 +1091,8 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0xfa: i_plx(cpu, mem); break;
         case 0xfb: i_xce(cpu); break;
+        case 0xfc: i_jsr(cpu, mem, 8, CPU_ADDR_ABS, _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem)); break;
 
-        case 0xfc: // JSR (addr,X)
-            _stackCPU_pushWord(cpu, mem, _addr_add_val_bank_wrap(cpu->PC, 2), CPU_ESTACK_DISABLE);
-            cpu->PC = _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem);
-            cpu->cycles += 8;
-            break;
 
         case 0xfe: i_inc(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
