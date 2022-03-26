@@ -72,13 +72,14 @@ typedef enum Emul_Stack_Mod_t
  } Emul_Stack_Mod_t;
 
  // Specifies the addressing mode for use when performing an operation
- typedef enum CPU_Addr_Mode_t
- {
-     CPU_ADDR_DP = 0,   // Direct page
-     CPU_ADDR_DPINX,    // Direct page indexed X
-     CPU_ADDR_ABS,      // Absolute
-     CPU_ADDR_ABSX      // Absolute indexed X
- } CPU_Addr_Mode_t;
+typedef enum CPU_Addr_Mode_t
+{
+    CPU_ADDR_DP = 0, // Direct page
+    CPU_ADDR_DPX,  // Direct page indexed X
+    CPU_ADDR_DPY,  // Direct page indexed Y
+    CPU_ADDR_ABS,    // Absolute
+    CPU_ADDR_ABSX    // Absolute indexed X
+} CPU_Addr_Mode_t;
 
 typedef uint8_t memory_t;
 

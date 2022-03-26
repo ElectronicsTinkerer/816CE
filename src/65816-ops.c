@@ -1060,9 +1060,67 @@ void i_stp(CPU_t *cpu)
     cpu->P.STP = 1;
 }
 
+void i_stx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPY)
+    {
+        _set_mem_byte(mem, addr, cpu->X & 0xff);
+        if (!cpu->P.E && !cpu->P.XB) // 16-bit
+        {
+            _set_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1), (cpu->X >> 8) & 0xff); // Bank wrapping
+            cpu->cycles += 1;
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS)
+    {
+        _set_mem_byte(mem, addr, cpu->X & 0xff);
+        if (!cpu->P.E && !cpu->P.XB) // 16-bit
+        {
+            _set_mem_byte(mem, addr + 1, (cpu->X >> 8) & 0xff); // No bank wrapping
+            cpu->cycles += 1;
+        }
+    }
+
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
+
+void i_sty(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    {
+        _set_mem_byte(mem, addr, cpu->Y & 0xff);
+        if (!cpu->P.E && !cpu->P.XB) // 16-bit
+        {
+            _set_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1), (cpu->Y >> 8) & 0xff); // Bank wrapping
+            cpu->cycles += 1;
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS)
+    {
+        _set_mem_byte(mem, addr, cpu->Y & 0xff);
+        if (!cpu->P.E && !cpu->P.XB) // 16-bit
+        {
+            _set_mem_byte(mem, addr + 1, (cpu->Y >> 8) & 0xff); // No bank wrapping
+            cpu->cycles += 1;
+        }
+    }
+
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
+
 void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPINX)
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
     {
         _set_mem_byte(mem, addr, 0);
         if (!cpu->P.M) // 16-bit
@@ -1077,10 +1135,10 @@ void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     }
     else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
     {
-        _set_mem_byte(mem, _addrCPU_getAbsoluteIndexedX(cpu, mem), 0);
+        _set_mem_byte(mem, addr, 0);
         if (!cpu->P.M) // 16-bit
         {
-            _set_mem_byte(mem, _addrCPU_getAbsoluteIndexedX(cpu, mem) + 1, 0); // No bank wrapping
+            _set_mem_byte(mem, addr + 1, 0); // No bank wrapping
             cpu->cycles += 1;
         }
     }

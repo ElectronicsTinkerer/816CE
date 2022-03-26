@@ -515,7 +515,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x70: i_bvs(cpu, mem); break;
 
-        case 0x74: i_stz(cpu, mem, 2, 4, CPU_ADDR_DPINX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
+        case 0x74: i_stz(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
         case 0x78: i_sei(cpu); break;
 
@@ -531,36 +531,10 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x82: i_brl(cpu, mem); break;
 
-        case 0x84: // STY dp
-            mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->Y & 0xff;
-            cpu->cycles += 3;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPage(cpu, mem), 1)] = (cpu->Y >> 8) & 0xff; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
+        case 0x84: i_sty(cpu, mem, 2, 3, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
 
-        case 0x86: // STX dp
-            mem[_addrCPU_getDirectPage(cpu, mem)] = cpu->X & 0xff;
-            cpu->cycles += 3;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPage(cpu, mem), 1)] = (cpu->X >> 8) & 0xff; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
-
+        case 0x86: i_stx(cpu, mem, 2, 3, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
+        
         case 0x88: i_dey(cpu); break;
 
         case 0x89: // BIT #const
@@ -581,60 +555,15 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x8a: i_txa(cpu); break;
 
         case 0x8b: i_phb(cpu, mem); break;
+        case 0x8c: i_sty(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
-        case 0x8c: // STY addr
-            mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->Y & 0xff;
-            cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->Y >> 8) & 0xff; // No bank wrapping
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 3);
-            break;
-
-        case 0x8e: // STX addr
-            mem[_addrCPU_getAbsolute(cpu, mem)] = cpu->X & 0xff;
-            cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addrCPU_getAbsolute(cpu, mem) + 1] = (cpu->X >> 8) & 0xff; // No bank wrapping
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 3);
-            break;
+        case 0x8e: i_stx(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
         case 0x90: i_bcc(cpu, mem); break;
 
-        case 0x94: // STY dp,X
-            mem[_addrCPU_getDirectPageIndexedX(cpu, mem)] = cpu->Y & 0xff;
-            cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPageIndexedX(cpu, mem), 1)] = (cpu->Y >> 8) & 0xff; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
+        case 0x94: i_sty(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
-        case 0x96: // STX dp,Y
-            mem[_addrCPU_getDirectPageIndexedY(cpu, mem)] = cpu->X & 0xff;
-            cpu->cycles += 4;
-            if (!cpu->P.E && !cpu->P.XB) // 16-bit
-            {
-                mem[_addr_add_val_bank_wrap(_addrCPU_getDirectPageIndexedY(cpu, mem), 1)] = (cpu->X >> 8) & 0xff; // Bank wrapping
-                cpu->cycles += 1;
-            }
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            _cpu_update_pc(cpu, 2);
-            break;
+        case 0x96: i_stx(cpu, mem, 2, 4, CPU_ADDR_DPY, _addrCPU_getDirectPageIndexedY(cpu, mem)); break;
 
         case 0x98: i_tya(cpu); break;
 
@@ -642,7 +571,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x9b: i_txy(cpu); break;
         case 0x9c: i_stz(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
-        case 0x9e: i_stz(cpu, mem, 3, 5, CPU_ADDR_ABS, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
+        case 0x9e: i_stz(cpu, mem, 3, 5, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
         case 0xa0: // LDY #const
         {
