@@ -5,6 +5,7 @@
 #include "65816.h"
 #include "65816-util.h"
 
+void i_and(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_bcc(CPU_t *, memory_t *);
 void i_bcs(CPU_t *, memory_t *);
 void i_beq(CPU_t *, memory_t *);

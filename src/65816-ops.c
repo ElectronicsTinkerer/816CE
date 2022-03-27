@@ -1,7 +1,85 @@
 
 #include "65816-ops.h"
 
+void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX || mode == CPU_ADDR_DPY)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
+            cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
+            cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
+        }
+        else // 16-bit
+        {
+            cpu->C = cpu->C & _get_mem_word_bank_wrap(mem, addr);
+            cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
+            cpu->P.Z = cpu->C ? 0 : 1;
+            cpu->cycles += 1;
+        }
 
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL || 
+             mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
+             mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
+             mode == CPU_ADDR_ABSLX)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
+            cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
+            cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
+        }
+        else // 16-bit
+        {
+            cpu->C = cpu->C & _get_mem_word(mem, addr);
+            cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
+            cpu->P.Z = cpu->C ? 0 : 1;
+            cpu->cycles += 1;
+        }
+
+        if (mode = CPU_ADDR_ABSX || mode == CPU_ADDR_ABSY)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+            {
+                cpu->cycles += 1;
+            }
+        }
+        else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL)
+        {
+            // If DL != 0, add a cycle
+            if (cpu->D & 0xff)
+            {
+                cpu->cycles += 1;
+            }
+        }
+    }
+    else if (mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _cpu_get_immd_byte(cpu, mem));
+            cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
+            cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
+        }
+        else // 16-bit
+        {
+            cpu->C = cpu->C & _get_mem_word_bank_wrap(mem, addr);
+            cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
+            cpu->P.Z = cpu->C ? 0 : 1;
+            cpu->cycles += 1;
+        }
+    }
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
 
 void i_bcc(CPU_t *cpu, memory_t *mem)
 {
