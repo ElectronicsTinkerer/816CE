@@ -20,15 +20,16 @@ uint16_t _cpu_get_immd_word(CPU_t *, memory_t *);
 uint32_t _cpu_get_immd_long(CPU_t *, memory_t *);
 uint32_t _addr_add_val_page_wrap(uint32_t, uint32_t);
 uint32_t _addr_add_val_bank_wrap(uint32_t, uint32_t);
-uint16_t _get_mem_word_bank_wrap(memory_t *, uint32_t);
 
 // Memory-related functions
 // These are THE ONLY functions which should directly
 // access data within the memory_t datastructure
 uint8_t _get_mem_byte(memory_t *, uint32_t);
 uint16_t _get_mem_word(memory_t *, uint32_t);
-void _set_mem_byte(memory_t *mem, uint32_t addr, uint8_t val);
-void _set_mem_word(memory_t *mem, uint32_t addr, uint16_t val);
+uint16_t _get_mem_word_bank_wrap(memory_t *, uint32_t);
+void _set_mem_byte(memory_t *, uint32_t, uint8_t);
+void _set_mem_word(memory_t *, uint32_t, uint16_t);
+void _set_mem_word_bank_wrap(memory_t *, uint32_t, uint16_t);
 
 // CPU-Addressing Modes
 void _stackCPU_pushByte(CPU_t *, memory_t *, uint8_t);

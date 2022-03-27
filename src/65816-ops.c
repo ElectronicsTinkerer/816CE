@@ -64,6 +64,75 @@ void i_beq(CPU_t *cpu, memory_t *mem)
     cpu->cycles += 2;
 }
 
+void i_bit(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            uint8_t val = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+            cpu->P.N = (val & 0x80) ? 1 : 0;
+            cpu->P.V = (val & 0x40) ? 1 : 0;
+        }
+        else // 16-bit
+        {
+            uint16_t val = _get_mem_word_bank_wrap(mem, addr);
+            cpu->P.Z = (cpu->C & val) ? 0 : 1;
+            cpu->P.N = (val & 0x8000) ? 1 : 0;
+            cpu->P.V = (val & 0x4000) ? 1 : 0;
+            cpu->cycles += 1;
+        }
+
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            uint8_t val = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+            cpu->P.N = (val & 0x80) ? 1 : 0;
+            cpu->P.V = (val & 0x40) ? 1 : 0;
+        }
+        else // 16-bit
+        {
+            uint16_t val = _get_mem_word(mem, addr);
+            cpu->P.Z = (cpu->C & val) ? 0 : 1;
+            cpu->P.N = (val & 0x8000) ? 1 : 0;
+            cpu->P.V = (val & 0x4000) ? 1 : 0;
+            cpu->cycles += 1;
+        }
+
+        // If page boundary is crossed, add a cycle
+        if (mode == CPU_ADDR_ABSX && (_cpu_get_immd_word(cpu, mem) & 0xff00) != (addr & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            uint8_t val = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1; // Only Z for immediate addressing
+        }
+        else // 16-bit
+        {
+            uint16_t val = _get_mem_word_bank_wrap(mem, addr);
+            cpu->P.Z = (cpu->C & val) ? 0 : 1;
+            cpu->cycles += 1;
+            size += 1;
+        }
+    }
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
+
 void i_bmi(CPU_t *cpu, memory_t *mem)
 {
     if (cpu->P.N)
@@ -284,8 +353,7 @@ void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
         else // 16-bit
         {
-            uint16_t res = _get_mem_byte(mem, addr);
-            res |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+            uint16_t res = _get_mem_word_bank_wrap(mem, addr);
             res = cpu->X - res;
             cpu->P.N = (res & 0x8000) ? 1 : 0;
             cpu->P.Z = res ? 0 : 1;
@@ -338,8 +406,7 @@ void i_cpy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
         else // 16-bit
         {
-            uint16_t res = _get_mem_byte(mem, addr);
-            res |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+            uint16_t res = _get_mem_word_bank_wrap(mem, addr);
             res = cpu->Y - res;
             cpu->P.N = (res & 0x8000) ? 1 : 0;
             cpu->P.Z = res ? 0 : 1;
@@ -432,8 +499,7 @@ void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 uint16_t val = _get_mem_byte(mem, addr);
                 val |= _get_mem_byte(mem, addr_high) << 8;
                 val -= 1;
-                _set_mem_byte(mem, addr, val & 0xff);
-                _set_mem_byte(mem, addr_high, (val >> 8) & 0xff);
+                _set_mem_word_bank_wrap(mem, addr, val);
                 cpu->P.N = val & 0x8000 ? 1 : 0;
                 cpu->P.Z = val ? 0 : 1;
                 cpu->cycles += 2;
@@ -578,8 +644,7 @@ void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 uint16_t val = _get_mem_byte(mem, addr);
                 val |= _get_mem_byte(mem, addr_high) << 8;
                 val += 1;
-                _set_mem_byte(mem, addr, val & 0xff);
-                _set_mem_byte(mem, addr_high, (val >> 8) & 0xff);
+                _set_mem_word_bank_wrap(mem, addr, val);
                 cpu->P.N = val & 0x8000 ? 1 : 0;
                 cpu->P.Z = val ? 0 : 1;
                 cpu->cycles += 2;

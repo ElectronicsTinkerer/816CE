@@ -151,19 +151,6 @@ uint32_t _addr_add_val_bank_wrap(uint32_t addr, uint32_t offset)
 }
 
 /**
- * Get a word from memory, BANK WRAPPING
- * @param mem The memory array to use as system memory
- * @param addr The address in memory to read
- * @return The word in memory at the specified address and address+1, bank wrapped
- */
-uint16_t _get_mem_word_bank_wrap(memory_t *mem, uint32_t addr)
-{
-    uint16_t val = _get_mem_byte(mem, addr);
-    val |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
-    return val;
-}
-
-/**
  * Get a byte from memory
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to read
@@ -190,6 +177,19 @@ uint16_t _get_mem_word(memory_t *mem, uint32_t addr)
 }
 
 /**
+ * Get a word from memory, BANK WRAPPING
+ * @param mem The memory array to use as system memory
+ * @param addr The address in memory to read
+ * @return The word in memory at the specified address and address+1, bank wrapped
+ */
+uint16_t _get_mem_word_bank_wrap(memory_t *mem, uint32_t addr)
+{
+    uint16_t val = _get_mem_byte(mem, addr);
+    val |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+    return val;
+}
+
+/**
  * Set a byte in memory
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to write
@@ -212,6 +212,18 @@ void _set_mem_word(memory_t *mem, uint32_t addr, uint16_t val)
 {
      mem[addr] = val & 0xff;
      mem[(addr + 1) & 0x00ffffff] = val >> 8;
+}
+
+/**
+ * Set a word from memory, BANK WRAPPING
+ * @param mem The memory array to use as system memory
+ * @param addr The address in memory to read
+ * @param val The value to store in memory
+ */
+void _set_mem_word_bank_wrap(memory_t *mem, uint32_t addr, uint16_t val)
+{
+    _set_mem_byte(mem, addr, val);
+    _set_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1), val >> 8);
 }
 
 /******************************************************

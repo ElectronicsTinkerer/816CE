@@ -8,6 +8,7 @@
 void i_bcc(CPU_t *, memory_t *);
 void i_bcs(CPU_t *, memory_t *);
 void i_beq(CPU_t *, memory_t *);
+void i_bit(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_bmi(CPU_t *, memory_t *);
 void i_bne(CPU_t *, memory_t *);
 void i_bpl(CPU_t *, memory_t *);
