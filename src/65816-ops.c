@@ -1,6 +1,8 @@
 
 #include "65816-ops.h"
 
+
+
 void i_bcc(CPU_t *cpu, memory_t *mem)
 {
     if (!cpu->P.C)
@@ -768,6 +770,190 @@ void i_jsl(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint
     cpu->PBR = _get_mem_byte(mem, (addr >> 16) & 0xff);
     cpu->PC = addr & 0xffff;
     cpu->cycles += cycles;
+}
+
+void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPY)
+    {
+        if (cpu->P.E)
+        {
+            cpu->X = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->X & 0xff) == 0);
+            cpu->P.N = ((cpu->X & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->X = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->X = _get_mem_word_bank_wrap(mem, addr);
+                cpu->P.Z = (cpu->X == 0);
+                cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                cpu->cycles += 1;
+            }
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSY)
+    {
+        if (cpu->P.E)
+        {
+            cpu->X = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->X & 0xff) == 0);
+            cpu->P.N = ((cpu->X & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->X = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->X = _get_mem_word(mem, addr);
+                cpu->P.Z = (cpu->X == 0);
+                cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                cpu->cycles += 1;
+            }
+        }
+
+        // If page boundary is crossed, add a cycle
+        if (mode == CPU_ADDR_ABSY && (_cpu_get_immd_word(cpu, mem) & 0xff00) != (addr & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E)
+        {
+            cpu->X = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->X & 0xff) == 0);
+            cpu->P.N = ((cpu->X & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->X = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->X & 0xff) == 0);
+                cpu->P.N = ((cpu->X & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->X = _get_mem_word_bank_wrap(mem, addr);
+                cpu->P.Z = (cpu->X == 0);
+                cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
+                size += 1;
+                cpu->cycles += 1;
+            }
+        }
+    }
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
+
+void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    {
+        if (cpu->P.E)
+        {
+            cpu->Y = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->Y & 0xff) == 0);
+            cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->Y = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->Y = _get_mem_word_bank_wrap(mem, addr);
+                cpu->P.Z = (cpu->Y == 0);
+                cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                cpu->cycles += 1;
+            }
+        }
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
+    {
+        if (cpu->P.E)
+        {
+            cpu->Y = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->Y & 0xff) == 0);
+            cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->Y = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->Y = _get_mem_word(mem, addr);
+                cpu->P.Z = (cpu->Y == 0);
+                cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                cpu->cycles += 1;
+            }
+        }
+
+        // If page boundary is crossed, add a cycle
+        if (mode == CPU_ADDR_ABSX && (_cpu_get_immd_word(cpu, mem) & 0xff00) != (addr & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_IMMD)
+    {
+        if (cpu->P.E)
+        {
+            cpu->Y = _get_mem_byte(mem, addr);
+            cpu->P.Z = ((cpu->Y & 0xff) == 0);
+            cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+        }
+        else
+        {
+            if (cpu->P.XB)
+            {
+                cpu->Y = _get_mem_byte(mem, addr);
+                cpu->P.Z = ((cpu->Y & 0xff) == 0);
+                cpu->P.N = ((cpu->Y & 0x80) == 0x80);
+            }
+            else
+            {
+                cpu->Y =  _get_mem_word_bank_wrap(mem, addr);
+                cpu->P.Z = (cpu->Y == 0);
+                cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
+                size += 1;
+                cpu->cycles += 1;
+            }
+        }
+    }
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
 }
 
 void i_nop(CPU_t *cpu)

@@ -35,6 +35,8 @@ void i_iny(CPU_t *);
 void i_jmp(CPU_t *, memory_t *, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_jsr(CPU_t *, memory_t *, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_jsl(CPU_t *, memory_t *, uint8_t, CPU_Addr_Mode_t, uint32_t);
+void i_ldx(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
+void i_ldy(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_nop(CPU_t *);
 void i_tax(CPU_t *);
 void i_tay(CPU_t *);

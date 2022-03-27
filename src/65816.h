@@ -79,6 +79,7 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_DPY,     // Direct page indexed Y -> dp,Y
     CPU_ADDR_ABS,     // Absolute -> abs
     CPU_ADDR_ABSX,    // Absolute indexed X -> abs,X
+    CPU_ADDR_ABSY,    // Absolute indexed Y -> abs,Y
     CPU_ADDR_INDABS,  // Indirect absolute -> (abs)
     CPU_ADDR_ABSL,    // Absolute Long -> abs_long
     CPU_ADDR_ABSINDL, // Absolute Indirect Long -> [abs]
