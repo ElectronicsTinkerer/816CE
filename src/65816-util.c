@@ -451,7 +451,7 @@ uint32_t _addrCPU_getAbsoluteIndexedX(CPU_t *cpu, memory_t *mem)
     // Get the immediate operand word of the current instruction and the current data bank
     uint32_t address = _cpu_get_immd_word(cpu, mem) | _cpu_get_dbr(cpu);
     address += cpu->X; // No wraparound
-    return address;
+    return address & 0xffffff;
 }
 
 /**
@@ -466,7 +466,7 @@ uint32_t _addrCPU_getAbsoluteIndexedY(CPU_t *cpu, memory_t *mem)
     // Get the immediate operand word of the current instruction and the current data bank
     uint32_t address = _cpu_get_immd_word(cpu, mem) | _cpu_get_dbr(cpu);
     address += cpu->Y; // No wraparound
-    return address;
+    return address & 0xffffff;
 }
 
 /**
@@ -481,7 +481,7 @@ uint32_t _addrCPU_getLongIndexedX(CPU_t *cpu, memory_t *mem)
     // Get the immediate operand word of the current instruction and the current data bank
     uint32_t address = _cpu_get_immd_long(cpu, mem);
     address += cpu->X; // No wraparound
-    return address;
+    return address & 0xffffff;
 }
 
 /**
@@ -742,4 +742,33 @@ uint32_t _addrCPU_getImmediate(CPU_t *cpu, memory_t *mem)
     uint32_t address = _cpu_get_effective_pc(cpu);
     address = _addr_add_val_bank_wrap(address, 1);
     return address;
+}
+
+/**
+ * Returns the effective stack relative address of the current instruction
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The SR address of the current instruction
+ */
+uint32_t _addrCPU_getStackRelative(CPU_t *cpu, memory_t *mem)
+{
+    // Get the immediate operand word of the current instruction
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
+    return _addr_add_val_bank_wrap(cpu->SP, address);
+}
+
+/**
+ * Returns the effective stack relative address of the current instruction
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The SR address of the current instruction
+ */
+uint32_t _addrCPU_getSRIndirectIndexedY(CPU_t *cpu, memory_t *mem)
+{
+    // Get the immediate operand word of the current instruction
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
+    address = _addr_add_val_bank_wrap(cpu->SP, address); // Calculate pointer offset
+    address = _get_mem_word_bank_wrap(mem, address); // Get pointer
+    address += cpu->Y;
+    return  address & 0xffffff;
 }

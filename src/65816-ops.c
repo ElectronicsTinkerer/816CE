@@ -3,7 +3,8 @@
 
 void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX || mode == CPU_ADDR_DPY)
+    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
+        mode == CPU_ADDR_DPY)
     {
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
@@ -29,7 +30,8 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
              mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
              mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
              mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_DPINDX ||
-             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY)
+             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
+             mode == CPU_ADDR_SRINDY)
     {
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
@@ -65,11 +67,11 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             }
         }
     }
-    else if (mode == CPU_ADDR_IMMD)
+    else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
     {
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
-            cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _cpu_get_immd_byte(cpu, mem));
+            cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
             cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
             cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
         }
