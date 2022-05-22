@@ -190,6 +190,20 @@ uint16_t _get_mem_word_bank_wrap(memory_t *mem, uint32_t addr)
 }
 
 /**
+ * Get a long from memory, BANK WRAPPING
+ * @param mem The memory array to use as system memory
+ * @param addr The address in memory to read
+ * @return The long in memory at the specified address, address+1, and address+2, bank wrapped
+ */
+uint32_t _get_mem_long_bank_wrap(memory_t *mem, uint32_t addr)
+{
+    uint32_t val = _get_mem_byte(mem, addr);
+    val |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1)) << 8;
+    val |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 2)) << 16;
+    return val;
+}
+
+/**
  * Set a byte in memory
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to write
@@ -279,6 +293,9 @@ void _stackCPU_pushWord(CPU_t *cpu, memory_t *mem, uint16_t word, Emul_Stack_Mod
 void _stackCPU_push24(CPU_t *cpu, memory_t *mem, uint32_t data)
 {
     _set_mem_byte(mem, cpu->SP, (data >> 16) & 0xff);
+    // Commented code: does not account for word breaks
+    // _set_mem_byte(mem, _addr_add_val_bank_wrap(cpu->SP, -1), (data >> 8) & 0xff);
+    // _set_mem_byte(mem, _addr_add_val_bank_wrap(cpu->SP, -2), data & 0xff);
     _set_mem_word(mem, _addr_add_val_bank_wrap(cpu->SP, -2), data & 0xffff);
     _cpu_set_sp(cpu, cpu->SP - 3);
 }
@@ -334,6 +351,9 @@ uint32_t _stackCPU_pop24(CPU_t *cpu, memory_t *mem)
 {
     uint32_t data = 0;
 
+    // Commented code: does not account for word breaks
+    // data = _get_mem_byte(mem, _addr_add_val_bank_wrap(cpu->SP, 1));
+    // data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(cpu->SP, 2)) << 8;
     data = _get_mem_word(mem, _addr_add_val_bank_wrap(cpu->SP, 1));
     data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(cpu->SP, 3)) << 16;
     _cpu_set_sp(cpu, cpu->SP + 3);
@@ -359,8 +379,7 @@ uint16_t _addrCPU_getAbsoluteIndexedIndirectX(CPU_t *cpu, memory_t *mem)
     address |= _cpu_get_pbr(cpu);
 
     // Find and return the resultant indirect address value
-    uint16_t data = _get_mem_byte(mem, address);
-    data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+    uint16_t data = _get_mem_word_bank_wrap(mem, address);
     return data;
 }
 
@@ -380,8 +399,7 @@ uint16_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, memory_t *mem)
 
     // Find and return the resultant indirect address value
     // (from Bank 0)
-    uint16_t data = _get_mem_byte(mem, address);
-    data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+    uint16_t data = _get_mem_word_bank_wrap(cpu, address);
     return data;
 }
 
@@ -401,9 +419,7 @@ uint32_t _addrCPU_getAbsoluteIndirectLong(CPU_t *cpu, memory_t *mem)
 
     // Find and return the resultant indirect address value
     // (from Bank 0)
-    uint32_t data = _get_mem_byte(mem, address);
-    data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
-    data |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 2)) << 16;
+    uint32_t data = _get_mem_long_bank_wrap(mem, address);
     return data;
 }
 
@@ -496,12 +512,12 @@ uint32_t _addrCPU_getDirectPageIndirect(CPU_t *cpu, memory_t *mem)
     if (cpu->P.E && ((cpu->D & 0xff) == 0))
     {
         address = _addr_add_val_page_wrap(cpu->D, address);
-        address = _get_mem_byte(mem, address) | (_get_mem_byte(mem, _addr_add_val_page_wrap(address, 1)) << 8); // 16-bit pointer
+        address = _get_mem_word_bank_wrap(mem, address); // 16-bit pointer
     }
     else
     {
         address = _addr_add_val_page_wrap(cpu->D, address);
-        address = _get_mem_byte(mem, address) | (_get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8); // 16-bit pointer
+        address = _get_mem_word_bank_wrap(mem, address); // 16-bit pointer
     }
     address |= _cpu_get_dbr(cpu);
 
@@ -521,9 +537,7 @@ uint32_t _addrCPU_getDirectPageIndirectLong(CPU_t *cpu, memory_t *mem)
     uint32_t address = _cpu_get_immd_byte(cpu, mem);
 
     address = _addr_add_val_bank_wrap(cpu->D, address);
-    address = _get_mem_byte(mem, address);
-    address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
-    address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 2)) << 16; // 24-bit pointer
+    address = _get_mem_long_bank_wrap(mem, address); // 24-bit pointer
 
     return address;
 }
@@ -568,16 +582,12 @@ uint32_t _addrCPU_getDirectPageIndexedIndirectX(CPU_t *cpu, memory_t *mem)
     if (cpu->P.E && ((cpu->D & 0xff) == 0))
     {
         address = _addr_add_val_page_wrap(cpu->D, address + cpu->X);
-
-        address = _get_mem_byte(mem, address);
-        address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+        address = _get_mem_word_bank_wrap(mem, address);
     }
     else
     {
         address = _addr_add_val_bank_wrap(address, cpu->D + cpu->X);
-
-        address = _get_mem_byte(mem, address);
-        address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+        address = _get_mem_word_bank_wrap(mem, address);
     }
 
     address |= _cpu_get_dbr(cpu);
@@ -606,6 +616,36 @@ uint32_t _addrCPU_getDirectPageIndexedY(CPU_t *cpu, memory_t *mem)
         _addr_add_val_bank_wrap(address, cpu->D);
         _addr_add_val_bank_wrap(address, cpu->Y);
     }
+
+    return address;
+}
+
+/**
+ * Returns the 24-bit address pointed to by the (dp),Y address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+uint32_t _addrCPU_getDirectPageIndirectIndexedY(CPU_t *cpu, memory_t *mem)
+{
+    // Get the immediate operand word of the current instruction and bank 0
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
+
+    address = _addr_add_val_bank_wrap(cpu->D, address);
+
+    if (cpu->P.E && ((cpu->D & 0xff) == 0))
+    {
+        address = _get_mem_word_page_wrap(mem, address);
+    }
+    else
+    {
+        address = _get_mem_word_bank_wrap(mem, address);
+    }
+
+    address |= _cpu_get_dbr(cpu);
+    address += cpu->Y;
+    address &= 0xffffff;
 
     return address;
 }

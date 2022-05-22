@@ -98,7 +98,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x2f: i_and(cpu, mem, 4, 5, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
         case 0x30: i_bmi(cpu, mem); break;
-
+        case 0x31: i_and(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndirectIndexedY(cpu, mem)); break;
         case 0x32: i_and(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem)); break;
 
         case 0x34: i_bit(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
