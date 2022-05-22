@@ -546,9 +546,41 @@ uint32_t _addrCPU_getDirectPageIndexedX(CPU_t *cpu, memory_t *mem)
     }
     else
     {
-        _addr_add_val_bank_wrap(address, cpu->D);
-        _addr_add_val_bank_wrap(address, cpu->X);
+        address = _addr_add_val_bank_wrap(address, cpu->D);
+        address = _addr_add_val_bank_wrap(address, cpu->X);
     }
+
+    return address;
+}
+
+/**
+ * Returns the 24-bit address pointed to by the (dp,X) address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+uint32_t _addrCPU_getDirectPageIndexedIndirectX(CPU_t *cpu, memory_t *mem)
+{
+    // Get the immediate operand word of the current instruction and bank 0
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
+
+    if (cpu->P.E && ((cpu->D & 0xff) == 0))
+    {
+        address = _addr_add_val_page_wrap(cpu->D, address + cpu->X);
+
+        address = _get_mem_byte(mem, address);
+        address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+    }
+    else
+    {
+        address = _addr_add_val_bank_wrap(address, cpu->D + cpu->X);
+
+        address = _get_mem_byte(mem, address);
+        address |= _get_mem_byte(mem, _addr_add_val_bank_wrap(address, 1)) << 8;
+    }
+
+    address |= _cpu_get_dbr(cpu);
 
     return address;
 }
@@ -645,6 +677,6 @@ uint32_t _addrCPU_getImmediate(CPU_t *cpu, memory_t *mem)
 {
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_effective_pc(cpu);
-    address |= _addr_add_val_bank_wrap(address, 1);
+    address = _addr_add_val_bank_wrap(address, 1);
     return address;
 }

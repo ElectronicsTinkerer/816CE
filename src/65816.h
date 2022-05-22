@@ -76,6 +76,7 @@ typedef enum CPU_Addr_Mode_t
 {
     CPU_ADDR_DP = 0,  // Direct page -> dp
     CPU_ADDR_DPX,     // Direct page indexed X -> dp,X
+    CPU_ADDR_DPINDX,  // Direct page indexed indirect X -> (dp,X)
     CPU_ADDR_DPY,     // Direct page indexed Y -> dp,Y
     CPU_ADDR_DPIND,   // Direct page indirect long -> (dp)
     CPU_ADDR_DPINDL,  // Direct page indirect long -> [dp]
