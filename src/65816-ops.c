@@ -25,11 +25,11 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->cycles += 1;
         }
     }
-    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL || 
+    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
              mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
              mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
              mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_DPINDX ||
-             mode == CPU_ADDR_INDDPY)
+             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY)
     {
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
@@ -46,7 +46,7 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
 
         if (mode == CPU_ADDR_ABSX || mode == CPU_ADDR_ABSY ||
-            mode == CPU_ADDR_INDDPY)
+            mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY)
         {
             // Check if index crosses a page boundary
             if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
@@ -55,7 +55,8 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             }
         }
         if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-            mode == CPU_ADDR_DPINDX || mode == CPU_ADDR_INDDPY)
+            mode == CPU_ADDR_DPINDX || mode == CPU_ADDR_INDDPY ||
+            mode == CPU_ADDR_INDDPLY)
         {
             // If DL != 0, add a cycle
             if (cpu->D & 0xff)

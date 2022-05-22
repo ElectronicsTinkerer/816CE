@@ -651,6 +651,29 @@ uint32_t _addrCPU_getDirectPageIndirectIndexedY(CPU_t *cpu, memory_t *mem)
 }
 
 /**
+ * Returns the 24-bit address pointed to by the [dp],Y address of
+ * the current instruction's operand
+ * @param cpu The cpu to use for the operation
+ * @param mem The memory which will provide the operand address
+ * @return The 24-bit effective address of the current instruction
+ */
+uint32_t _addrCPU_getDirectPageIndirectLongIndexedY(CPU_t *cpu, memory_t *mem)
+{
+    // Get the immediate operand word of the current instruction and bank 0
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
+
+    address = _addr_add_val_bank_wrap(cpu->D, address);
+
+    // Get pointer
+    address = _get_mem_long_bank_wrap(mem, address);
+
+    address += cpu->Y;
+    address &= 0xffffff;
+
+    return address;
+}
+
+/**
  * Returns the 16-bit PC value of a relative-8 branch at the
  * current CPU's PC is taken.
  * @param cpu The cpu to use for the operation
