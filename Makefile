@@ -1,6 +1,6 @@
 # makefile based on: https://makefiletutorial.com/#makefile-cookbook
 
-TARGET_EXEC := preprocessor
+TARGET_EXEC := sim
 
 BUILD_DIR := ./build
 SRC_DIR := ./src

@@ -482,7 +482,7 @@ uint32_t _addrCPU_getDirectPage(CPU_t *cpu, memory_t *mem)
 }
 
 /**
- * Returns the 24-bit address pointed to the (dp) address of
+ * Returns the 24-bit address pointed to by the dp address of
  * the current instruction's operand
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the operand address
@@ -490,8 +490,8 @@ uint32_t _addrCPU_getDirectPage(CPU_t *cpu, memory_t *mem)
  */
 uint32_t _addrCPU_getDirectPageIndirect(CPU_t *cpu, memory_t *mem)
 {
-    // Get the immediate operand word of the current instruction and bank 0
-    uint32_t address = ADDR_GET_MEM_IMMD_BYTE(cpu, mem);
+    // Get the immediate operand byte of the current instruction and bank 0
+    uint32_t address = _cpu_get_immd_byte(cpu, mem);
 
     if (cpu->P.E && ((cpu->D & 0xff) == 0))
     {

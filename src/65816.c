@@ -65,7 +65,6 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     // Fetch, decode, execute instruction
     switch (_get_mem_byte(mem, cpu->PC))
     {
-    // case 0xnn: status = i_cmp(cpu, mem, _addrCPU_relevantAddressingModeEffectiveAddressCalculation(stuff));
     case 0x00: i_brk(cpu, mem); break;
 
     case 0x02: i_cop(cpu, mem); break;
