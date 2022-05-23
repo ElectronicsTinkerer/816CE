@@ -130,31 +130,37 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x3e: i_rol(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
         case 0x3f: i_and(cpu, mem, 4, 5, CPU_ADDR_ABSLX, _addrCPU_getLongIndexedX(cpu, mem)); break;
         case 0x40: i_rti(cpu, mem); break;
-
+        case 0x41: i_eor(cpu, mem, 2, 6, CPU_ADDR_DPINDX, _addrCPU_getDirectPageIndexedIndirectX(cpu, mem)); break;
         case 0x42: i_wdm(cpu); break;
+        case 0x43: i_eor(cpu, mem, 2, 4, CPU_ADDR_SR, _addrCPU_getStackRelative(cpu, mem)); break;
 
+        case 0x45: i_eor(cpu, mem, 2, 3, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
         case 0x46: i_lsr(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
-
+        case 0x47: i_eor(cpu, mem, 2, 6, CPU_ADDR_DPINDL, _addrCPU_getDirectPageIndirectLong(cpu, mem)); break;
         case 0x48: i_pha(cpu, mem); break;
-        
+        case 0x49: i_eor(cpu, mem, 2, 2, CPU_ADDR_IMMD, _addrCPU_getImmediate(cpu, mem)); break;
         case 0x4a: i_lsr(cpu, mem, 1, 2, CPU_ADDR_IMPD, 0); break;
         case 0x4b: i_phk(cpu, mem); break;
         case 0x4c: i_jmp(cpu, mem, 3, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
-
+        case 0x4d: i_eor(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
         case 0x4e: i_lsr(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
-
+        case 0x4f: i_eor(cpu, mem, 4, 5, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
         case 0x50: i_bvc(cpu, mem); break;
+        case 0x51: i_eor(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndexedY(cpu, mem)); break;
+        case 0x52: i_eor(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem)); break;
+        case 0x53: i_eor(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem)); break;
 
+        case 0x55: i_eor(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
         case 0x56: i_lsr(cpu, mem, 2, 5, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
-
+        case 0x57: i_eor(cpu, mem, 2, 6, CPU_ADDR_INDDPLY, _addrCPU_getDirectPageIndirectLongIndexedY(cpu, mem)); break;
         case 0x58: i_cli(cpu); break;
-
+        case 0x59: i_eor(cpu, mem, 3, 4, CPU_ADDR_ABSY, _addrCPU_getAbsoluteIndexedY(cpu, mem)); break;
         case 0x5a: i_phy(cpu, mem); break;
         case 0x5b: i_tcd(cpu); break;
         case 0x5c: i_jmp(cpu, mem, 4, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
-
+        case 0x5d: i_eor(cpu, mem, 3, 4, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
         case 0x5e: i_lsr(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
-
+        case 0x5f: i_eor(cpu, mem, 4, 5, CPU_ADDR_ABSLX, _addrCPU_getLongIndexedX(cpu, mem)); break;
         case 0x60: i_rts(cpu, mem); break;
 
         case 0x62: i_per(cpu, mem); break;
@@ -301,7 +307,6 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0xfa: i_plx(cpu, mem); break;
         case 0xfb: i_xce(cpu); break;
         case 0xfc: i_jsr(cpu, mem, 8, CPU_ADDR_ABS, _addrCPU_getAbsoluteIndexedIndirectX(cpu, mem)); break;
-
 
         case 0xfe: i_inc(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
