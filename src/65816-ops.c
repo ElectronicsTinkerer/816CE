@@ -149,13 +149,13 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
     {
-        cpu->C = (data & 0x80) ? 1 : 0;
+        cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
     else // 16-bit
     {
-        cpu->P.C = (data & 0x8000) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x8000) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
         cpu->P.Z = cpu->C ? 0 : 1;
     }
@@ -1179,13 +1179,13 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
     {
-        cpu->C = (data & 0x80) ? 1 : 0;
+        cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
     else // 16-bit
     {
-        cpu->P.C = (data & 0x8000) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x8000) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
         cpu->P.Z = cpu->C ? 0 : 1;
     }
@@ -1736,6 +1736,160 @@ void i_rep(CPU_t *cpu, memory_t *mem)
 
     _cpu_update_pc(cpu, 2);
     cpu->cycles += 3;
+}
+
+void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    uint16_t post_data = 0;
+    uint16_t pre_data = 0;
+    switch (mode)
+    {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
+        pre_data = _get_mem_word_bank_wrap(mem, addr);
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
+            _set_mem_byte(mem, addr, (uint8_t)post_data);
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data << 1) | cpu->P.C;
+            _set_mem_word_bank_wrap(mem, addr, post_data);
+            cpu->cycles += 2;
+        }
+
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+        pre_data = _get_mem_word(mem, addr);
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
+            _set_mem_byte(mem, addr, (uint8_t)post_data);
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data << 1) | cpu->P.C;
+            _set_mem_word(mem, addr, post_data);
+            cpu->cycles += 2;
+        }
+        break;
+    case CPU_ADDR_IMPD:
+        pre_data = cpu->C;
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
+            cpu->C = (cpu->C & 0xff00) | post_data;
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data << 1) | cpu->P.C;
+            cpu->C = post_data;
+        }
+        break;
+    }
+
+    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    {
+        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
+        cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
+    }
+    else // 16-bit
+    {
+        cpu->P.C = (pre_data & 0x8000) ? 1 : 0;
+        cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
+        cpu->P.Z = cpu->C ? 0 : 1;
+    }
+
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
+}
+
+void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    uint16_t post_data = 0;
+    uint16_t pre_data = 0;
+    switch (mode)
+    {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
+        pre_data = _get_mem_word_bank_wrap(mem, addr);
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            _set_mem_byte(mem, addr, (uint8_t)post_data);
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data >> 1) | (cpu->P.C << 15);
+            _set_mem_word_bank_wrap(mem, addr, post_data);
+            cpu->cycles += 2;
+        }
+
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+        pre_data = _get_mem_word(mem, addr);
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            _set_mem_byte(mem, addr, (uint8_t)post_data);
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data >> 1) | (cpu->P.C << 15);
+            _set_mem_word(mem, addr, post_data);
+            cpu->cycles += 2;
+        }
+        break;
+    case CPU_ADDR_IMPD:
+        pre_data = cpu->C;
+
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        {
+            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            cpu->C = (cpu->C & 0xff00) | post_data;
+        }
+        else // 16-bit
+        {
+            post_data = (pre_data >> 1) | (cpu->P.C << 15);
+            cpu->C = post_data;
+        }
+        break;
+    }
+
+    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    {
+        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
+        cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
+    }
+    else // 16-bit
+    {
+        cpu->P.C = (pre_data & 0x8000) ? 1 : 0;
+        cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
+        cpu->P.Z = cpu->C ? 0 : 1;
+    }
+
+    cpu->cycles += cycles;
+    _cpu_update_pc(cpu, size);
 }
 
 void i_rti(CPU_t *cpu, memory_t *mem)

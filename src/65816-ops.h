@@ -70,6 +70,8 @@ void i_plp(CPU_t *, memory_t *);
 void i_plx(CPU_t *, memory_t *);
 void i_ply(CPU_t *, memory_t *);
 void i_rep(CPU_t *, memory_t *);
+void i_rol(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
+void i_ror(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_rti(CPU_t *, memory_t *);
 void i_rtl(CPU_t *, memory_t *);
 void i_rts(CPU_t *, memory_t *);
