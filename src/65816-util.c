@@ -763,7 +763,7 @@ uint32_t _addrCPU_getStackRelative(CPU_t *cpu, memory_t *mem)
  * @param mem The memory which will provide the operand address
  * @return The SR address of the current instruction
  */
-uint32_t _addrCPU_getSRIndirectIndexedY(CPU_t *cpu, memory_t *mem)
+uint32_t _addrCPU_getStackRelativeIndirectIndexedY(CPU_t *cpu, memory_t *mem)
 {
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_immd_byte(cpu, mem);

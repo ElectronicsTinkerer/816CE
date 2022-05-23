@@ -63,6 +63,6 @@ uint32_t _addrCPU_getRelative16(CPU_t *, memory_t *);
 uint32_t _addrCPU_getLong(CPU_t *, memory_t *);
 uint32_t _addrCPU_getImmediate(CPU_t *, memory_t *);
 uint32_t _addrCPU_getStackRelative(CPU_t *, memory_t *);
-uint32_t _addrCPU_getSRIndirectIndexedY(CPU_t *, memory_t *);
+uint32_t _addrCPU_getStackRelativeIndirectIndexedY(CPU_t *, memory_t *);
 
 #endif
