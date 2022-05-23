@@ -93,6 +93,7 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_IMMD,    // Immediate -> #val
     CPU_ADDR_SR,      // Stack relative -> sr,S
     CPU_ADDR_SRINDY,  // Stack relative indirect indexed Y -> (sr,S),Y
+    CPU_ADDR_IMPD     // Implied -> A
 } CPU_Addr_Mode_t;
 
 typedef uint8_t memory_t;

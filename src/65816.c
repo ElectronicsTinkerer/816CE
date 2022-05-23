@@ -69,16 +69,25 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
     case 0x02: i_cop(cpu, mem); break;
 
+    case 0x06: i_asl(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
+
     case 0x08: i_php(cpu, mem); break;
 
+    case 0x0a: i_asl(cpu, mem, 1, 2, CPU_ADDR_IMPD, 0); break;
     case 0x0b: i_phd(cpu, mem); break;
 
+    case 0x0e: i_asl(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
+
     case 0x10: i_bpl(cpu, mem); break;
+
+    case 0x0e: i_asl(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
     case 0x18: i_clc(cpu); break;
 
     case 0x1a: i_ina(cpu); break;
     case 0x1b: i_tcs(cpu); break;
+
+    case 0x1e: i_asl(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
     case 0x20: i_jsr(cpu, mem, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
     case 0x21: i_and(cpu, mem, 2, 6, CPU_ADDR_DPINDX, _addrCPU_getDirectPageIndexedIndirectX(cpu, mem)); break;
