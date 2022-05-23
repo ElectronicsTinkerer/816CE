@@ -125,18 +125,27 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
 
         case 0x42: i_wdm(cpu); break;
 
-        case 0x48: i_pha(cpu, mem); break;
+        case 0x46: i_lsr(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
 
+        case 0x48: i_pha(cpu, mem); break;
+        
+        case 0x4a: i_lsr(cpu, mem, 1, 2, CPU_ADDR_IMPD, 0); break;
         case 0x4b: i_phk(cpu, mem); break;
         case 0x4c: i_jmp(cpu, mem, 3, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
 
+        case 0x4e: i_lsr(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
+
         case 0x50: i_bvc(cpu, mem); break;
+
+        case 0x56: i_lsr(cpu, mem, 2, 5, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
 
         case 0x58: i_cli(cpu); break;
 
         case 0x5a: i_phy(cpu, mem); break;
         case 0x5b: i_tcd(cpu); break;
         case 0x5c: i_jmp(cpu, mem, 4, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
+
+        case 0x5e: i_lsr(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
 
         case 0x60: i_rts(cpu, mem); break;
 
