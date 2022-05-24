@@ -19,26 +19,28 @@ CPU_Error_Code_t resetCPU(CPU_t *cpu)
     cpu->D = 0x0000;
     cpu->DBR = 0x00;
     cpu->PBR = 0x00;
-    cpu->SP &= 0x00ff;
+    cpu->SP &= 0x00ff; // Only keep low byte of SP
     cpu->SP |= 0x0100;
-    cpu->X &= 0x00ff;
-    cpu->Y &= 0x00ff;
+    cpu->X &= 0x00ff; // Only keep low byte of X
+    cpu->Y &= 0x00ff; // Only keep low byte of Y
     cpu->P.M = 1;
     cpu->P.XB = 1;
     cpu->P.D = 0;
     cpu->P.I = 1;
     cpu->P.E = 1;
+
+    // SIM extra state vars
+    cpu->cycles = 0;
     cpu->P.CRASH = 0;
 
     // Internal use only, tell the sim that the CPU just reset
     cpu->P.RST = 1;
-    cpu->cycles = 0;
 
     return CPU_ERR_OK;
 }
 
 /**
- * Steps a CPU by one mchine cycle
+ * Steps a CPU by one machine cycle
  * @param cpu The CPU to be stepped
  * @param mem The memory array which is to be connected to the CPU
  */
