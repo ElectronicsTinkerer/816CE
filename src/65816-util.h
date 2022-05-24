@@ -7,7 +7,7 @@
 #include "65816.h"
 
 // CPU-related helper functions
-void _cpu_update_pc(CPU_t *cpu, uint16_t offset);
+void _cpu_update_pc(CPU_t *, uint16_t);
 uint8_t _cpu_get_sr(CPU_t *);
 void _cpu_set_sr(CPU_t *, uint8_t);
 void _cpu_set_sp(CPU_t *, uint16_t);
@@ -20,6 +20,7 @@ uint16_t _cpu_get_immd_word(CPU_t *, memory_t *);
 uint32_t _cpu_get_immd_long(CPU_t *, memory_t *);
 uint32_t _addr_add_val_page_wrap(uint32_t, uint32_t);
 uint32_t _addr_add_val_bank_wrap(uint32_t, uint32_t);
+void _cpu_crash(CPU_t *);
 
 // Memory-related functions
 // These are THE ONLY functions which should directly

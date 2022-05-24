@@ -145,6 +145,9 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->C = post_data;
             }
             break;
+        default:
+            _cpu_crash(cpu);
+            break;
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
@@ -1086,6 +1089,9 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->C = _get_mem_word(mem, addr);
         }
         break;
+    default:
+        _cpu_crash(cpu);
+        break;
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
@@ -1345,6 +1351,9 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             post_data = pre_data << 1;
             cpu->C = post_data;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
         break;
     }
 
@@ -2114,6 +2123,9 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->C = post_data;
         }
         break;
+    default:
+        _cpu_crash(cpu);
+        break;
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
@@ -2190,6 +2202,9 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             post_data = (pre_data >> 1) | (cpu->P.C << 15);
             cpu->C = post_data;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
         break;
     }
 
@@ -2366,6 +2381,9 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             _set_mem_word(mem, addr, cpu->C);
         }
+        break;
+    default:
+        _cpu_crash(cpu);
         break;
     }
 

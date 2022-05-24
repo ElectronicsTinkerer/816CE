@@ -177,6 +177,19 @@ uint16_t _get_mem_word(memory_t *mem, uint32_t addr)
 }
 
 /**
+ * Get a word from memory, PAGE WRAPPING
+ * @param mem The memory array to use as system memory
+ * @param addr The address in memory to read
+ * @return The word in memory at the specified address and address+1, page wrapped
+ */
+uint16_t _get_mem_word_page_wrap(memory_t *mem, uint32_t addr)
+{
+    uint16_t val = _get_mem_byte(mem, addr);
+    val |= _get_mem_byte(mem, _addr_add_val_page_wrap(addr, 1)) << 8;
+    return val;
+}
+
+/**
  * Get a word from memory, BANK WRAPPING
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to read
@@ -240,6 +253,16 @@ void _set_mem_word_bank_wrap(memory_t *mem, uint32_t addr, uint16_t val)
 {
     _set_mem_byte(mem, addr, val);
     _set_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1), val >> 8);
+}
+
+/**
+ * Set the flag in a specified cpu to indicate that an invalid
+ * internal sim error/state was reached
+ * @param cpu The CPU which should have its error flag set
+ */
+void _cpu_crash(CPU_t *cpu)
+{
+    cpu->P.CRASH = 1;
 }
 
 /******************************************************
@@ -401,7 +424,7 @@ uint16_t _addrCPU_getAbsoluteIndirect(CPU_t *cpu, memory_t *mem)
 
     // Find and return the resultant indirect address value
     // (from Bank 0)
-    uint16_t data = _get_mem_word_bank_wrap(cpu, address);
+    uint16_t data = _get_mem_word_bank_wrap(mem, address);
     return data;
 }
 

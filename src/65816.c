@@ -28,6 +28,7 @@ CPU_Error_Code_t resetCPU(CPU_t *cpu)
     cpu->P.D = 0;
     cpu->P.I = 1;
     cpu->P.E = 1;
+    cpu->P.CRASH = 0;
 
     // Internal use only, tell the sim that the CPU just reset
     cpu->P.RST = 1;
@@ -50,7 +51,12 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     }
 #endif
 
-    // Handle CPU reset
+    if (cpu->P.CRASH == 1)
+    {
+        return CPU_ERR_CRASH;
+    }
+
+    // Handle CPU reset (does not perform a full CPU reset)
     if (cpu->P.RST)
     {
         cpu->PC = _get_mem_word(mem, CPU_VEC_RESET);
@@ -149,7 +155,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
         case 0x51: i_eor(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndexedY(cpu, mem)); break;
         case 0x52: i_eor(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem)); break;
         case 0x53: i_eor(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem)); break;
-        case 0x44: i_mvn(cpu, mem);
+        case 0x54: i_mvn(cpu, mem);
         case 0x55: i_eor(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
         case 0x56: i_lsr(cpu, mem, 2, 5, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
         case 0x57: i_eor(cpu, mem, 2, 6, CPU_ADDR_INDDPLY, _addrCPU_getDirectPageIndirectLongIndexedY(cpu, mem)); break;
@@ -318,6 +324,11 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
             return CPU_ERR_UNKNOWN_OPCODE;
     }
 
+    // Make sure opcode handling did not result in an invalid state
+    if (cpu->P.CRASH == 1)
+    {
+        return CPU_ERR_CRASH;
+    }
 
     // Handle any interrupts that are pending
     if (cpu->P.NMI)
