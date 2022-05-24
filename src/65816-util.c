@@ -207,6 +207,7 @@ uint32_t _get_mem_long_bank_wrap(memory_t *mem, uint32_t addr)
  * Set a byte in memory
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to write
+ * @param val The data value to store
  */
 void _set_mem_byte(memory_t *mem, uint32_t addr, uint8_t val)
 {
@@ -221,6 +222,7 @@ void _set_mem_byte(memory_t *mem, uint32_t addr, uint8_t val)
  *       the high byte will be read from address 0x00000000.
  * @param mem The memory array to use as system memory
  * @param addr The address in memory to write
+ * @param val The data value to store
  */
 void _set_mem_word(memory_t *mem, uint32_t addr, uint16_t val)
 {

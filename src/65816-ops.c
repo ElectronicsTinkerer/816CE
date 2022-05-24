@@ -1277,6 +1277,70 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     _cpu_update_pc(cpu, size);
 }
 
+void i_mvn(CPU_t *cpu, memory_t *mem)
+{
+    uint32_t operand_addr = _addrCPU_getImmediate(cpu, mem);
+
+    // Read operands to get banks
+    uint8_t dst_bank = _get_mem_byte(mem, operand_addr);
+    uint8_t src_bank = _get_mem_byte(mem, _addr_add_val_bank_wrap(operand_addr, 1));
+
+    // Calculate full addresses
+    uint32_t dst_addr = (dst_bank << 16) | cpu->Y;
+    uint32_t src_addr = (src_bank << 16) | cpu->X;
+
+    // Perform copy
+    uint8_t tmp = _get_mem_byte(mem, src_addr);
+    _set_mem_byte(mem, dst_addr, tmp);
+
+    // Update regs for next byte
+    cpu->Y += 1;
+    cpu->X += 1;
+    cpu->DBR = dst_bank;
+
+    cpu->C -= 1;
+
+    // Are we done yet?
+    if (cpu->C == (uint16_t)-1)
+    {
+        // Done, move to next instruction
+        _cpu_update_pc(cpu, 3);
+    }
+    cpu->cycles += 7; // 7 cycles per byte moved
+}
+
+void i_mvp(CPU_t *cpu, memory_t *mem)
+{
+    uint32_t operand_addr = _addrCPU_getImmediate(cpu, mem);
+
+    // Read operands to get banks
+    uint8_t dst_bank = _get_mem_byte(mem, operand_addr);
+    uint8_t src_bank = _get_mem_byte(mem, _addr_add_val_bank_wrap(operand_addr, 1));
+
+    // Calculate full addresses
+    uint32_t dst_addr = (dst_bank << 16) | cpu->Y;
+    uint32_t src_addr = (src_bank << 16) | cpu->X;
+
+    // Perform copy
+    uint8_t tmp = _get_mem_byte(mem, src_addr);
+    _set_mem_byte(mem, dst_addr, tmp);
+
+    // Update regs for next byte
+    cpu->Y -= 1;
+    cpu->X -= 1;
+    cpu->DBR = dst_bank;
+
+    cpu->C -= 1;
+
+    // Are we done yet?
+    if (cpu->C == (uint16_t)-1)
+    {
+        // Done, move to next instruction
+        _cpu_update_pc(cpu, 3);
+    }
+    cpu->cycles += 7; // 7 cycles per byte moved
+}
+
 void i_nop(CPU_t *cpu)
 {
     _cpu_update_pc(cpu, 1);
