@@ -2297,6 +2297,87 @@ void i_stp(CPU_t *cpu)
     cpu->P.STP = 1;
 }
 
+void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    switch (mode)
+    {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+        /* Fallthrough! */
+    case CPU_ADDR_IMMD:
+    case CPU_ADDR_SR:
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        {
+            _set_mem_byte(mem, addr, (uint8_t)cpu->C);
+        }
+        else
+        {
+            _set_mem_word_bank_wrap(mem, addr, cpu->C);
+        }
+        break;
+
+    case CPU_ADDR_INDDPY:
+        // If page boundary is crossed, add a cycle
+        // getDirectPage() since this is the base address before Y is added
+        if ((_addrCPU_getDirectPage(cpu, mem) & 0xff00) != (addr & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+        /* Fallthrough! */
+    case CPU_ADDR_DPIND:
+    case CPU_ADDR_DPINDL:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPLY:
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+        /* Fallthrough! */
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSL:
+    case CPU_ADDR_ABSLX:
+    case CPU_ADDR_SRINDY:
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        {
+            _set_mem_byte(mem, addr, (uint8_t)cpu->C);
+        }
+        else
+        {
+            _set_mem_word(mem, addr, cpu->C);
+        }
+        break;
+
+    case CPU_ADDR_ABSX:
+    case CPU_ADDR_ABSY:
+        // If page boundary is crossed, add a cycle
+        if ((_cpu_get_immd_word(cpu, mem) & 0xff00) != (addr & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        {
+            _set_mem_byte(mem, addr, (uint8_t)cpu->C);
+        }
+        else
+        {
+            _set_mem_word(mem, addr, cpu->C);
+        }
+        break;
+    }
+
+    if (!(cpu->P.E || (!cpu->P.E && cpu->P.XB)))
+    {
+        cpu->cycles += 1;
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
 void i_stx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
     if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPY)
