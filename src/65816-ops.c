@@ -68,18 +68,18 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             // 1e
             if (al >= 0x00a0)
             {
-                al = al + 0x0060;
+                al = ((al + 0x0060) & 0x00ff) + 0x0100;
             }
             // 1c
             al = (cpu->C & 0x0f00) + (val & 0x0f00) + al;
             // 1e
             if (al >= 0x0a00)
             {
-                al = al + 0x0600;
+                al = ((al + 0x0600) & 0x0fff) + 0x1000;
             }
             // 1c
             al = (cpu->C & 0xf000) + (val & 0xf000) + al;
-            cpu->P.V = ((int16_t)al < -32768 || (int16_t)al > 32767) ? 1 : 0;
+            cpu->P.V = ((int32_t)al < -32768 || (int32_t)al > 32767) ? 1 : 0;
             // 1e
             if (al >= 0xa000)
             {
@@ -89,7 +89,7 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else
         {
             al = cpu->C + val + cpu->P.C;
-            cpu->P.V = ((int16_t)al < -32768 || (int16_t)al > 32767) ? 1 : 0;
+            cpu->P.V = ((int32_t)al < -32768 || (int32_t)al > 32767) ? 1 : 0;
         }
         // 1f
         cpu->C = al & 0xffff;
@@ -2226,6 +2226,156 @@ void i_rts(CPU_t *cpu, memory_t *mem)
     cpu->cycles += 6;
 }
 
+void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+    {
+        uint8_t val = _get_mem_byte(mem, addr);
+        uint16_t al, alb;
+
+        // Binary mode calculation
+        alb = (cpu->C & 0xff) - val + cpu->P.C - 1;
+
+        if (cpu->P.D) // BCD mode
+        {
+            // Subtraction Algorithm: http://www.6502.org/tutorials/decimal_mode.html#A
+            // 3a
+            al = (cpu->C & 0x0f) - (val & 0x0f) + cpu->P.C - 1;
+            // 3b
+            if ((int16_t)al < 0)
+            {
+                al = ((al - 0x06) & 0x0f) - 0x10;
+            }
+            // 3c
+            al = (cpu->C & 0xf0) - (val & 0xf0) + al;
+            // 3d
+            if ((int16_t)al < 0)
+            {
+                al = al - 0x60;
+            }
+        }
+        else // Binary mode
+        {
+            al = alb;
+        }
+
+        // Update flags
+        cpu->C = (cpu->C & 0xff00) | (al & 0xff);
+        cpu->P.N = (al & 0x80) ? 1 : 0;
+        cpu->P.Z = ((al & 0xff) == 0) ? 1 : 0;
+
+        // C and V are based on the binary result
+        cpu->P.V = ((int16_t)alb < -128 || (int16_t)alb > 127) ? 1 : 0;
+        cpu->P.C = (alb >= 0x100) ? 1 : 0;
+
+    }
+    else // 16-bit
+    {
+        uint16_t val;
+        uint32_t al, alb;
+        
+        if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
+            mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
+        {
+            val = _get_mem_word_bank_wrap(mem, addr);
+        }
+        else
+        {
+            val = _get_mem_word(mem, addr);
+        }
+
+        // Binary arithmetic value
+        alb = cpu->C - val + cpu->P.C - 1;
+
+        if (cpu->P.D)
+        {
+            // Subtraction Algorithm: http://www.6502.org/tutorials/decimal_mode.html#A
+            // 3a
+            al = (cpu->C & 0x000f) - (val & 0x000f) + cpu->P.C - 1;
+            // 3b
+            if (al >= 0x000a)
+            {
+                al = ((al - 0x0006) & 0x000f) - 0x0010;
+            }
+            // 3c
+            al = (cpu->C & 0x00f0) - (val & 0x00f0) + al;
+            // 3d
+            if (al >= 0x00a0)
+            {
+                al = ((al - 0x0060) & 0x00ff) - 0x0100;
+            }
+            // 3c
+            al = (cpu->C & 0x0f00) - (val & 0x0f00) + al;
+            // 3d
+            if (al >= 0x0a00)
+            {
+                al = ((al - 0x0600) & 0x0fff) - 0x1000;
+            }
+            // 3c
+            al = (cpu->C & 0xf000) - (val & 0xf000) + al;
+            // 3d
+            if (al >= 0xa000)
+            {
+                al = al - 0x6000;
+            }
+        }
+        else
+        {
+            al = alb;
+        }
+
+        // Update flags
+        cpu->C = al & 0xffff;
+        cpu->P.N = (al & 0x8000) ? 1 : 0;
+        cpu->P.Z = ((al & 0xffff) == 0) ? 1 : 0;
+
+        // C and V are based on the binary result
+        cpu->P.V = ((int32_t)alb < -32768 || (int32_t)alb > 32767) ? 1 : 0;
+        cpu->P.C = (alb >= 0x10000) ? 1 : 0;
+
+        cpu->cycles += 1;
+        if (mode == CPU_ADDR_IMMD)
+        {
+            size += 1; // One extra byte in operand
+        }
+    }
+
+    // If DL != 0, add a cycle
+    if ((mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX) &&
+        (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+   
+    if (mode == CPU_ADDR_ABSX)
+    {
+        // Check if index crosses a page boundary
+        if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
+    {
+        // Check if index crosses a page boundary
+        if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+
+    // If DL != 0, add a cycle
+    if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
+            mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+            mode == CPU_ADDR_INDDPLY) &&
+        (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
 
 void i_sec(CPU_t *cpu)
 {

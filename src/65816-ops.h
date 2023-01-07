@@ -70,6 +70,7 @@ void i_ror(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_rti(CPU_t *, memory_t *);
 void i_rtl(CPU_t *, memory_t *);
 void i_rts(CPU_t *, memory_t *);
+void i_sbc(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_sec(CPU_t *);
 void i_sed(CPU_t *);
 void i_sei(CPU_t *);
