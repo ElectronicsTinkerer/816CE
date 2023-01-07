@@ -1,11 +1,151 @@
 
 #include "65816-ops.h"
 
+
+void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+    {
+        uint8_t val = _get_mem_byte(mem, addr);
+        uint16_t al;
+        if (cpu->P.D) // BCD mode
+        {
+            // Addition Algorithm: http://www.6502.org/tutorials/decimal_mode.html#A
+            // 1a
+            al = (cpu->C & 0x0f) + (val & 0x0f) + cpu->P.C;
+            // 1b
+            if (al >= 0x0a)
+            {
+                al = ((al + 0x06) & 0x0f) + 0x10;
+            }
+            // 1c
+            al = (cpu->C & 0xf0) + (val & 0xf0) + al;
+            cpu->P.V = ((int16_t)al < -128 || (int16_t)al > 127) ? 1 : 0;
+            // 1e
+            if (al >= 0xa0)
+            {
+                al = al + 0x60;
+            }
+        }
+        else // Binary mode
+        {
+            al = (cpu->C & 0xff) + val + cpu->P.C;
+            cpu->P.V = ((int16_t)al < -128 || (int16_t)al > 127) ? 1 : 0;
+        }
+
+        // 1f
+        cpu->C = (cpu->C & 0xff00) | (al & 0xff);
+        cpu->P.C = (al >= 0x100) ? 1 : 0;
+        cpu->P.N = (al & 0x80) ? 1 : 0;
+        cpu->P.Z = ((al & 0xff) == 0) ? 1 : 0;
+    }
+    else // 16-bit
+    {
+        uint16_t val;
+        uint32_t al;
+        
+        if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
+            mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
+        {
+            val = _get_mem_word_bank_wrap(mem, addr);
+        }
+        else
+        {
+            val = _get_mem_word(mem, addr);
+        }
+        if (cpu->P.D)
+        {
+            // Addition Algorithm: http://www.6502.org/tutorials/decimal_mode.html#A
+            // 1a
+            al = (cpu->C & 0x000f) + (val & 0x000f) + cpu->P.C;
+            // 1b
+            if (al >= 0x000a)
+            {
+                al = ((al + 0x0006) & 0x000f) + 0x0010;
+            }
+            // 1c
+            al = (cpu->C & 0x00f0) + (val & 0x00f0) + al;
+            // 1e
+            if (al >= 0x00a0)
+            {
+                al = al + 0x0060;
+            }
+            // 1c
+            al = (cpu->C & 0x0f00) + (val & 0x0f00) + al;
+            // 1e
+            if (al >= 0x0a00)
+            {
+                al = al + 0x0600;
+            }
+            // 1c
+            al = (cpu->C & 0xf000) + (val & 0xf000) + al;
+            cpu->P.V = ((int16_t)al < -32768 || (int16_t)al > 32767) ? 1 : 0;
+            // 1e
+            if (al >= 0xa000)
+            {
+                al = al + 0x6000;
+            }
+        }
+        else
+        {
+            al = cpu->C + val + cpu->P.C;
+            cpu->P.V = ((int16_t)al < -32768 || (int16_t)al > 32767) ? 1 : 0;
+        }
+        // 1f
+        cpu->C = al & 0xffff;
+        cpu->P.C = (al >= 0x10000) ? 1 : 0;
+        cpu->P.N = (al & 0x8000) ? 1 : 0;
+        cpu->P.Z = ((al & 0xffff) == 0) ? 1 : 0;
+
+        cpu->cycles += 1;
+        if (mode == CPU_ADDR_IMMD)
+        {
+            size += 1; // One extra byte in operand
+        }
+    }
+
+    // If DL != 0, add a cycle
+    if ((mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX) &&
+        (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+   
+    if (mode == CPU_ADDR_ABSX)
+    {
+        // Check if index crosses a page boundary
+        if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+    else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
+    {
+        // Check if index crosses a page boundary
+        if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+        {
+            cpu->cycles += 1;
+        }
+    }
+
+    // If DL != 0, add a cycle
+    if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
+            mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+            mode == CPU_ADDR_INDDPLY) &&
+        (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
 void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
     if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
             cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -32,7 +172,7 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
              mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
              mode == CPU_ADDR_SRINDY)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
             cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -75,7 +215,7 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     }
     else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr));
             cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -103,7 +243,7 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         case CPU_ADDR_DPX:
             pre_data = _get_mem_word_bank_wrap(mem, addr);
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
             {
                 post_data = ((pre_data << 1) & 0xff);
                 _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -125,7 +265,7 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         case CPU_ADDR_ABSX:
             pre_data = _get_mem_word(mem, addr);
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
             {
                 post_data = ((pre_data << 1) & 0xff);
                 _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -140,7 +280,7 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         case CPU_ADDR_IMPD:
             pre_data = cpu->C;
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
             {
                 post_data = ((pre_data << 1) & 0xff);
                 cpu->C = (cpu->C & 0xff00) | post_data;
@@ -156,7 +296,7 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             break;
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -489,7 +629,7 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
         mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t res = (cpu->C & 0xff) - _get_mem_byte(mem, addr);
             cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -525,7 +665,7 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
              mode == CPU_ADDR_DPINDX || mode == CPU_ADDR_INDDPLY ||
              mode == CPU_ADDR_SRINDY)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t res = (cpu->C & 0xff) - _get_mem_byte(mem, addr);
             cpu->P.N = (res & 0x80) ? 1 : 0;
@@ -854,7 +994,7 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 {
     if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr));
         }
@@ -876,7 +1016,7 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
              mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
              mode == CPU_ADDR_SRINDY)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr));
         }
@@ -915,7 +1055,7 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     }
     else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr));
         }
@@ -925,7 +1065,7 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
@@ -1133,7 +1273,7 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         /* Fallthrough! */
     case CPU_ADDR_IMMD:
     case CPU_ADDR_SR:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             cpu->C = (cpu->C & 0xff00) | _get_mem_byte(mem, addr);
         }
@@ -1164,7 +1304,7 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSL:
     case CPU_ADDR_ABSLX:
     case CPU_ADDR_SRINDY:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             cpu->C = (cpu->C & 0xff00) | _get_mem_byte(mem, addr);
         }
@@ -1181,7 +1321,7 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             cpu->C = (cpu->C & 0xff00) | _get_mem_byte(mem, addr);
         }
@@ -1195,7 +1335,7 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M))
     {
         cpu->P.Z = ((cpu->C & 0xff) == 0);
         cpu->P.N = ((cpu->C & 0x80) == 0x80);
@@ -1405,7 +1545,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_DPX:
         pre_data = _get_mem_word_bank_wrap(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff);
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -1427,7 +1567,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSX:
         pre_data = _get_mem_word(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff);
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -1442,7 +1582,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_IMPD:
         pre_data = cpu->C;
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff);
             cpu->C = (cpu->C & 0xff00) | post_data;
@@ -1458,7 +1598,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -1549,7 +1689,7 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 {
     if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr));
         }
@@ -1571,7 +1711,7 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
              mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
              mode == CPU_ADDR_SRINDY)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr));
         }
@@ -1610,7 +1750,7 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     }
     else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
     {
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr));
         }
@@ -1620,7 +1760,7 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
@@ -2183,7 +2323,7 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_DPX:
         pre_data = _get_mem_word_bank_wrap(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -2205,7 +2345,7 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSX:
         pre_data = _get_mem_word(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -2220,7 +2360,7 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_IMPD:
         pre_data = cpu->C;
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data << 1) & 0xff) | cpu->P.C;
             cpu->C = (cpu->C & 0xff00) | post_data;
@@ -2236,7 +2376,7 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -2263,7 +2403,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_DPX:
         pre_data = _get_mem_word_bank_wrap(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -2285,7 +2425,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSX:
         pre_data = _get_mem_word(mem, addr);
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
             _set_mem_byte(mem, addr, (uint8_t)post_data);
@@ -2300,7 +2440,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_IMPD:
         pre_data = cpu->C;
 
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
             cpu->C = (cpu->C & 0xff00) | post_data;
@@ -2316,7 +2456,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     }
 
-    if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
         cpu->C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
@@ -2433,7 +2573,7 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         /* Fallthrough! */
     case CPU_ADDR_IMMD:
     case CPU_ADDR_SR:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             _set_mem_byte(mem, addr, (uint8_t)cpu->C);
         }
@@ -2464,7 +2604,7 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSL:
     case CPU_ADDR_ABSLX:
     case CPU_ADDR_SRINDY:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             _set_mem_byte(mem, addr, (uint8_t)cpu->C);
         }
@@ -2481,7 +2621,7 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-        if (cpu->P.E || (!cpu->P.E && cpu->P.XB))
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             _set_mem_byte(mem, addr, (uint8_t)cpu->C);
         }
@@ -2495,7 +2635,7 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     }
 
-    if (!(cpu->P.E || (!cpu->P.E && cpu->P.XB)))
+    if (!(cpu->P.E || (!cpu->P.E && cpu->P.M)))
     {
         cpu->cycles += 1;
     }
