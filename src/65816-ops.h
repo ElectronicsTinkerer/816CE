@@ -85,6 +85,8 @@ void i_tay(CPU_t *);
 void i_tcd(CPU_t *);
 void i_tcs(CPU_t *);
 void i_tdc(CPU_t *);
+void i_trb(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
+void i_tsb(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_tsc(CPU_t *);
 void i_tsx(CPU_t *);
 void i_txa(CPU_t *);

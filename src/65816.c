@@ -77,7 +77,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x01: i_ora(cpu, mem, 2, 6, CPU_ADDR_DPINDX, _addrCPU_getDirectPageIndexedIndirectX(cpu, mem)); break;
     case 0x02: i_cop(cpu, mem); break;
     case 0x03: i_ora(cpu, mem, 2, 4, CPU_ADDR_SR, _addrCPU_getStackRelative(cpu, mem)); break;
-
+    case 0x04: i_tsb(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
     case 0x05: i_ora(cpu, mem, 2, 3, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
     case 0x06: i_asl(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
     case 0x07: i_ora(cpu, mem, 2, 6, CPU_ADDR_DPINDL, _addrCPU_getDirectPageIndirectLong(cpu, mem)); break;
@@ -85,7 +85,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x09: i_ora(cpu, mem, 2, 2, CPU_ADDR_IMMD, _addrCPU_getImmediate(cpu, mem)); break;
     case 0x0a: i_asl(cpu, mem, 1, 2, CPU_ADDR_IMPD, 0); break;
     case 0x0b: i_phd(cpu, mem); break;
-
+    case 0x0c: i_tsb(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
     case 0x0d: i_ora(cpu, mem, 3, 4, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
     case 0x0e: i_asl(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
     case 0x0f: i_ora(cpu, mem, 4, 5, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem)); break;
@@ -93,7 +93,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x11: i_ora(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndirectIndexedY(cpu, mem)); break;
     case 0x12: i_ora(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem)); break;
     case 0x13: i_ora(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem)); break;
-
+    case 0x14: i_tsb(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem)); break;
     case 0x15: i_ora(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
     case 0x16: i_asl(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem)); break;
     case 0x17: i_ora(cpu, mem, 2, 6, CPU_ADDR_INDDPLY, _addrCPU_getDirectPageIndirectLongIndexedY(cpu, mem)); break;
@@ -101,7 +101,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x19: i_ora(cpu, mem, 3, 4, CPU_ADDR_ABSY, _addrCPU_getAbsoluteIndexedY(cpu, mem)); break;
     case 0x1a: i_ina(cpu); break;
     case 0x1b: i_tcs(cpu); break;
-
+    case 0x1c: i_trb(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem)); break;
     case 0x1d: i_ora(cpu, mem, 3, 4, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
     case 0x1e: i_asl(cpu, mem, 3, 7, CPU_ADDR_ABSX, _addrCPU_getAbsoluteIndexedX(cpu, mem)); break;
     case 0x1f: i_ora(cpu, mem, 4, 5, CPU_ADDR_ABSLX, _addrCPU_getLongIndexedX(cpu, mem)); break;

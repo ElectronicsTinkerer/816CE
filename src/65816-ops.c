@@ -104,13 +104,6 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
     }
 
-    // If DL != 0, add a cycle
-    if ((mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX) &&
-        (cpu->D & 0xff) != 0)
-    {
-        cpu->cycles += 1;
-    }
-   
     if (mode == CPU_ADDR_ABSX)
     {
         // Check if index crosses a page boundary
@@ -131,6 +124,7 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     // If DL != 0, add a cycle
     if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+            mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
             mode == CPU_ADDR_INDDPLY) &&
         (cpu->D & 0xff) != 0)
     {
@@ -2340,13 +2334,6 @@ void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
     }
 
-    // If DL != 0, add a cycle
-    if ((mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX) &&
-        (cpu->D & 0xff) != 0)
-    {
-        cpu->cycles += 1;
-    }
-   
     if (mode == CPU_ADDR_ABSX)
     {
         // Check if index crosses a page boundary
@@ -2367,6 +2354,7 @@ void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     // If DL != 0, add a cycle
     if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+            mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
             mode == CPU_ADDR_INDDPLY) &&
         (cpu->D & 0xff) != 0)
     {
@@ -2691,6 +2679,90 @@ void i_tdc(CPU_t *cpu)
 
     _cpu_update_pc(cpu, 1);
     cpu->cycles += 2;
+}
+
+void i_trb(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+    {
+        uint8_t val = _get_mem_byte(mem, addr);
+
+        _set_mem_byte(mem, addr, val & (cpu->C ^ 0xff));
+
+        cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+    }
+    else // 16-bit
+    {
+        uint16_t val;
+        
+        if (mode == CPU_ADDR_DP)
+        {
+            val = _get_mem_word_bank_wrap(mem, addr);
+
+            _set_mem_word_bank_wrap(mem, addr, val & (cpu->C ^ 0xffff));
+        }
+        else
+        {
+            val = _get_mem_word(mem, addr);
+            
+            _set_mem_word(mem, addr, val & (cpu->C ^ 0xffff));
+        }
+
+        cpu->P.Z = (cpu->C & val) ? 0 : 1;
+
+        cpu->cycles += 2;  // Two! (read + write op)
+    }
+
+    // If DL != 0, add a cycle
+    if (mode == CPU_ADDR_DP && (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
+}
+
+void i_tsb(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+{
+    if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+    {
+        uint8_t val = _get_mem_byte(mem, addr);
+
+        _set_mem_byte(mem, addr, val | (cpu->C & 0xff));
+
+        cpu->P.Z = ((cpu->C & 0xff) & val) ? 0 : 1;
+    }
+    else // 16-bit
+    {
+        uint16_t val;
+        
+        if (mode == CPU_ADDR_DP)
+        {
+            val = _get_mem_word_bank_wrap(mem, addr);
+
+            _set_mem_word_bank_wrap(mem, addr, val | cpu->C);
+        }
+        else
+        {
+            val = _get_mem_word(mem, addr);
+            
+            _set_mem_word(mem, addr, val | cpu->C);
+        }
+
+        cpu->P.Z = (cpu->C & val) ? 0 : 1;
+
+        cpu->cycles += 2; // Two! (read + write op)
+    }
+
+    // If DL != 0, add a cycle
+    if (mode == CPU_ADDR_DP && (cpu->D & 0xff) != 0)
+    {
+        cpu->cycles += 1;
+    }
+
+    _cpu_update_pc(cpu, size);
+    cpu->cycles += cycles;
 }
 
 void i_tsc(CPU_t *cpu)
