@@ -23,6 +23,7 @@ void i_clc(CPU_t *);
 void i_cld(CPU_t *);
 void i_cli(CPU_t *);
 void i_clv(CPU_t *);
+void i_cmp(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_cop(CPU_t *, memory_t *);
 void i_cpx(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
 void i_cpy(CPU_t *, memory_t *, uint8_t, uint8_t, CPU_Addr_Mode_t, uint32_t);
