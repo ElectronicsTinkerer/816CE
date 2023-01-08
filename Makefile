@@ -7,7 +7,7 @@ SRC_DIR := ./src
 
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
 
-C_FLAGS := -Wall -pedantic 
+C_FLAGS := -Wall -pedantic -lncurses
 
 all : $(OBJS)
 	mkdir -p $(BUILD_DIR)

@@ -61,6 +61,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     // Handle CPU reset (does not perform a full CPU reset)
     if (cpu->P.RST)
     {
+        cpu->P.RST = 0;
         cpu->PC = _get_mem_word(mem, CPU_VEC_RESET);
         return CPU_ERR_OK;
     }
