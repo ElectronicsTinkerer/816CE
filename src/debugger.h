@@ -6,8 +6,16 @@
 #ifndef _DEBUGGER_H
 #define _DEBUGGER_H
 
+#include <ncurses.h>
+
 #define KEY_CTRL_C 3
-#define KEY_CTRL_X 24
+#define KEY_CTRL_H 8
+#define KEY_CR 10
+
+#define MAX_CMD_LEN 40
+
+#define CMD_DISP_X_OFFS 3
+
 
 // Keep in sync with status_msgs
 typedef enum status_t {
@@ -25,15 +33,12 @@ static char status_msgs[][64] = {
 };
     
 
-// Keep in sync with state_msgs
-typedef enum state_t {
-    STATE_IDLE = 0,
-    STATE_CRASH
-} state_t;
-
-static char state_msgs[][16] = {
-    "IDLE",
-    "CRASH"
-};
+// Memory watch window
+typedef struct watch_t {
+    WINDOW *win;
+    uint32_t addr_s; // Start address of watch
+    int win_height;
+    int win_width;
+} watch_t;
 
 #endif
