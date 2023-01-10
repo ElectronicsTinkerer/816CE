@@ -83,7 +83,7 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_DPY,     // Direct page indexed Y -> dp,Y
     CPU_ADDR_INDDPY,  // Direct page indirect indexed Y -> (dp),Y
     CPU_ADDR_INDDPLY, // Direct page indirect long indexed Y -> [dp],Y
-    CPU_ADDR_DPIND,   // Direct page indirect long -> (dp)
+    CPU_ADDR_DPIND,   // Direct page indirect -> (dp)
     CPU_ADDR_DPINDL,  // Direct page indirect long -> [dp]
     CPU_ADDR_ABS,     // Absolute -> abs
     CPU_ADDR_ABSX,    // Absolute indexed X -> abs,X
@@ -96,7 +96,10 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_IMMD,    // Immediate -> #val
     CPU_ADDR_SR,      // Stack relative -> sr,S
     CPU_ADDR_SRINDY,  // Stack relative indirect indexed Y -> (sr,S),Y
-    CPU_ADDR_IMPD     // Implied -> A
+    CPU_ADDR_IMPD,    // Implied -> A
+    CPU_ADDR_BMV,     // Block move src,dst
+    CPU_ADDR_PCR,     // Program counter relative (8-bit)
+    CPU_ADDR_PCRL     // Program counter relative (16-bit)
 } CPU_Addr_Mode_t;
 
 typedef uint8_t memory_t;

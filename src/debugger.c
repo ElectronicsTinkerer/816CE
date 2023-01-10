@@ -145,29 +145,34 @@ void mem_watch_print(watch_t *w, memory_t *mem, uint32_t pc)
     size_t cols, col, row;
     uint32_t i;
 
-    cols = (w->win_width - 10) / 3;
-    if (cols < 16) {
-        cols = 8;
-    } else if (cols < 32) {
-        cols = 16;
-    } else {
-        cols = 32; // WIDE! screen
-    }
-    i = w->addr_s;
-    for (row = 0; row < w->win_height - 2; ++row) {
-        wattron(w->win, A_DIM);
-        mvwprintw(w->win, 1 + row, 2, "%06x:", i);
-        wattroff(w->win, A_DIM);
-        for (col = 0; col < cols; ++col, ++i) {
-            wprintw(w->win, " ");
+    if (w.disasm_mode) { // Show disassembly
 
-            // If the CPU's PC is at this address, highlight it
-            if (i == pc) {
-                wattron(w->win, A_BOLD | A_UNDERLINE);
-            }
-            wprintw(w->win, "%02x", mem[i]);
-            if (i == pc) {
-                wattroff(w->win, A_BOLD | A_UNDERLINE);
+    }
+    else { // Just show memory contents
+        cols = (w->win_width - 10) / 3;
+        if (cols < 16) {
+            cols = 8;
+        } else if (cols < 32) {
+            cols = 16;
+        } else {
+            cols = 32; // WIDE! screen
+        }
+        i = w->addr_s;
+        for (row = 0; row < w->win_height - 2; ++row) {
+            wattron(w->win, A_DIM);
+            mvwprintw(w->win, 1 + row, 2, "%06x:", i);
+            wattroff(w->win, A_DIM);
+            for (col = 0; col < cols; ++col, ++i) {
+                wprintw(w->win, " ");
+
+                // If the CPU's PC is at this address, highlight it
+                if (i == pc) {
+                    wattron(w->win, A_BOLD | A_UNDERLINE);
+                }
+                wprintw(w->win, "%02x", mem[i]);
+                if (i == pc) {
+                    wattroff(w->win, A_BOLD | A_UNDERLINE);
+                }
             }
         }
     }

@@ -39,6 +39,7 @@ typedef struct watch_t {
     uint32_t addr_s; // Start address of watch
     int win_height;
     int win_width;
+    bool disasm_mode;
 } watch_t;
 
 #endif
