@@ -1,20 +1,36 @@
-# makefile based on: https://makefiletutorial.com/#makefile-cookbook
+# Based on: https://developer.ibm.com/tutorials/au-lexyacc/
 
-TARGET_EXEC := sim
+CFLAGS := -Wall -pedantic
 
-BUILD_DIR := ./build
-SRC_DIR := ./src
+BUILD_DIR := build
+SRC_DIR := src
+
+BIN_NAME := sim
+
+PROG := $(BUILD_DIR)/$(BIN_NAME)
 
 SRCS := $(shell find $(SRC_DIR) -name '*.c')
+SRCSP := $(SRCS:%.c=%.c)
+OBJS := ${SRCS:.c=.o}
+OBJSP :=$(SRCS:%.c=$(BUILD_DIR)/%.o)
+SNAMES := ${SRCS:.c=}
 
-C_FLAGS := -Wall -pedantic -lncurses
+CC := gcc
 
-all : $(OBJS)
+# .PHONY: all
+all: $(BUILD_DIR) $(PROG)
+
+$(PROG): $(SRCSP)
+	$(CC) $(CFLAGS) $^ -o $@ -lncurses -iquote$(SRC_DIR) -iquote$(BUILD_DIR)
+
+$(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-	$(CC) $(SRCS) $(C_FLAGS) -I $(SRC_DIR) -o $(BUILD_DIR)/$(TARGET_EXEC)
+
+run: all
+	$(BUILD_DIR)/$(BIN_NAME)
 
 clean:
-	rm -r $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)
 
 
 

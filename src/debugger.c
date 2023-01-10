@@ -5,12 +5,14 @@
  * Updated: 2023-01-07
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
 
 #include "65816.h"
+// #include "disassembler.h"
 #include "debugger.h"
 
 /**
@@ -145,7 +147,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, uint32_t pc)
     size_t cols, col, row;
     uint32_t i;
 
-    if (w.disasm_mode) { // Show disassembly
+    if (w->disasm_mode) { // Show disassembly
 
     }
     else { // Just show memory contents
