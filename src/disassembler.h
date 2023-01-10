@@ -122,7 +122,10 @@ typedef struct opcode_t {
 extern char instruction_mne[][4];
 extern char addr_fmts[][16];
 extern int addr_fmt_sizes[];
-extern opcode_t opcode_table[];
+extern opcode_t opcode_table[256];
+
+
+int get_opcode(memory_t *mem, CPU_t *cpu, char *buf);
 
 #endif
 

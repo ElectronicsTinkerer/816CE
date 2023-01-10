@@ -11,8 +11,9 @@
 #include <stdbool.h>
 #include <ncurses.h>
 
+#include "disassembler.h"
 #include "65816.h"
-// #include "disassembler.h"
+#include "65816-util.h"
 #include "debugger.h"
 
 /**
@@ -107,7 +108,9 @@ void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
 bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 {
     if (c == KEY_CR) {
-        cmdbuf[++*cmdbuf_index] = '\0';
+        cmdbuf[*cmdbuf_index] = '\0';
+        mvwprintw(win, 1, MAX_CMD_LEN + 3, "%s", cmdbuf);
+        ++*cmdbuf_index;
         return true;
     }
 
@@ -115,19 +118,21 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
     
     if (c == KEY_BACKSPACE || c == KEY_CTRL_H) {
         if (*cmdbuf_index > 0) {
-            mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS + 1, ' '); // Erase cursor
-            cmdbuf[--*cmdbuf_index] = ' ';
+            mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, ' '); // Erase cursor
+            cmdbuf[*cmdbuf_index] = ' ';
+            --*cmdbuf_index;
         }
     }
     else if (c == KEY_CTRL_C) { // Clear command
         command_clear(win, cmdbuf, cmdbuf_index);
     }
     else if (*cmdbuf_index < MAX_CMD_LEN - 1) {
-        cmdbuf[++*cmdbuf_index] = (char)c;
+        cmdbuf[*cmdbuf_index] = (char)c;
         mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, cmdbuf[*cmdbuf_index]);
+        ++*cmdbuf_index;
     }
 
-    mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS + 1, '_');
+    mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, '_');
 
     wattroff(win, A_BOLD);
     
@@ -136,19 +141,117 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 
 
 /**
+ * Execute a command from the prompt window.
+ * This has a very primitive parser.
+ * 
+ * @param *_cmdbuf The buffer containing the command
+ * @param cmdbuf_index The length of the command + 1
+ * @param *watch1 Watch window 1 structure
+ * @param *watch2 Watch window 2 structure
+ */
+void command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2)
+{
+    if (cmdbuf_index == 0) {
+        return; // No command
+    }
+
+    char *tok = strtok(_cmdbuf, " ");
+    
+    if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return;
+        }
+    
+        if (strcmp(tok, "mem") == 0) {
+            watch1->disasm_mode = false;
+        }
+        else if (strcmp(tok, "asm") == 0) {
+            watch1->disasm_mode = true;
+            wclear(watch1->win);
+            tok = strtok(NULL, " ");
+        }
+
+        if (watch1->disasm_mode && tok && strcmp(tok, "pc") == 0) {
+            watch1->follow_pc = true;
+        }
+        else if (watch1->disasm_mode && tok && strcmp(tok, "mem") == 0) {
+            watch1->follow_pc = false;
+        }
+    }
+    else if (strcmp(tok, "mw2") == 0) { // Memory Watch 1
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return;
+        }
+    
+        if (strcmp(tok, "mem") == 0) {
+            watch2->disasm_mode = false;
+        }
+        else if (strcmp(tok, "asm") == 0) {
+            watch2->disasm_mode = true;
+            wclear(watch2->win);
+            tok = strtok(NULL, " ");
+        }
+
+        if (watch2->disasm_mode && tok && strcmp(tok, "pc") == 0) {
+            watch2->follow_pc = true;
+        }
+        else if (watch2->disasm_mode && tok && strcmp(tok, "mem") == 0) {
+            watch2->follow_pc = false;
+        }
+    }
+
+    // TODO:
+    // What to do about unknown comands??
+}
+
+
+/**
  * Prints the memory in the window for the watch 
  * 
  * @param *w The watch to use
  * @param *mem The CPU's memory to view
- * @param pc The CPU's current PC value
+ * @param *cpu, The CPU to use
  */
-void mem_watch_print(watch_t *w, memory_t *mem, uint32_t pc)
+void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 {
     size_t cols, col, row;
-    uint32_t i;
+    uint32_t i, pc;
+    char buf[32];
+    
+    pc = _cpu_get_effective_pc(cpu);
 
     if (w->disasm_mode) { // Show disassembly
+        
+        CPU_t cpu_dup;
+    
+        if (!w->follow_pc) {
+            cpu_dup.PC = (uint16_t)w->addr_s;
+            cpu_dup.PBR = (uint8_t)((w->addr_s >> 16) & 0xff);
+        }
+        else {
+            cpu_dup.PC = cpu->PC;
+            cpu_dup.PBR = cpu->PBR;
+        }
 
+        i = _cpu_get_effective_pc(&cpu_dup);
+        for (row = 0; row < w->win_height - 2; ++row) {
+
+            i = _addr_add_val_bank_wrap(i, get_opcode(mem, &cpu_dup, buf));
+
+            wattron(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
+            mvwprintw(w->win, 1 + row, 2, "%06x:                         ", cpu_dup.PC);
+            wattroff(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
+
+            mvwprintw(w->win, 1 + row, 10, "%s", buf);
+
+            cpu_dup.PC = i;
+        }
     }
     else { // Just show memory contents
         cols = (w->win_width - 10) / 3;
@@ -206,12 +309,14 @@ int main(int argc, char *argv[])
         printf("Unable to allocate system memory!\n");
         exit(EXIT_FAILURE);
     }
-    
+
     initscr();              // Start curses mode
     getmaxyx(stdscr, scrh, scrw); // Get screen dimensions
     raw();                  // Disable line buffering
     keypad(stdscr, TRUE);   // Enable handling of function and other special keys
     noecho();               // Disable echoing of user-typed characters
+    leaveok(stdscr, TRUE);  // Don't care where the cursor is left on screen
+    curs_set(0);            // Invisible cursor
 
     // Set up each window (height, width, starty, startx)
     watch1.win_height = scrh/2;
@@ -223,6 +328,11 @@ int main(int argc, char *argv[])
     win_cpu = newwin(10, scrw/2, 1, scrw/2);
     win_cmd = newwin(3, scrw/2, scrh-3, scrw/2);
     win_inst_hist = newwin(scrh - 10 - 3 + 1, scrw/2, 10, scrw/2);
+    
+    refresh();  // Necessary for window borders
+
+    // Set up command input
+    command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
 
     // Event loop
     prev_c = c = EOF;
@@ -247,7 +357,7 @@ int main(int argc, char *argv[])
                 break;
             }
             if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
-                // command_execute(_cmdbuf, &cmdbuf_index, watch1, watch2);
+                command_execute(_cmdbuf, cmdbuf_index, &watch1, &watch2);
                 command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
             }
 
@@ -272,8 +382,10 @@ int main(int argc, char *argv[])
         // getmaxyx(stdscr, scrh, scrw); // Get screen dimensions
         print_header(scrw, status_id, alert);
         print_cpu_regs(win_cpu, &cpu, 1, 2);
-        mem_watch_print(&watch1, memory, cpu.PC);
-        mem_watch_print(&watch2, memory, cpu.PC);
+        mem_watch_print(&watch1, memory, &cpu);
+        mem_watch_print(&watch2, memory, &cpu);
+
+        mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
 
         // Window borders (DIM)
         wattron(watch1.win, A_DIM);
@@ -281,11 +393,16 @@ int main(int argc, char *argv[])
         wattron(win_cpu, A_DIM);
         wattron(win_cmd, A_DIM);
         wattron(win_inst_hist, A_DIM);
-        wborder(watch1.win, '|', '|', '=', '=', '+', '+', '+', '+');
-        wborder(watch2.win, '|', '|', '=', '=', '+', '+', '+', '+');
-        wborder(win_cpu, '|', '|', '=', '=', '+', '+', '+', '+');
-        wborder(win_cmd, '|', '|', '=', '=', '+', '+', '+', '+');
-        wborder(win_inst_hist, '|', '|', '=', '=', '+', '+', '+', '+');
+        // wborder(watch1.win, '|', '|', '=', '=', '+', '+', '+', '+');
+        // wborder(watch2.win, '|', '|', '=', '=', '+', '+', '+', '+');
+        // wborder(win_cpu, '|', '|', '=', '=', '+', '+', '+', '+');
+        // wborder(win_cmd, '|', '|', '=', '=', '+', '+', '+', '+');
+        // wborder(win_inst_hist, '|', '|', '=', '=', '+', '+', '+', '+');
+        box(watch1.win, 0, 0);
+        box(watch2.win, 0, 0);
+        box(win_cpu, 0, 0);
+        box(win_cmd, 0, 0);
+        box(win_inst_hist, 0, 0);
 
         // Window Titles (Normal)
         wattroff(watch1.win, A_DIM);
@@ -298,9 +415,7 @@ int main(int argc, char *argv[])
         mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
         mvwprintw(win_cmd, 0, 3, " COMMAND ");
         mvwprintw(win_inst_hist, 0, 3, " INSTRUCTION HISTORY ");
-
-        mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
-
+        
         // Order of refresh matters - layering of title bars
         wrefresh(win_cpu);
         wrefresh(win_inst_hist);

@@ -3,6 +3,9 @@
  * (C) Ray Clemens 2023
  */
 
+#include <stdio.h>
+
+#include "65816-util.h"
 #include "disassembler.h"
 
 // Keep in sync with the instruction_t enum
@@ -103,28 +106,29 @@ char instruction_mne[][4] = {
 // Addressing format strings
 // (KEEP IN SYNC WITH CPU_Addr_Mode_t in 65816.h)
 char addr_fmts[][16] = {
-    "%02x",     // Direct page
-    "%02x,X",   // Direct page indexed, x
-    "(%02x,X)", // Direct page indexed indirect X
-    "%02,Y",    // Direct page indexed, y
-    "(%02x),Y", // Direct page indirect indexed y
-    "[%02x],Y", // Direct page indirect long indexed y
-    "(%02x)",   // Direct page indirect
-    "[%02x]",   // Direct page indirect long
-    "%04x",     // Absolute
-    "%04x,X",   // Absolute indexed X
-    "%04x,Y",   // Absolute indexed Y
-    "(%04x)",   // Indirect absolute
-    "%06x",     // Absolute long (24-bit)
-    "%06x,X",   // Absolute long indexed x
-    "(%04x,X)", // Absolute indirect indexed x
-    "#%02",     // Immediate (MODIFIED DURING PRINTING)
-    "%02x,S",   // Stack relative
-    "(%02x,S),Y", // Stack relative indirect indexed y
-    "",         // Implied
-    "%02x,$02x",// Block move
-    "%06x",     // Program counter relative (8-bit)
-    "%06x"      // Program counter relative (16-bit)
+    " $%02x",     // Direct page
+    " $%02x,X",   // Direct page indexed, x
+    " ($%02x,X)", // Direct page indexed indirect X
+    " $%02,Y",    // Direct page indexed, y
+    " ($%02x),Y", // Direct page indirect indexed y
+    " [$%02x],Y", // Direct page indirect long indexed y
+    " ($%02x)",   // Direct page indirect
+    " [$%02x]",   // Direct page indirect long
+    " $%04x",     // Absolute
+    " $%04x,X",   // Absolute indexed X
+    " $%04x,Y",   // Absolute indexed Y
+    " ($%04x)",   // Indirect absolute
+    " $%06x",     // Absolute long (24-bit)
+    " $%06x,X",   // Absolute long indexed x
+    " [$%04x]",   // Absolute Indirect Long
+    " ($%04x,X)", // Absolute indirect indexed x
+    " #$%02",     // Immediate (MODIFIED DURING PRINTING)
+    " $%02x,S",   // Stack relative
+    " ($%02x,S),Y", // Stack relative indirect indexed y
+    "",             // Implied
+    " $%02x,$%02x", // Block move
+    " $%06x",     // Program counter relative (8-bit)
+    " $%06x"      // Program counter relative (16-bit)
 };
 
 // The number of bytes for each format
@@ -144,6 +148,7 @@ int addr_fmt_sizes[] = {
     3, // Indirect absolute
     4, // Absolute long (24-bit)
     4, // Absolute long indexed x
+    3, // Absolute Indirect Long
     3, // Absolute indirect indexed x
     2, // Immediate (MODIFIED DURING PRINTING)
     2, // Stack relative
@@ -155,8 +160,8 @@ int addr_fmt_sizes[] = {
 };
 
 
-// Opcode table
-opcode_t opcode_table[] = {
+// Opcode table (this took a while...)
+opcode_t opcode_table[256] = {
     {CPU_ADDR_DP,      I_BRK, REG__}, // 0
     {CPU_ADDR_DPINDX,  I_ORA, REG_A},
     {CPU_ADDR_DP,      I_COP, REG__},
@@ -414,4 +419,62 @@ opcode_t opcode_table[] = {
     {CPU_ADDR_ABSX,    I_INC, REG_A},
     {CPU_ADDR_ABSLX,   I_SBC, REG_A}
 };
+
+
+// Now, we can get to the functions!
+
+/**
+ * Generate the opcode string for a given address
+ * 
+ * @param *mem The CPU's memory to use for the opcode
+ * @param *cpu The CPU to get information from (e.g., X width, PC value, etc.)
+ * @param *buf[] The buffer to return the string in
+ * @return The number of bytes that the instruction occupies
+ */
+int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
+{
+    uint32_t addr = _cpu_get_effective_pc(cpu);
+    opcode_t *op = &opcode_table[mem[addr]];
+
+    sprintf(buf, "%s", instruction_mne[op->inst]);
+
+    // Determine operand byte size
+    switch (addr_fmt_sizes[op->addr_mode]) {
+    case 1:
+        break;
+    case 2: {
+        uint32_t val = _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1));
+
+        // Correct value for branches
+        if (op->addr_mode == CPU_ADDR_PCR) {
+            val = _addrCPU_getRelative8(cpu, mem);
+        }
+        
+        sprintf(buf+3, addr_fmts[op->addr_mode], val);
+    }
+        break;
+    case 3: {
+        uint32_t val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+
+        if (op->addr_mode == CPU_ADDR_PCRL ||
+            op->inst == I_PER) {
+            val = _addrCPU_getRelative16(cpu, mem);
+        } 
+         
+        sprintf(buf+3, addr_fmts[op->addr_mode], val);
+    }
+        break;
+    case 4:
+        sprintf(buf+3, addr_fmts[op->addr_mode],
+                _get_mem_long_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1)));
+        break;
+    default:
+        /* ERROR */
+        sprintf(buf+3, "INTERNAL ERROR");
+        break;
+    }
+
+    return addr_fmt_sizes[op->addr_mode];
+}
+
 

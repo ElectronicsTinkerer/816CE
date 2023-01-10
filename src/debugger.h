@@ -14,7 +14,7 @@
 
 #define MAX_CMD_LEN 40
 
-#define CMD_DISP_X_OFFS 3
+#define CMD_DISP_X_OFFS 4
 
 
 // Keep in sync with status_msgs
@@ -40,6 +40,7 @@ typedef struct watch_t {
     int win_height;
     int win_width;
     bool disasm_mode;
+    bool follow_pc;
 } watch_t;
 
 #endif
