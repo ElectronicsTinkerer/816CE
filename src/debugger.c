@@ -25,7 +25,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 3, 3, ""},
+    {"HELP", 5, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)"},
     {"HELP?", 3, 13, "Not help."}
 };
 
@@ -215,10 +215,10 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         }
         
         // Tertiary level command
-        if (watch1->disasm_mode && strcmp(tok, "pc") == 0) {
+        if (strcmp(tok, "pc") == 0) {
             watch1->follow_pc = true;
         }
-        else if (watch1->disasm_mode && strcmp(tok, "addr") == 0) {
+        else if (strcmp(tok, "addr") == 0) {
             watch1->follow_pc = false;
         }
         else {
@@ -254,10 +254,10 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         }
         
         // Tertiary level command
-        if (watch2->disasm_mode && strcmp(tok, "pc") == 0) {
+        if (strcmp(tok, "pc") == 0) {
             watch2->follow_pc = true;
         }
-        else if (watch2->disasm_mode && strcmp(tok, "addr") == 0) {
+        else if (strcmp(tok, "addr") == 0) {
             watch2->follow_pc = false;
         }
         else {
@@ -323,7 +323,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
         } else {
             cols = 32; // WIDE! screen
         }
-        i = w->addr_s;
+        i = w->follow_pc ? pc : w->addr_s;
         for (row = 0; row < w->win_height - 2; ++row) {
             wattron(w->win, A_DIM);
             mvwprintw(w->win, 1 + row, 2, "%06x:", i);
@@ -361,13 +361,29 @@ void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int sc
     *win = newwin(height, width, (scrh/2)-(height/2), (scrw/2)-(width/2));
 
     wrefresh(*win);
+    wattron(*win, A_BOLD);
+
     box(*win, 0, 0);
 
     // Title
     mvwprintw(*win, 0, 2, " %s ", title);
+    wattroff(*win, A_BOLD);
 
     // User message
-    mvwprintw(*win, 1, 2, "%s", msg);
+    // Need to malloc and copy since string literals
+    // are stored in RO region of memory
+    char *msg_dup = malloc(sizeof(*msg) * strlen(msg));
+    strcpy(msg_dup, msg);
+    
+    char *tok = strtok(msg_dup, "\n"); // Print each line separately
+    int row = 1;
+    while (tok) {
+        mvwprintw(*win, row, 2, "%s", tok);
+        tok = strtok(NULL, "\n");
+        ++row;
+    }
+
+    free(msg_dup);
 
     // OK "box"
     wattron(*win, A_REVERSE);
@@ -454,7 +470,7 @@ int main(int argc, char *argv[])
             if (c == EOF) {
                 break;
             }
-            
+
             // Handle message box clean up if user pressed "Enter"
             if (win_msg) {
                 if (c == KEY_CR || c == KEY_ESCAPE) {
@@ -462,9 +478,6 @@ int main(int argc, char *argv[])
                     wrefresh(win_msg);
                     delwin(win_msg);
                     win_msg = NULL;
-                }
-                else {
-                        mvwprintw(win_inst_hist, 1, 1, "     ");
                 }
             }
             // If the user pressed "Enter" (CR), execute the command

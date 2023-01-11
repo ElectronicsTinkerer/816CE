@@ -6,7 +6,7 @@
 #ifndef _DEBUGGER_H
 #define _DEBUGGER_H
 
-#include <ncurses.h>
+#include <ncurses.h> // WINDOW
 
 #define KEY_CTRL_C 3
 #define KEY_CTRL_H 8
