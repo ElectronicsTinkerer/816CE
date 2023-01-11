@@ -9,12 +9,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 #include <ncurses.h>
 
 #include "disassembler.h"
 #include "65816.h"
 #include "65816-util.h"
 #include "debugger.h"
+
+
+// Error messages for command parsing/execution
+// Keep in sync with the cmd_err_t enum in debugger.h
+char cmd_err_msgs[][32] = {
+    "",
+    "Expected argument for command.",
+    "Unknown argument.",
+    "Unknown command."
+};
+
 
 /**
  * Prints the banner across the top of the screen
@@ -88,10 +100,16 @@ void print_cpu_regs(WINDOW *win, CPU_t *cpu, int y, int x)
  */
 void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
 {
-    for (size_t i = 0; i < MAX_CMD_LEN + 1; ++i) {
+    for (size_t i = 1; i < MAX_CMD_LEN + 1; ++i) {
         mvwaddch(win, 1, i + CMD_DISP_X_OFFS, ' ');
+        cmdbuf[i] = '\0';
     }
     *cmdbuf_index = 0;
+
+    // Redraw cursor
+    wattron(win, A_BOLD);
+    mvwaddch(win, 1, CMD_DISP_X_OFFS, '_');
+    wattroff(win, A_BOLD);
 }
 
 
@@ -109,22 +127,17 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 {
     if (c == KEY_CR) {
         cmdbuf[*cmdbuf_index] = '\0';
-        mvwprintw(win, 1, MAX_CMD_LEN + 3, "%s", cmdbuf);
-        ++*cmdbuf_index;
         return true;
     }
 
     wattron(win, A_BOLD);
-    
+
     if (c == KEY_BACKSPACE || c == KEY_CTRL_H) {
         if (*cmdbuf_index > 0) {
             mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, ' '); // Erase cursor
-            cmdbuf[*cmdbuf_index] = ' ';
+            cmdbuf[*cmdbuf_index] = '\0';
             --*cmdbuf_index;
         }
-    }
-    else if (c == KEY_CTRL_C) { // Clear command
-        command_clear(win, cmdbuf, cmdbuf_index);
     }
     else if (*cmdbuf_index < MAX_CMD_LEN - 1) {
         cmdbuf[*cmdbuf_index] = (char)c;
@@ -148,66 +161,105 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
  * @param cmdbuf_index The length of the command + 1
  * @param *watch1 Watch window 1 structure
  * @param *watch2 Watch window 2 structure
+ * @return The error code from the command
  */
-void command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2)
+cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2)
 {
     if (cmdbuf_index == 0) {
-        return; // No command
+        return CMD_ERR_OK; // No command
     }
 
     char *tok = strtok(_cmdbuf, " ");
+
+    if (!tok) {
+        return CMD_ERR_OK; // No command
+    }
+
     
     if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
 
         tok = strtok(NULL, " ");
+        mvwprintw(watch2->win, 2, 2, "'%s'      ", tok);
 
         if (!tok) {
-            return;
+            return CMD_ERR_EXPECTED_ARG;
         }
-    
+
+        // Secondary level command
         if (strcmp(tok, "mem") == 0) {
             watch1->disasm_mode = false;
         }
         else if (strcmp(tok, "asm") == 0) {
             watch1->disasm_mode = true;
             wclear(watch1->win);
-            tok = strtok(NULL, " ");
         }
-
-        if (watch1->disasm_mode && tok && strcmp(tok, "pc") == 0) {
+        else if (strcmp(tok, "pc") == 0) {
             watch1->follow_pc = true;
         }
-        else if (watch1->disasm_mode && tok && strcmp(tok, "mem") == 0) {
+        else {
+            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
+        }
+
+        tok = strtok(NULL, " ");
+        
+        if (!tok) {
+            return CMD_ERR_OK;
+        }
+        
+        // Tertiary level command
+        if (watch1->disasm_mode && strcmp(tok, "pc") == 0) {
+            watch1->follow_pc = true;
+        }
+        else if (watch1->disasm_mode && strcmp(tok, "addr") == 0) {
             watch1->follow_pc = false;
         }
+        else {
+            return CMD_ERR_UNKNOWN_ARG; // Error!
+        }
+
+        return CMD_ERR_OK; // Success?
     }
     else if (strcmp(tok, "mw2") == 0) { // Memory Watch 1
 
         tok = strtok(NULL, " ");
 
         if (!tok) {
-            return;
+            return CMD_ERR_EXPECTED_ARG;
         }
     
+        // Secondary level command
         if (strcmp(tok, "mem") == 0) {
             watch2->disasm_mode = false;
         }
         else if (strcmp(tok, "asm") == 0) {
             watch2->disasm_mode = true;
             wclear(watch2->win);
-            tok = strtok(NULL, " ");
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
         }
 
-        if (watch2->disasm_mode && tok && strcmp(tok, "pc") == 0) {
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_OK;
+        }
+        
+        // Tertiary level command
+        if (watch2->disasm_mode && strcmp(tok, "pc") == 0) {
             watch2->follow_pc = true;
         }
-        else if (watch2->disasm_mode && tok && strcmp(tok, "mem") == 0) {
+        else if (watch2->disasm_mode && strcmp(tok, "addr") == 0) {
             watch2->follow_pc = false;
         }
+        else {
+            return CMD_ERR_UNKNOWN_ARG; // Error!
+        }
+
+        return CMD_ERR_OK; // Success?
     }
 
-    // TODO:
-    // What to do about unknown comands??
+    return CMD_ERR_UNKNOWN_CMD; // Not success
 }
 
 
@@ -239,6 +291,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
             cpu_dup.PBR = cpu->PBR;
         }
 
+        // Print as many lines as will fit in the window
         i = _cpu_get_effective_pc(&cpu_dup);
         for (row = 0; row < w->win_height - 2; ++row) {
 
@@ -284,16 +337,50 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 }
 
 
+/**
+ * Create a message box
+ * 
+ * @param *win The message box window
+ * @param *msg The message to put in the window
+ * @param *title The title of the message box
+ * @param height The height of the message box window
+ * @param width The width of the message box window
+ * @param scrh The height of the screen
+ * @param scrw The width of the screen
+ */
+void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int scrh, int scrw)
+{
+    *win = newwin(height, width, (scrh/2)-(height/2), (scrw/2)-(width/2));
+
+    wrefresh(*win);
+    box(*win, 0, 0);
+
+    // Title
+    mvwprintw(*win, 0, 2, " %s ", title);
+
+    // User message
+    mvwprintw(*win, 1, 2, "%s", msg);
+
+    // OK "box"
+    wattron(*win, A_REVERSE);
+    mvwprintw(*win, height-1, width-6, " OK ");
+    wattroff(*win, A_REVERSE);
+}
+
+
 int main(int argc, char *argv[])
 {	
     int c, prev_c;          // User key press (c = current, prev_c = previous)
     int scrw, scrh;         // Width and height of screen
     status_t status_id = STATUS_NONE;
     bool alert = true;
-    WINDOW *win_cpu, *win_cmd, *win_inst_hist;
+    WINDOW *win_cpu, *win_cmd, *win_inst_hist, *win_msg = NULL;
     char cmdbuf[MAX_CMD_LEN];
+    char cmdbuf_dup[MAX_CMD_LEN];
     char *_cmdbuf = cmdbuf;
+    char *_cmdbuf_dup = cmdbuf_dup;
     size_t cmdbuf_index = 0;
+    cmd_err_t cmd_err;
     watch_t watch1, watch2;
     watch1.addr_s = 0;
     watch2.addr_s = 0;
@@ -319,15 +406,15 @@ int main(int argc, char *argv[])
     curs_set(0);            // Invisible cursor
 
     // Set up each window (height, width, starty, startx)
-    watch1.win_height = scrh/2;
+    watch1.win_height = scrh/2 - 1;
     watch1.win_width = scrw/2;
-    watch2.win_height = scrh/2;
+    watch2.win_height = ceil(scrh/2.0);
     watch2.win_width = scrw/2;
     watch1.win = newwin(watch1.win_height, watch1.win_width, 1, 0);
     watch2.win = newwin(watch2.win_height, watch2.win_width, scrh/2, 0);
     win_cpu = newwin(10, scrw/2, 1, scrw/2);
     win_cmd = newwin(3, scrw/2, scrh-3, scrw/2);
-    win_inst_hist = newwin(scrh - 10 - 3 + 1, scrw/2, 10, scrw/2);
+    win_inst_hist = newwin(scrh - 11 - 3, scrw/2, 11, scrw/2);
     
     refresh();  // Necessary for window borders
 
@@ -352,13 +439,28 @@ int main(int argc, char *argv[])
             break;
         case KEY_F(12):
             break; // Handled below
+        case KEY_CTRL_C:
+            command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+            break;
         default:
             if (c == EOF) {
                 break;
             }
+            
+            // If the user pressed "Enter" (CR), execute the command
             if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
-                command_execute(_cmdbuf, cmdbuf_index, &watch1, &watch2);
-                command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                
+                // Check for errors in the command input and execute it if none
+                strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
+                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2))) {
+
+                    // If there is errors, print an appropiate message
+                    char *msg = cmd_err_msgs[cmd_err];
+                    msg_box(&win_msg, msg, "ERROR!", 3, strlen(msg) + 4, scrh, scrw);
+                }
+                else { // Only clear the command input if the command was successful
+                    command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                }
             }
 
             break;
@@ -393,11 +495,6 @@ int main(int argc, char *argv[])
         wattron(win_cpu, A_DIM);
         wattron(win_cmd, A_DIM);
         wattron(win_inst_hist, A_DIM);
-        // wborder(watch1.win, '|', '|', '=', '=', '+', '+', '+', '+');
-        // wborder(watch2.win, '|', '|', '=', '=', '+', '+', '+', '+');
-        // wborder(win_cpu, '|', '|', '=', '=', '+', '+', '+', '+');
-        // wborder(win_cmd, '|', '|', '=', '=', '+', '+', '+', '+');
-        // wborder(win_inst_hist, '|', '|', '=', '=', '+', '+', '+', '+');
         box(watch1.win, 0, 0);
         box(watch2.win, 0, 0);
         box(win_cpu, 0, 0);
@@ -422,11 +519,27 @@ int main(int argc, char *argv[])
         wrefresh(win_cmd);
         wrefresh(watch1.win);
         wrefresh(watch2.win);
+
+        if (win_msg) {
+            wrefresh(win_msg);
+        }
+        
         refresh();
         status_id = STATUS_NONE;
         alert = false;
         prev_c = c;
         c = getch();
+
+        // Clean up message box
+        if (win_msg) {
+            // wborder(win_msg, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+            // wrefresh(win_msg);
+            delwin(win_msg);
+            win_msg = NULL;
+            // c = getch(); // Get the character again so the user can pres "Enter" to close the box
+            // refresh();
+        }
+        
     }
     
     delwin(watch1.win);
@@ -437,3 +550,4 @@ int main(int argc, char *argv[])
     endwin();			// Clean up curses mode
     return 0;
 }
+

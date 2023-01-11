@@ -43,4 +43,13 @@ typedef struct watch_t {
     bool follow_pc;
 } watch_t;
 
+// Command input error codes
+// Keep in sync with the cmd_err_msgs[] array in debugger.c
+typedef enum cmd_err_t {
+    CMD_ERR_OK = 0,
+    CMD_ERR_EXPECTED_ARG,
+    CMD_ERR_UNKNOWN_ARG,
+    CMD_ERR_UNKNOWN_CMD
+} cmd_err_t;
+
 #endif

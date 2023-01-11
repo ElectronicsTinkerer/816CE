@@ -33,6 +33,8 @@ CPU_Error_Code_t resetCPU(CPU_t *cpu)
     cpu->cycles = 0;
     cpu->P.CRASH = 0;
     cpu->P.STP = 0;
+    cpu->P.IRQ = 0;
+    cpu->P.NMI = 0;
 
     // Internal use only, tell the sim that the CPU just reset
     cpu->P.RST = 1;

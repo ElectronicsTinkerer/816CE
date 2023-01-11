@@ -1,6 +1,7 @@
 # Based on: https://developer.ibm.com/tutorials/au-lexyacc/
 
 CFLAGS := -Wall -pedantic
+LIBFLAGS := -lncurses -lm
 
 BUILD_DIR := build
 SRC_DIR := src
@@ -21,7 +22,7 @@ CC := gcc
 all: $(BUILD_DIR) $(PROG)
 
 $(PROG): $(SRCSP)
-	$(CC) $(CFLAGS) $^ -o $@ -lncurses -iquote$(SRC_DIR) -iquote$(BUILD_DIR)
+	$(CC) $(CFLAGS) $^ -o $@ $(LIBFLAGS) -iquote$(SRC_DIR) -iquote$(BUILD_DIR)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
