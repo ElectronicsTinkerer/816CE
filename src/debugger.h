@@ -11,6 +11,7 @@
 #define KEY_CTRL_C 3
 #define KEY_CTRL_H 8
 #define KEY_CR 10
+#define KEY_ESCAPE 27
 
 #define MAX_CMD_LEN 40
 
@@ -49,7 +50,17 @@ typedef enum cmd_err_t {
     CMD_ERR_OK = 0,
     CMD_ERR_EXPECTED_ARG,
     CMD_ERR_UNKNOWN_ARG,
-    CMD_ERR_UNKNOWN_CMD
+    CMD_ERR_UNKNOWN_CMD,
+    CMD_ERR_HELP_MAIN,
+    CMD_ERR_HELP_NOT
 } cmd_err_t;
+
+// Error message box type
+typedef struct cmd_err_msg {
+    char *title;
+    int win_h;
+    int win_w;
+    char *msg;
+} cmd_err_msg;
 
 #endif

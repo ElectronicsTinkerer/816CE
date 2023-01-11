@@ -20,11 +20,13 @@
 
 // Error messages for command parsing/execution
 // Keep in sync with the cmd_err_t enum in debugger.h
-char cmd_err_msgs[][32] = {
-    "",
-    "Expected argument for command.",
-    "Unknown argument.",
-    "Unknown command."
+cmd_err_msg cmd_err_msgs[] = {
+    {"",0,0,""}, // OK
+    {"ERROR!", 3, 34, "Expected argument for command."},
+    {"ERROR!", 3, 21, "Unknown argument."},
+    {"ERROR!", 3, 20, "Unknown command."},
+    {"HELP", 3, 3, ""},
+    {"HELP?", 3, 13, "Not help."}
 };
 
 
@@ -175,8 +177,14 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         return CMD_ERR_OK; // No command
     }
 
-    
-    if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
+
+    if (strcmp(tok, "?") == 0) { // Main level help
+        return CMD_ERR_HELP_MAIN;
+    }
+    else if (strcmp(tok, "???") == 0) { // Not help
+        return CMD_ERR_HELP_NOT;
+    }
+    else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
 
         tok = strtok(NULL, " ");
         mvwprintw(watch2->win, 2, 2, "'%s'      ", tok);
@@ -447,16 +455,28 @@ int main(int argc, char *argv[])
                 break;
             }
             
+            // Handle message box clean up if user pressed "Enter"
+            if (win_msg) {
+                if (c == KEY_CR || c == KEY_ESCAPE) {
+                    wborder(win_msg, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+                    wrefresh(win_msg);
+                    delwin(win_msg);
+                    win_msg = NULL;
+                }
+                else {
+                        mvwprintw(win_inst_hist, 1, 1, "     ");
+                }
+            }
             // If the user pressed "Enter" (CR), execute the command
-            if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
-                
+            else if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
+
                 // Check for errors in the command input and execute it if none
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
                 if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2))) {
 
                     // If there is errors, print an appropiate message
-                    char *msg = cmd_err_msgs[cmd_err];
-                    msg_box(&win_msg, msg, "ERROR!", 3, strlen(msg) + 4, scrh, scrw);
+                    cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
+                    msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
                 }
                 else { // Only clear the command input if the command was successful
                     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
@@ -512,16 +532,18 @@ int main(int argc, char *argv[])
         mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
         mvwprintw(win_cmd, 0, 3, " COMMAND ");
         mvwprintw(win_inst_hist, 0, 3, " INSTRUCTION HISTORY ");
-        
-        // Order of refresh matters - layering of title bars
-        wrefresh(win_cpu);
-        wrefresh(win_inst_hist);
-        wrefresh(win_cmd);
-        wrefresh(watch1.win);
-        wrefresh(watch2.win);
 
+        // If message box, prevent the other windows from updating
         if (win_msg) {
             wrefresh(win_msg);
+        }
+        else {
+            // Order of refresh matters - layering of title bars
+            wrefresh(win_cpu);
+            wrefresh(win_inst_hist);
+            wrefresh(win_cmd);
+            wrefresh(watch1.win);
+            wrefresh(watch2.win);
         }
         
         refresh();
@@ -529,17 +551,6 @@ int main(int argc, char *argv[])
         alert = false;
         prev_c = c;
         c = getch();
-
-        // Clean up message box
-        if (win_msg) {
-            // wborder(win_msg, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-            // wrefresh(win_msg);
-            delwin(win_msg);
-            win_msg = NULL;
-            // c = getch(); // Get the character again so the user can pres "Enter" to close the box
-            // refresh();
-        }
-        
     }
     
     delwin(watch1.win);
