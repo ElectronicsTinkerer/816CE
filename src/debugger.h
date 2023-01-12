@@ -19,11 +19,12 @@
 
 #define CMD_HIST_ENTRIES 20
 
-// #define MIN(a, b) ({\
-    // __typeof__(a) _local_a = (a);\
-    // __typeof__(b) _local_b = (b);\
-    // ((_local_a < _local_b) ? _local_a : _local_b);});
-
+/*
+#define MIN(a, b) ({\
+    __typeof__(a) _local_a = (a);\
+    __typeof__(b) _local_b = (b);\
+    ((_local_a < _local_b) ? _local_a : _local_b);});
+*/
 
 // Keep in sync with status_msgs
 typedef enum status_t {

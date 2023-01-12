@@ -4,6 +4,8 @@ TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
 * Properly initialize hist and watch structs
+* irq [set|clear]
+* nmi [set|clear]
 
 TODONE:
 * Help menu (multi-level)

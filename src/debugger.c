@@ -114,7 +114,7 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
         wclear(hist->win);
     }
     else {
-        b = ((hist->win_height / 2) - 1);
+        b = ((hist->win_height / 2));
         lines = b < CMD_HIST_ENTRIES ? b : CMD_HIST_ENTRIES;
         if (hist->entry_count < lines) {
             i = hist->entry_count;
@@ -141,28 +141,70 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
 
 
 // DOCUMENTME! TODO! *****************88
-void print_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
+void print_cpu_hist(hist_t *hist)
 {
-    size_t i, j, row;
+    size_t i, j, row, row_mod;
     char buf[32];
+    CPU_t *pcpu, *ccpu;
 
     row = 1;
     j = hist->entry_start;
-    for (i = 0; i < hist->entry_count; ++i, ++row) {
+    for (i = 0; i < hist->entry_count; ++i) {
 
-        // Print address (PC)
-        wattron(hist->win, A_DIM);
-        mvwprintw(hist->win, row, 2, "%06x:                         ", hist->cpu[j].PC);
-        wattroff(hist->win, A_DIM);
+        row_mod = 1;
 
         if (hist->cpu[j].P.RST) {
             mvwprintw(hist->win, row, 2, ">>> RESET <<<");
         }
         else {
+            // If this was not the last entry, print a diff of the registers
+            // This assumes that not "too many" registers change in a given instruction
+            // otherwise, it will wrap the text and things won't work properly...
+            if (i < hist->entry_count && i != 0) {
+
+                mvwprintw(hist->win, row, 2, "  ");
+
+                pcpu = &(hist->cpu[(j-1) % hist->entry_count]);
+                ccpu = &(hist->cpu[(j-0) % hist->entry_count]);
+                if (pcpu->C != ccpu->C) {
+                    wprintw(hist->win,  " C:%04x->%04x", pcpu->C, ccpu->C);
+                    row_mod = 2;
+                }
+                if (pcpu->X != ccpu->X) {
+                    wprintw(hist->win, " X:%04x->%04x", pcpu->X, ccpu->X);
+                    row_mod = 2;
+                }
+                if (pcpu->Y != ccpu->Y) {
+                    wprintw(hist->win, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
+                    row_mod = 2;
+                }
+                if (pcpu->DBR != ccpu->DBR) {
+                    wprintw(hist->win, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
+                    row_mod = 2;
+                }
+                if (pcpu->PBR != ccpu->PBR) {
+                    wprintw(hist->win, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
+                    row_mod = 2;
+                }
+                if (*(uint8_t*) &(pcpu->P) != *(uint8_t*) &(ccpu->P)) {
+                    wprintw(hist->win, " SR:%02x->%02x", *(uint8_t*) &(pcpu->P), *(uint8_t*) &(ccpu->P));
+                    row_mod = 2;
+                }
+            }
+
+            // Print address (PC)
+            wattron(hist->win, A_DIM);
+            mvwprintw(hist->win, row + row_mod - 1, 2, "%06x:                         ", hist->cpu[j].PC);
+            wattroff(hist->win, A_DIM);
+
+            // Print the current opcode
             get_opcode_by_addr((memory_t*)&(hist->mem[j]), &(hist->cpu[j]), buf, 0);
-            mvwprintw(hist->win, row, 10, "%s", buf);
+            mvwprintw(hist->win, row + row_mod - 1, 10, "%s", buf);
+            mvwprintw(hist->win, row + row_mod, 2, "                            ");
         }
+
         j = (j+1) % hist->entry_count;
+        row += row_mod;
     }
     
 }
@@ -410,7 +452,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
                 if (i == pc) {
                     wattron(w->win, A_BOLD | A_UNDERLINE);
                 }
-                wprintw(w->win, "%02x", mem[i]);
+                wprintw(w->win, "%02x", _get_mem_byte(mem, i));
                 if (i == pc) {
                     wattroff(w->win, A_BOLD | A_UNDERLINE);
                 }
@@ -603,7 +645,7 @@ int main(int argc, char *argv[])
         print_cpu_regs(win_cpu, &cpu, 1, 2);
         mem_watch_print(&watch1, memory, &cpu);
         mem_watch_print(&watch2, memory, &cpu);
-        print_cpu_hist(&inst_hist, &cpu, memory);
+        print_cpu_hist(&inst_hist);
 
         mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
 
