@@ -4,6 +4,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "65816-util.h"
 #include "disassembler.h"
@@ -424,7 +425,7 @@ opcode_t opcode_table[256] = {
 // Now, we can get to the functions!
 
 /**
- * Generate the opcode string for a given address
+ * Generate the opcode string for a CPU's PC address
  * 
  * @param *mem The CPU's memory to use for the opcode
  * @param *cpu The CPU to get information from (e.g., X width, PC value, etc.)
@@ -435,7 +436,7 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
 {
     uint32_t addr = _cpu_get_effective_pc(cpu);
     opcode_t *op = &opcode_table[mem[addr]];
-
+    
     sprintf(buf, "%s", instruction_mne[op->inst]);
 
     // Determine operand byte size
@@ -475,6 +476,29 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
     }
 
     return addr_fmt_sizes[op->addr_mode];
+}
+
+
+/**
+ * Generate the opcode string for a given address
+ * 
+ * @param *mem The CPU's memory to use for the opcode
+ * @param *cpu The CPU to get information from (e.g., X width, etc.)
+ * @param *buf[] The buffer to return the string in
+ * @param addr The address to read the opcode from
+ * @return The number of bytes that the instruction occupies
+ */
+int get_opcode_by_addr(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr)
+{
+    CPU_t cpu_dup;
+
+    memcpy(&cpu_dup, cpu, sizeof(cpu_dup));
+
+    // Set effective CPU address
+    cpu_dup.PC = addr & 0xffff;
+    cpu_dup.PBR = (addr >> 16) & 0xff;
+
+    return get_opcode(mem, &cpu_dup, buf);
 }
 
 

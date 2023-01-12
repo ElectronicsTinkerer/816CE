@@ -17,6 +17,13 @@
 
 #define CMD_DISP_X_OFFS 4
 
+#define CMD_HIST_ENTRIES 20
+
+// #define MIN(a, b) ({\
+    // __typeof__(a) _local_a = (a);\
+    // __typeof__(b) _local_b = (b);\
+    // ((_local_a < _local_b) ? _local_a : _local_b);});
+
 
 // Keep in sync with status_msgs
 typedef enum status_t {
@@ -43,6 +50,18 @@ typedef struct watch_t {
     bool disasm_mode;
     bool follow_pc;
 } watch_t;
+
+// History structure for execution history tracking
+typedef struct hist_t {
+    WINDOW *win;
+    int win_height;
+    int win_width;
+    int entry_count;
+    int entry_start;
+    CPU_t cpu[CMD_HIST_ENTRIES];
+    memory_t mem[CMD_HIST_ENTRIES][4];
+} hist_t;
+    
 
 // Command input error codes
 // Keep in sync with the cmd_err_msgs[] array in debugger.c

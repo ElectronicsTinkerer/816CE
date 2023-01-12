@@ -94,6 +94,81 @@ void print_cpu_regs(WINDOW *win, CPU_t *cpu, int y, int x)
 
 
 /**
+ * Maintains a history of instructions and register value changes
+ * in the CPU. Call this once per CPU step, after the operation
+ * has been run.
+ * 
+ * @param *hist The history structure to reference and update
+ * @param *cpu The CPU to conitor
+ * @param *mem The memory to use for instruction disassembly
+ */
+void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
+{
+    uint32_t val;
+    size_t i;
+    int lines, b;
+    if (cpu->P.RST) {
+        hist->entry_count = 1; // 1 for RESET
+        hist->entry_start = 0;
+        i = 0;
+        wclear(hist->win);
+    }
+    else {
+        b = ((hist->win_height / 2) - 1);
+        lines = b < CMD_HIST_ENTRIES ? b : CMD_HIST_ENTRIES;
+        if (hist->entry_count < lines) {
+            i = hist->entry_count;
+            ++hist->entry_count;
+        }
+        else {
+            i = hist->entry_start;
+            hist->entry_start += 1;
+            hist->entry_start %= lines;
+        }
+    }
+    
+    // Insert the current CPU state into the array
+    memcpy(hist->cpu + i, cpu, sizeof(*cpu));
+
+    // Copy in memory in case there is self-modifying asm code
+    hist->mem[i][0] = _get_mem_byte(mem, _cpu_get_effective_pc(cpu));
+    val = _cpu_get_immd_long(cpu, mem);
+    hist->mem[i][1] = val & 0xff;
+    hist->mem[i][2] = (val >> 8) & 0xff;
+    hist->mem[i][3] = (val >> 16) & 0xff;
+    // mvwprintw(hist->win, 2, 34, "%06x:%02x, i:%d, PC:%06x", val, hist->mem[i][0], i, hist->cpu[i].PC); // DEBUG
+}
+
+
+// DOCUMENTME! TODO! *****************88
+void print_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
+{
+    size_t i, j, row;
+    char buf[32];
+
+    row = 1;
+    j = hist->entry_start;
+    for (i = 0; i < hist->entry_count; ++i, ++row) {
+
+        // Print address (PC)
+        wattron(hist->win, A_DIM);
+        mvwprintw(hist->win, row, 2, "%06x:                         ", hist->cpu[j].PC);
+        wattroff(hist->win, A_DIM);
+
+        if (hist->cpu[j].P.RST) {
+            mvwprintw(hist->win, row, 2, ">>> RESET <<<");
+        }
+        else {
+            get_opcode_by_addr((memory_t*)&(hist->mem[j]), &(hist->cpu[j]), buf, 0);
+            mvwprintw(hist->win, row, 10, "%s", buf);
+        }
+        j = (j+1) % hist->entry_count;
+    }
+    
+}
+
+
+/**
  * Clear the command input buffer and onscreen text
  * 
  * @param *win The command window
@@ -398,7 +473,7 @@ int main(int argc, char *argv[])
     int scrw, scrh;         // Width and height of screen
     status_t status_id = STATUS_NONE;
     bool alert = true;
-    WINDOW *win_cpu, *win_cmd, *win_inst_hist, *win_msg = NULL;
+    WINDOW *win_cpu, *win_cmd, *win_msg = NULL;
     char cmdbuf[MAX_CMD_LEN];
     char cmdbuf_dup[MAX_CMD_LEN];
     char *_cmdbuf = cmdbuf;
@@ -408,6 +483,9 @@ int main(int argc, char *argv[])
     watch_t watch1, watch2;
     watch1.addr_s = 0;
     watch2.addr_s = 0;
+    hist_t inst_hist;
+    inst_hist.entry_count = 0;
+    inst_hist.entry_start = 0;
     
     CPU_t cpu;
     resetCPU(&cpu);
@@ -438,9 +516,13 @@ int main(int argc, char *argv[])
     watch2.win = newwin(watch2.win_height, watch2.win_width, scrh/2, 0);
     win_cpu = newwin(10, scrw/2, 1, scrw/2);
     win_cmd = newwin(3, scrw/2, scrh-3, scrw/2);
-    win_inst_hist = newwin(scrh - 11 - 3, scrw/2, 11, scrw/2);
+    inst_hist.win_height = scrh - 11 - 3;
+    inst_hist.win_width = scrw/2;
+    inst_hist.win = newwin(inst_hist.win_height, inst_hist.win_width, 11, scrw/2);
     
     refresh();  // Necessary for window borders
+
+    update_cpu_hist(&inst_hist, &cpu, memory);
 
     // Set up command input
     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
@@ -457,9 +539,11 @@ int main(int argc, char *argv[])
         // case KEY_F(6): // Run until breakpoint
         case KEY_F(7): // Step
             stepCPU(&cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory);
             break;
         case KEY_F(9):
             resetCPU(&cpu);
+            update_cpu_hist(&inst_hist, &cpu, memory);
             break;
         case KEY_F(12):
             break; // Handled below
@@ -519,6 +603,7 @@ int main(int argc, char *argv[])
         print_cpu_regs(win_cpu, &cpu, 1, 2);
         mem_watch_print(&watch1, memory, &cpu);
         mem_watch_print(&watch2, memory, &cpu);
+        print_cpu_hist(&inst_hist, &cpu, memory);
 
         mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
 
@@ -527,24 +612,24 @@ int main(int argc, char *argv[])
         wattron(watch2.win, A_DIM);
         wattron(win_cpu, A_DIM);
         wattron(win_cmd, A_DIM);
-        wattron(win_inst_hist, A_DIM);
+        wattron(inst_hist.win, A_DIM);
         box(watch1.win, 0, 0);
         box(watch2.win, 0, 0);
         box(win_cpu, 0, 0);
         box(win_cmd, 0, 0);
-        box(win_inst_hist, 0, 0);
+        box(inst_hist.win, 0, 0);
 
         // Window Titles (Normal)
         wattroff(watch1.win, A_DIM);
         wattroff(watch2.win, A_DIM);
         wattroff(win_cpu, A_DIM);
         wattroff(win_cmd, A_DIM);
-        wattroff(win_inst_hist, A_DIM);
+        wattroff(inst_hist.win, A_DIM);
         mvwprintw(watch1.win, 0, 3, " MEM WATCH 1 ");
         mvwprintw(watch2.win, 0, 3, " MEM WATCH 2 ");
         mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
         mvwprintw(win_cmd, 0, 3, " COMMAND ");
-        mvwprintw(win_inst_hist, 0, 3, " INSTRUCTION HISTORY ");
+        mvwprintw(inst_hist.win, 0, 3, " INSTRUCTION HISTORY ");
 
         // If message box, prevent the other windows from updating
         if (win_msg) {
@@ -553,7 +638,7 @@ int main(int argc, char *argv[])
         else {
             // Order of refresh matters - layering of title bars
             wrefresh(win_cpu);
-            wrefresh(win_inst_hist);
+            wrefresh(inst_hist.win);
             wrefresh(win_cmd);
             wrefresh(watch1.win);
             wrefresh(watch2.win);
@@ -570,7 +655,7 @@ int main(int argc, char *argv[])
     delwin(watch2.win);
     delwin(win_cpu);
     delwin(win_cmd);
-    delwin(win_inst_hist);
+    delwin(inst_hist.win);
     endwin();			// Clean up curses mode
     return 0;
 }

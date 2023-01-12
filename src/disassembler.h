@@ -125,7 +125,8 @@ extern int addr_fmt_sizes[];
 extern opcode_t opcode_table[256];
 
 
-int get_opcode(memory_t *mem, CPU_t *cpu, char *buf);
+int get_opcode(memory_t *, CPU_t *, char *);
+int get_opcode_by_addr(memory_t *, CPU_t *, char *, uint32_t);
 
 #endif
 
