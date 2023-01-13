@@ -25,7 +25,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 5, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)"},
+    {"HELP", 7, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]"},
     {"HELP?", 3, 13, "Not help."}
 };
 
@@ -218,7 +218,7 @@ void print_cpu_hist(hist_t *hist)
                 row_mod = 2;
             }
 
-            if ((prev_has_diff && row_prev >= 3) || !prev_has_diff || row >= 2) {
+            if (row >= 2 || !prev_has_diff || (prev_has_diff && row_prev >= 3)) {
                 // Print address (PC)
                 wattron(hist->win, A_DIM);
                 mvwprintw(hist->win, row, 2, "%06x:                         ", hist->cpu[j].PC);
@@ -318,7 +318,7 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
  * @param *watch2 Watch window 2 structure
  * @return The error code from the command
  */
-cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2)
+cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu)
 {
     if (cmdbuf_index == 0) {
         return CMD_ERR_OK; // No command
@@ -337,10 +337,51 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     else if (strcmp(tok, "???") == 0) { // Not help
         return CMD_ERR_HELP_NOT;
     }
+    else if (strcmp(tok, "irq") == 0) { // Force IRQ status change
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        // Secondary level command
+        if (strcmp(tok, "set") == 0) {
+            cpu->P.IRQ = 1;
+        }
+        else if (strcmp(tok, "clear") == 0) {
+            cpu->P.IRQ = 0;
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG;
+        }
+        return CMD_ERR_OK;
+
+    }
+    else if (strcmp(tok, "nmi") == 0) { // Force NMI status change
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        // Secondary level command
+        if (strcmp(tok, "set") == 0) {
+            cpu->P.NMI = 1;
+        }
+        else if (strcmp(tok, "clear") == 0) {
+            cpu->P.NMI = 0;
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG;
+        }
+        return CMD_ERR_OK;
+
+    }
     else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
 
         tok = strtok(NULL, " ");
-        mvwprintw(watch2->win, 2, 2, "'%s'      ", tok);
 
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
@@ -680,7 +721,7 @@ int main(int argc, char *argv[])
 
                 // Check for errors in the command input and execute it if none
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
-                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2))) {
+                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu))) {
 
                     // If there is errors, print an appropiate message
                     cmd_err_msg *msg = &cmd_err_msgs[cmd_err];

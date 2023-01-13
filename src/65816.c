@@ -374,7 +374,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     }
     if (cpu->P.IRQ && !cpu->P.I)
     {
-        cpu->P.IRQ = 0;
+        cpu->P.IRQ = 0; // Not actually how the '816 works, but being "edge triggered" is convenient for the sim
 
         if (cpu->P.E)
         {
