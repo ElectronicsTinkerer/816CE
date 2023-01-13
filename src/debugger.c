@@ -106,7 +106,8 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
 {
     uint32_t val;
     size_t i;
-    int lines, b;
+    int lines;
+    // int b;
     if (cpu->P.RST) {
         hist->entry_count = 1; // 1 for RESET
         hist->entry_start = 0;
@@ -114,8 +115,9 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
         wclear(hist->win);
     }
     else {
-        b = ((hist->win_height / 2));
-        lines = b < CMD_HIST_ENTRIES ? b : CMD_HIST_ENTRIES;
+        // b = ((hist->win_height / 2));
+        // lines = b < CMD_HIST_ENTRIES ? b : CMD_HIST_ENTRIES;
+        lines = CMD_HIST_ENTRIES;
         if (hist->entry_count < lines) {
             i = hist->entry_count;
             ++hist->entry_count;
@@ -143,13 +145,19 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
 // DOCUMENTME! TODO! *****************88
 void print_cpu_hist(hist_t *hist)
 {
-    size_t i, j, row, row_mod;
-    char buf[32];
+    size_t i, j, j_1, str_index, row, row_mod, row_prev;
+    char buf[80];
     CPU_t *pcpu, *ccpu;
+    bool prev_has_diff, curr_has_diff;
+    prev_has_diff = false;
 
-    row = 1;
+    row = hist->win_height - 2;
+    row_prev = row;
     j = hist->entry_start;
-    for (i = 0; i < hist->entry_count; ++i) {
+    if (hist->entry_count > 0) {
+        j = (j == 0) ? (hist->entry_count - 1) : (j - 1);
+    }
+    for (i = 0; i < hist->entry_count && row > 0; ++i) {
 
         row_mod = 1;
 
@@ -157,54 +165,79 @@ void print_cpu_hist(hist_t *hist)
             mvwprintw(hist->win, row, 2, ">>> RESET <<<");
         }
         else {
-            // If this was not the last entry, print a diff of the registers
+            // Print a diff of the registers
             // This assumes that not "too many" registers change in a given instruction
-            // otherwise, it will wrap the text and things won't work properly...
-            if (i < hist->entry_count && i != 0) {
+            // otherwise, it will wrap the text and things won't look nice...
 
-                mvwprintw(hist->win, row, 2, "  ");
-
-                pcpu = &(hist->cpu[(j-1) % hist->entry_count]);
-                ccpu = &(hist->cpu[(j-0) % hist->entry_count]);
-                if (pcpu->C != ccpu->C) {
-                    wprintw(hist->win,  " C:%04x->%04x", pcpu->C, ccpu->C);
-                    row_mod = 2;
-                }
-                if (pcpu->X != ccpu->X) {
-                    wprintw(hist->win, " X:%04x->%04x", pcpu->X, ccpu->X);
-                    row_mod = 2;
-                }
-                if (pcpu->Y != ccpu->Y) {
-                    wprintw(hist->win, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
-                    row_mod = 2;
-                }
-                if (pcpu->DBR != ccpu->DBR) {
-                    wprintw(hist->win, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
-                    row_mod = 2;
-                }
-                if (pcpu->PBR != ccpu->PBR) {
-                    wprintw(hist->win, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
-                    row_mod = 2;
-                }
-                if (*(uint8_t*) &(pcpu->P) != *(uint8_t*) &(ccpu->P)) {
-                    wprintw(hist->win, " SR:%02x->%02x", *(uint8_t*) &(pcpu->P), *(uint8_t*) &(ccpu->P));
-                    row_mod = 2;
-                }
+            str_index = 0;
+            
+            if (hist->entry_count > 0) {
+                j_1 = (j == 0) ? (hist->entry_count - 1) : (j - 1);
+            }
+                
+            pcpu = &(hist->cpu[j_1]);
+            ccpu = &(hist->cpu[j]);
+            if (pcpu->C != ccpu->C) {
+                str_index = sprintf(buf + str_index,  " C:%04x->%04x", pcpu->C, ccpu->C);
+            }
+            if (pcpu->X != ccpu->X) {
+                str_index = sprintf(buf + str_index, " X:%04x->%04x", pcpu->X, ccpu->X);
+            }
+            if (pcpu->Y != ccpu->Y) {
+                str_index = sprintf(buf + str_index, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
+            }
+            if (pcpu->DBR != ccpu->DBR) {
+                str_index = sprintf(buf + str_index, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
+            }
+            if (pcpu->PBR != ccpu->PBR) {
+                str_index = sprintf(buf + str_index, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
+            }
+            if (*(uint8_t*) &(pcpu->P) != *(uint8_t*) &(ccpu->P)) {
+                str_index = sprintf(buf + str_index, " SR:%02x->%02x", *(uint8_t*) &(pcpu->P), *(uint8_t*) &(ccpu->P));
             }
 
-            // Print address (PC)
-            wattron(hist->win, A_DIM);
-            mvwprintw(hist->win, row + row_mod - 1, 2, "%06x:                         ", hist->cpu[j].PC);
-            wattroff(hist->win, A_DIM);
+            if (str_index > 0) {
+                curr_has_diff = true;
+            }
+            else {
+                curr_has_diff = false;
+            }
+                
+            // Give some margin so that there is not a dangling register
+            // diff at the top of the window without an instruction above it.
+            if (row < 3) {
+                // mvwprintw(hist->win, row, 2, "                                     ", row);
+                // mvwprintw(hist->win, row-1, 2, "                                     ", row);
+                // mvwprintw(hist->win, row+1, 2, "                                     ", row);
+            }
+            else if (str_index > 0) {
+                mvwprintw(hist->win, row - 1, 2, "  %s", buf);
+                row_mod = 2;
+            }
 
-            // Print the current opcode
-            get_opcode_by_addr((memory_t*)&(hist->mem[j]), &(hist->cpu[j]), buf, 0);
-            mvwprintw(hist->win, row + row_mod - 1, 10, "%s", buf);
-            mvwprintw(hist->win, row + row_mod, 2, "                            ");
+            if ((prev_has_diff && row_prev >= 3) || !prev_has_diff || row >= 2) {
+                // Print address (PC)
+                wattron(hist->win, A_DIM);
+                mvwprintw(hist->win, row, 2, "%06x:                         ", hist->cpu[j].PC);
+                wattroff(hist->win, A_DIM);
+
+                // Print the current opcode
+                get_opcode_by_addr((memory_t*)&(hist->mem[j]), &(hist->cpu[j]), buf, 0);
+                mvwprintw(hist->win, row, 10, "%s", buf);
+            }
+            else {
+                mvwprintw(hist->win, row, 2, "                            ");
+            }
+
+            prev_has_diff = curr_has_diff;
         }
 
-        j = (j+1) % hist->entry_count;
-        row += row_mod;
+        // j = (j+1) % hist->entry_count;
+        if (hist->entry_count > 0) {
+            j = (j == 0) ? (hist->entry_count - 1) : (j - 1);
+        }
+        row_prev = row;
+        row -= row_mod;
     }
     
 }

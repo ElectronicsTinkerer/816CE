@@ -1,6 +1,5 @@
 TODO:
 * Add file loading
-* Instruction history display
 * Verify 65816 core
 * Check 65816 disassembler output
 * Properly initialize hist and watch structs
@@ -9,4 +8,5 @@ TODO:
 
 TODONE:
 * Help menu (multi-level)
+* Instruction history display
 
