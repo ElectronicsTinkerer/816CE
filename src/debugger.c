@@ -107,16 +107,15 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
     uint32_t val;
     size_t i;
     int lines;
-    // int b;
+
+    // Clear the history list if the CPU was reset
     if (cpu->P.RST) {
         hist->entry_count = 1; // 1 for RESET
         hist->entry_start = 0;
         i = 0;
         wclear(hist->win);
     }
-    else {
-        // b = ((hist->win_height / 2));
-        // lines = b < CMD_HIST_ENTRIES ? b : CMD_HIST_ENTRIES;
+    else { // Otherwise, increment the circular buffer's pointer
         lines = CMD_HIST_ENTRIES;
         if (hist->entry_count < lines) {
             i = hist->entry_count;
@@ -138,11 +137,15 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
     hist->mem[i][1] = val & 0xff;
     hist->mem[i][2] = (val >> 8) & 0xff;
     hist->mem[i][3] = (val >> 16) & 0xff;
-    // mvwprintw(hist->win, 2, 34, "%06x:%02x, i:%d, PC:%06x", val, hist->mem[i][0], i, hist->cpu[i].PC); // DEBUG
 }
 
 
-// DOCUMENTME! TODO! *****************88
+/**
+ * Prints the instruction history text to a window based on
+ * data stored in the hist element.
+ * 
+ * @param *hist The history to print
+ */
 void print_cpu_hist(hist_t *hist)
 {
     size_t i, j, j_1, str_index, row, row_mod, row_prev;
@@ -154,9 +157,13 @@ void print_cpu_hist(hist_t *hist)
     row = hist->win_height - 2;
     row_prev = row;
     j = hist->entry_start;
+
+    // Start with last entry in history table.
+    // This handles underflow wrapping
     if (hist->entry_count > 0) {
         j = (j == 0) ? (hist->entry_count - 1) : (j - 1);
     }
+    
     for (i = 0; i < hist->entry_count && row > 0; ++i) {
 
         row_mod = 1;
@@ -171,6 +178,7 @@ void print_cpu_hist(hist_t *hist)
 
             str_index = 0;
             
+            // j-1 with wrapping since the diff prints the previous instruction's changes
             if (hist->entry_count > 0) {
                 j_1 = (j == 0) ? (hist->entry_count - 1) : (j - 1);
             }
@@ -205,12 +213,7 @@ void print_cpu_hist(hist_t *hist)
                 
             // Give some margin so that there is not a dangling register
             // diff at the top of the window without an instruction above it.
-            if (row < 3) {
-                // mvwprintw(hist->win, row, 2, "                                     ", row);
-                // mvwprintw(hist->win, row-1, 2, "                                     ", row);
-                // mvwprintw(hist->win, row+1, 2, "                                     ", row);
-            }
-            else if (str_index > 0) {
+            if (row >= 3 && str_index > 0) {
                 mvwprintw(hist->win, row - 1, 2, "  %s", buf);
                 row_mod = 2;
             }
@@ -232,7 +235,7 @@ void print_cpu_hist(hist_t *hist)
             prev_has_diff = curr_has_diff;
         }
 
-        // j = (j+1) % hist->entry_count;
+        // Decrement j with wrapping
         if (hist->entry_count > 0) {
             j = (j == 0) ? (hist->entry_count - 1) : (j - 1);
         }
@@ -542,6 +545,39 @@ void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int sc
 }
 
 
+/**
+ * Initialize a watch struct
+ * 
+ * @param *w The watch struct to initialize
+ * @param disasm_mode True to switch to disassembly mode
+ */
+void watch_init(watch_t *w, bool disasm_mode)
+{
+    w->win = NULL;
+    w->addr_s = 0;
+    w->win_height = 0;
+    w->win_width = 0;
+    w->disasm_mode = disasm_mode;
+    w->follow_pc = false;
+}
+
+
+/**
+ * Initialize a history struct to be in a cleared state
+ * 
+ * @param *h The history struct to clean
+ */
+void hist_init(hist_t *h)
+{
+    h->win = NULL;
+    h->win_height = 0;
+    h->win_width = 0;
+    h->entry_count = 0;
+    h->entry_start = 0;
+    memset(&(h->cpu), 0, sizeof(h->cpu));
+    memset(&(h->mem), 0, sizeof(h->mem));
+}
+
 int main(int argc, char *argv[])
 {	
     int c, prev_c;          // User key press (c = current, prev_c = previous)
@@ -556,11 +592,11 @@ int main(int argc, char *argv[])
     size_t cmdbuf_index = 0;
     cmd_err_t cmd_err;
     watch_t watch1, watch2;
-    watch1.addr_s = 0;
-    watch2.addr_s = 0;
+    watch_init(&watch1, false);
+    watch_init(&watch2, true);
+
     hist_t inst_hist;
-    inst_hist.entry_count = 0;
-    inst_hist.entry_start = 0;
+    hist_init(&inst_hist);
     
     CPU_t cpu;
     resetCPU(&cpu);
