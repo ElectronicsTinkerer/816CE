@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <ctype.h>
 #include <ncurses.h>
 
 #include "disassembler.h"
@@ -25,8 +26,10 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 7, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]"},
-    {"HELP?", 3, 13, "Not help."}
+    {"HELP", 8, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz"},
+    {"HELP?", 3, 13, "Not help."},
+    {"ERROR!", 3, 34, "Unknown character encountered."},
+    {"ERROR!", 3, 30, "Overflow in numeric value."}
 };
 
 
@@ -309,6 +312,64 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 
 
 /**
+ * Parse and execute a command for a memory watch modifier
+ * 
+ * @param *watch The watch structure to control
+ * @param tok The input command buffer
+ * @return The error code from execution of the command
+ */
+cmd_err_t command_execute_watch(watch_t *watch, char* tok)
+{
+    tok = strtok(NULL, " ");
+
+    if (!tok) {
+        return CMD_ERR_EXPECTED_ARG;
+    }
+
+    // Secondary level command
+    if (strcmp(tok, "mem") == 0) {
+        watch->disasm_mode = false;
+    }
+    else if (strcmp(tok, "asm") == 0) {
+        watch->disasm_mode = true;
+        wclear(watch->win);
+    }
+    else {
+        // Check if user is setting watch start address
+        if (isxdigit(*tok) || isspace(*tok)) {
+            unsigned long a = strtoul(tok, NULL, 16);
+            if (a > 0xffffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            watch->addr_s = a;
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
+        }
+    }
+
+    tok = strtok(NULL, " ");
+        
+    if (!tok) {
+        return CMD_ERR_OK;
+    }
+        
+    // Tertiary level command
+    if (strcmp(tok, "pc") == 0) {
+        watch->follow_pc = true;
+    }
+    else if (strcmp(tok, "addr") == 0) {
+        watch->follow_pc = false;
+    }
+    else {
+        return CMD_ERR_UNKNOWN_ARG; // Error!
+    }
+
+    return CMD_ERR_OK; // Success?
+}
+
+
+/**
  * Execute a command from the prompt window.
  * This has a very primitive parser.
  * 
@@ -316,14 +377,20 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
  * @param cmdbuf_index The length of the command + 1
  * @param *watch1 Watch window 1 structure
  * @param *watch2 Watch window 2 structure
+ * @param *cpu The CPU to modify if a command needs to
+ * @param *mem The memory to modify if a command needs to
  * @return The error code from the command
  */
-cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu)
+cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem)
 {
     if (cmdbuf_index == 0) {
         return CMD_ERR_OK; // No command
     }
 
+    while (isspace(*_cmdbuf)) {
+        ++_cmdbuf; // Remove whitespace
+    }
+    
     char *tok = strtok(_cmdbuf, " ");
 
     if (!tok) {
@@ -380,85 +447,48 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
     }
     else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
-
-        tok = strtok(NULL, " ");
-
-        if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
-        }
-
-        // Secondary level command
-        if (strcmp(tok, "mem") == 0) {
-            watch1->disasm_mode = false;
-        }
-        else if (strcmp(tok, "asm") == 0) {
-            watch1->disasm_mode = true;
-            wclear(watch1->win);
-        }
-        else if (strcmp(tok, "pc") == 0) {
-            watch1->follow_pc = true;
-        }
-        else {
-            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
-        }
-
-        tok = strtok(NULL, " ");
-        
-        if (!tok) {
-            return CMD_ERR_OK;
-        }
-        
-        // Tertiary level command
-        if (strcmp(tok, "pc") == 0) {
-            watch1->follow_pc = true;
-        }
-        else if (strcmp(tok, "addr") == 0) {
-            watch1->follow_pc = false;
-        }
-        else {
-            return CMD_ERR_UNKNOWN_ARG; // Error!
-        }
-
-        return CMD_ERR_OK; // Success?
+        return command_execute_watch(watch1, tok);
     }
-    else if (strcmp(tok, "mw2") == 0) { // Memory Watch 1
+    else if (strcmp(tok, "mw2") == 0) { // Memory Watch 2
+        return command_execute_watch(watch2, tok);
+    }
 
-        tok = strtok(NULL, " ");
+    // Not a named command, maybe it's a memory access?
+    uint32_t val, addr;
+    char *next = _cmdbuf;
+    bool found_store_delim = false;
+    bool valid_character = true;
 
-        if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
-        }
+    // Remove null char from strtok()
+    _cmdbuf[strlen(tok)] = ' ';
     
-        // Secondary level command
-        if (strcmp(tok, "mem") == 0) {
-            watch2->disasm_mode = false;
+    while ((next != NULL) && (*next != '\0') && valid_character) {
+
+        if (isspace(*next)) {
+            ++next; // Eat whitespace
         }
-        else if (strcmp(tok, "asm") == 0) {
-            watch2->disasm_mode = true;
-            wclear(watch2->win);
+        else if (*next == ':') {
+            found_store_delim = true;
+            ++next;
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
+            val = strtoul(next, &next, 16);
+            if (!found_store_delim) {
+                addr = val;
+            }
+            else {
+                _set_mem_byte(mem, addr, val);
+                ++addr;
+            }
         }
+        valid_character = isxdigit(*next) || isspace(*next) || (*next == ':') || (*next == '\0');
+    }
 
-        tok = strtok(NULL, " ");
-
-        if (!tok) {
-            return CMD_ERR_OK;
-        }
-        
-        // Tertiary level command
-        if (strcmp(tok, "pc") == 0) {
-            watch2->follow_pc = true;
-        }
-        else if (strcmp(tok, "addr") == 0) {
-            watch2->follow_pc = false;
-        }
-        else {
-            return CMD_ERR_UNKNOWN_ARG; // Error!
-        }
-
-        return CMD_ERR_OK; // Success?
+    if (!valid_character && found_store_delim) {
+        return CMD_ERR_INVALID_CHAR;
+    }
+    else if (valid_character && found_store_delim) {
+        return CMD_ERR_OK;
     }
 
     return CMD_ERR_UNKNOWN_CMD; // Not success
@@ -522,7 +552,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
             wattron(w->win, A_DIM);
             mvwprintw(w->win, 1 + row, 2, "%06x:", i);
             wattroff(w->win, A_DIM);
-            for (col = 0; col < cols; ++col, ++i) {
+            for (col = 0; col < cols; ++col) {
                 wprintw(w->win, " ");
 
                 // If the CPU's PC is at this address, highlight it
@@ -533,6 +563,8 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
                 if (i == pc) {
                     wattroff(w->win, A_BOLD | A_UNDERLINE);
                 }
+
+                i = (i + 1) & 0xffffff;
             }
         }
     }
@@ -619,6 +651,7 @@ void hist_init(hist_t *h)
     memset(&(h->mem), 0, sizeof(h->mem));
 }
 
+
 int main(int argc, char *argv[])
 {	
     int c, prev_c;          // User key press (c = current, prev_c = previous)
@@ -642,7 +675,7 @@ int main(int argc, char *argv[])
     CPU_t cpu;
     resetCPU(&cpu);
 
-    memory_t *memory = malloc(sizeof(*memory) * 0x10000);
+    memory_t *memory = malloc(sizeof(*memory) * 0x1000000); // 16MiB
     memory_t prog[] = {0xea, 0x1a, 0xe8, 0x88, 0x4c, 0x00, 0x00};
     memcpy(memory, &prog, 7);
 
@@ -721,7 +754,7 @@ int main(int argc, char *argv[])
 
                 // Check for errors in the command input and execute it if none
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
-                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu))) {
+                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu, memory))) {
 
                     // If there is errors, print an appropiate message
                     cmd_err_msg *msg = &cmd_err_msgs[cmd_err];

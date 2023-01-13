@@ -9,4 +9,5 @@ TODONE:
 * Properly initialize hist and watch structs
 * irq [set|clear]
 * nmi [set|clear]
+* Add memory store command syntax
 
