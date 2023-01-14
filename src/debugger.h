@@ -79,7 +79,8 @@ typedef enum cmd_err_t {
     CMD_ERR_EXPECTED_FILENAME,
     CMD_ERR_FILE_IO_ERROR,
     CMD_ERR_FILE_TOO_LARGE,
-    CMD_ERR_FILE_WILL_WRAP
+    CMD_ERR_FILE_WILL_WRAP,
+    CMD_ERR_CPU_CORRUPT_FILE
 } cmd_err_t;
 
 // Error message box type

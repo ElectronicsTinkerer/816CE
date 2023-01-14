@@ -37,8 +37,9 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 30, "Overflow in numeric value."},
     {"ERROR!", 3, 22, "Expected filename."},
     {"ERROR!", 3, 24, "Unable to open file."},
-    {"ERROR!", 3, 20, "File too large."},
-    {"ERROR!", 3, 41, "File will wrap due to offset address."}
+    {"ERROR!", 3, 19, "File too large."},
+    {"ERROR!", 3, 41, "File will wrap due to offset address."},
+    {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."}
 };
 
 
@@ -126,6 +127,9 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
         hist->entry_start = 0;
         i = 0;
         wclear(hist->win);
+    }
+    else if (cpu->P.CRASH) { // Don't increment if CPU has crashed
+        return;
     }
     else { // Otherwise, increment the circular buffer's pointer
         lines = CMD_HIST_ENTRIES;
@@ -615,7 +619,9 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
             char buf[size];
             fread(&buf, sizeof(*buf), size, fp);
-            fromstrCPU(cpu, (char*)&buf);
+            if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
+                return CMD_ERR_CPU_CORRUPT_FILE;
+            }
             fclose(fp);
         }
         else {

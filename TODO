@@ -1,6 +1,8 @@
 TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
+* move save/load to functions to enable cli arg loading of files
+* Add commands 'cpu [reg] val' to directly modify the CPU
 
 TODONE:
 * Help menu (multi-level)
