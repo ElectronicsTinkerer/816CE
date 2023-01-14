@@ -693,7 +693,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 
     if (w->disasm_mode) { // Show disassembly
         
-        CPU_t cpu_dup;
+        CPU_t cpu_dup = *cpu;
     
         if (!w->follow_pc) {
             cpu_dup.PC = (uint16_t)w->addr_s;

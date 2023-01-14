@@ -436,22 +436,37 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
 {
     uint32_t addr = _cpu_get_effective_pc(cpu);
     opcode_t *op = &opcode_table[mem[addr]];
+    int size = addr_fmt_sizes[op->addr_mode];
     
     sprintf(buf, "%s", instruction_mne[op->inst]);
 
     // Determine operand byte size
-    switch (addr_fmt_sizes[op->addr_mode]) {
+    switch (size) {
     case 1:
         break;
     case 2: {
         uint32_t val = _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1));
+        char *fmt = addr_fmts[op->addr_mode];
 
-        // Correct value for branches
+        // Correct operand value to be an address for branches
         if (op->addr_mode == CPU_ADDR_PCR) {
             val = _addrCPU_getRelative8(cpu, mem);
         }
+        // Correct value for immediate
+        else if (op->addr_mode == CPU_ADDR_IMMD) {
+            if (op->reg == REG_A && !(cpu->P.E || (!cpu->P.E && cpu->P.M))) { // 16-bit
+                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+                size = 3;
+                fmt = " $%04x";
+            }
+            else if (op->reg == REG_X && !(cpu->P.E || (!cpu->P.E && cpu->P.XB))) { // 16-bit
+                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+                size = 3;
+                fmt = " $%04x";
+            }
+        }
         
-        sprintf(buf+3, addr_fmts[op->addr_mode], val);
+        sprintf(buf+3, fmt, val);
     }
         break;
     case 3: {
@@ -475,7 +490,7 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
         break;
     }
 
-    return addr_fmt_sizes[op->addr_mode];
+    return size;
 }
 
 
