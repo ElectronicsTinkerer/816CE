@@ -74,7 +74,8 @@ typedef enum cmd_err_t {
     CMD_ERR_HELP_MAIN,
     CMD_ERR_HELP_NOT,
     CMD_ERR_INVALID_CHAR,
-    CMD_ERR_VAL_OVERFLOW
+    CMD_ERR_VAL_OVERFLOW,
+    CMD_ERR_EXIT
 } cmd_err_t;
 
 // Error message box type

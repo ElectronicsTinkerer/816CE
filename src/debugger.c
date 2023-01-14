@@ -26,7 +26,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 8, 40, "Available commands\n > ? ... Help Menu\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz"},
+    {"HELP", 9, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."}
@@ -452,6 +452,9 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     else if (strcmp(tok, "mw2") == 0) { // Memory Watch 2
         return command_execute_watch(watch2, tok);
     }
+    else if (strcmp(tok, "exit") == 0) { // Exit
+        return CMD_ERR_EXIT;
+    }
 
     // Not a named command, maybe it's a memory access?
     uint32_t val, addr;
@@ -658,6 +661,7 @@ int main(int argc, char *argv[])
     int scrw, scrh;         // Width and height of screen
     status_t status_id = STATUS_NONE;
     bool alert = true;
+    bool cmd_exit = false;
     WINDOW *win_cpu, *win_cmd, *win_msg = NULL;
     char cmdbuf[MAX_CMD_LEN];
     char cmdbuf_dup[MAX_CMD_LEN];
@@ -715,7 +719,7 @@ int main(int argc, char *argv[])
     // Event loop
     prev_c = c = EOF;
     // F12 F12 = exit
-    while (!(c == KEY_F(12) && prev_c == KEY_F(12))) {
+    while (!cmd_exit && !(c == KEY_F(12) && prev_c == KEY_F(12))) {
 
         // Handle key press
         switch (c) {
@@ -756,9 +760,14 @@ int main(int argc, char *argv[])
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
                 if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu, memory))) {
 
-                    // If there is errors, print an appropiate message
-                    cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
-                    msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
+                    if (cmd_err == CMD_ERR_EXIT) {
+                        cmd_exit = true;
+                    }
+                    else {
+                        // If there is errors, print an appropiate message
+                        cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
+                        msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
+                    }
                 }
                 else { // Only clear the command input if the command was successful
                     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
@@ -833,7 +842,10 @@ int main(int argc, char *argv[])
         status_id = STATUS_NONE;
         alert = false;
         prev_c = c;
-        c = getch();
+
+        if (!cmd_exit) {
+            c = getch();
+        }
     }
     
     delwin(watch1.win);
