@@ -5,6 +5,9 @@
  * Updated: 2023-01-07
  */
 
+// For sys/stat operations
+#define _FILE_OFFSET_BITS 64
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +15,8 @@
 #include <math.h>
 #include <ctype.h>
 #include <ncurses.h>
+
+#include <sys/stat.h> // For getting file sizes
 
 #include "disassembler.h"
 #include "65816.h"
@@ -26,12 +31,14 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 10, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename.bin"},
+    {"HELP", 14, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem [offset] filename\n > load cpu filename\n ^C to clear command input"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
-    {"ERROR!", 3, 24, "Expected filename."},
-    {"ERROR!", 3, 25, "Unable to open file."}
+    {"ERROR!", 3, 22, "Expected filename."},
+    {"ERROR!", 3, 24, "Unable to open file."},
+    {"ERROR!", 3, 20, "File too large."},
+    {"ERROR!", 3, 41, "File will wrap due to offset address."}
 };
 
 
@@ -270,6 +277,10 @@ void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
     wattron(win, A_BOLD);
     mvwaddch(win, 1, CMD_DISP_X_OFFS, '_');
     wattroff(win, A_BOLD);
+
+    wattron(win, A_DIM);
+    wprintw(win, " ? to view command list");
+    wattroff(win, A_DIM);
 }
 
 
@@ -290,6 +301,13 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
         return true;
     }
 
+    // Make sure the command line is cleared if typing
+    if (*cmdbuf_index == 0) {
+        for (size_t i = 0; i < MAX_CMD_LEN; ++i) {
+            mvwaddch(win, 1, CMD_DISP_X_OFFS + i, ' ');
+        }
+    }
+
     wattron(win, A_BOLD);
 
     if (c == KEY_BACKSPACE || c == KEY_CTRL_H) {
@@ -308,7 +326,13 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
     mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, '_');
 
     wattroff(win, A_BOLD);
-    
+
+    // Print basic help
+    if (*cmdbuf_index == 0) {
+        wattron(win, A_DIM);
+        wprintw(win, " ? to view command list");
+        wattroff(win, A_DIM);
+    }
     return false;
 }
 
@@ -474,10 +498,13 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         // Secondary level command
         if (strcmp(tok, "mem") == 0) {
 
-            FILE *fp = fopen(filename, "w");
+            FILE *fp = fopen(filename, "wb");
             if (!fp) {
                 return CMD_ERR_FILE_IO_ERROR;
             }
+            
+            // Yes, this violates the requirement that memory should only be
+            // accessed through the helper functions.
             if (fwrite(mem, sizeof(*mem), 0x1000000, fp) != 0x1000000) {
                 return CMD_ERR_FILE_IO_ERROR;
             }
@@ -496,6 +523,103 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         }
         else {
             return CMD_ERR_EXPECTED_ARG;
+        }
+
+        return CMD_ERR_OK;
+    }
+    else if (strcmp(tok, "load") == 0) {
+
+        tok = strtok(NULL, " ");
+        
+        if (!tok) {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        // Secondary level command
+        if (strcmp(tok, "mem") == 0) {
+
+            tok = strtok(NULL, " ");
+        
+            if (!tok) {
+                return CMD_ERR_EXPECTED_ARG;
+            }
+
+            uint32_t base_addr = 0;
+            
+            if (isxdigit(*tok) || isspace(*tok)) {
+                unsigned long a = strtoul(tok, NULL, 16);
+                if (a > 0xffffff) {
+                    return CMD_ERR_VAL_OVERFLOW;
+                }
+                base_addr = a;
+
+                tok = strtok(NULL, " ");
+
+                if (!tok) {
+                    return CMD_ERR_EXPECTED_FILENAME;
+                }
+            }
+
+            // Get the size of the file
+            struct stat finfo;
+            stat(tok, &finfo);
+            size_t size = finfo.st_size;
+            
+            // Check file size
+            if (size / sizeof(*mem) > 0x1000000) {
+                return CMD_ERR_FILE_TOO_LARGE;
+            }
+
+            // Make sure the file won't wrap
+            if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
+                return CMD_ERR_FILE_WILL_WRAP;
+            }
+            
+            // All good, let's open the file
+            FILE *fp = fopen(tok, "rb");
+            if (!fp) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+            
+            size = size / sizeof(*mem);
+            
+            // Yes, this violates the requirement that memory should only be
+            // accessed through the helper functions.
+            if (fread(mem + base_addr, sizeof(*mem), size, fp) != size) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+            fclose(fp);
+        }
+        else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
+
+            // Get filename
+            tok = strtok(NULL, " ");
+
+            if (!tok) {
+                return CMD_ERR_EXPECTED_FILENAME;
+            }
+
+            // Get the size of the file
+            struct stat finfo;
+            stat(tok, &finfo);
+            size_t size = finfo.st_size;
+
+            if (size > 1024) { // Arbitrary max file size limit (should not need to be increased!)
+                return CMD_ERR_FILE_TOO_LARGE;
+            }
+
+            FILE *fp = fopen(tok, "r");
+            if (!fp) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+
+            char buf[size];
+            fread(&buf, sizeof(*buf), size, fp);
+            fromstrCPU(cpu, (char*)&buf);
+            fclose(fp);
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG;
         }
 
         return CMD_ERR_OK;
@@ -899,6 +1023,9 @@ int main(int argc, char *argv[])
     delwin(win_cmd);
     delwin(inst_hist.win);
     endwin();			// Clean up curses mode
+
+    free(memory);
+    
     return 0;
 }
 

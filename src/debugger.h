@@ -67,7 +67,8 @@ typedef struct hist_t {
 // Command input error codes
 // Keep in sync with the cmd_err_msgs[] array in debugger.c
 typedef enum cmd_err_t {
-    CMD_ERR_OK = 0,
+    CMD_ERR_EXIT = -1,
+    CMD_ERR_OK = 0, // Start of cmd_err_msgs index
     CMD_ERR_EXPECTED_ARG,
     CMD_ERR_UNKNOWN_ARG,
     CMD_ERR_UNKNOWN_CMD,
@@ -75,9 +76,10 @@ typedef enum cmd_err_t {
     CMD_ERR_HELP_NOT,
     CMD_ERR_INVALID_CHAR,
     CMD_ERR_VAL_OVERFLOW,
-    CMD_ERR_EXIT,
     CMD_ERR_EXPECTED_FILENAME,
-    CMD_ERR_FILE_IO_ERROR
+    CMD_ERR_FILE_IO_ERROR,
+    CMD_ERR_FILE_TOO_LARGE,
+    CMD_ERR_FILE_WILL_WRAP
 } cmd_err_t;
 
 // Error message box type

@@ -123,7 +123,7 @@ char addr_fmts[][16] = {
     " $%06x,X",   // Absolute long indexed x
     " [$%04x]",   // Absolute Indirect Long
     " ($%04x,X)", // Absolute indirect indexed x
-    " #$%02",     // Immediate (MODIFIED DURING PRINTING)
+    " #$%02x",    // Immediate (MODIFIED DURING PRINTING)
     " $%02x,S",   // Stack relative
     " ($%02x,S),Y", // Stack relative indirect indexed y
     "",             // Implied

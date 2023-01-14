@@ -1,5 +1,4 @@
 TODO:
-* Add file loading
 * Verify 65816 core
 * Check 65816 disassembler output
 
@@ -12,4 +11,5 @@ TODONE:
 * Add memory store command syntax
 * "exit" command
 * "save" command -> dumps memory & CPU
+* Add file loading
 
