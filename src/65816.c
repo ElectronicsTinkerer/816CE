@@ -61,6 +61,7 @@ CPU_Error_Code_t fromstrCPU(CPU_t *cpu, char *buf)
 
     cpu->P.RST = rst;
     cpu->P.IRQ = irq;
+    cpu->P.NMI = nmi;
     cpu->P.STP = stp;
     cpu->P.CRASH = crash;
     cpu->P.C = prc;
