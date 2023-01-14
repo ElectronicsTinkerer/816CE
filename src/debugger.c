@@ -85,7 +85,7 @@ void print_cpu_regs(WINDOW *win, CPU_t *cpu, int y, int x)
     // Data headers/labels
     wattrset(win, A_NORMAL);
     mvwprintw(win, y, x, "C:   X:   Y:   SP:");
-    mvwprintw(win, y+3, x, "DBR: PBR: PC:");
+    mvwprintw(win, y+3, x, "DBR: PBR: PC:  D:");
     mvwprintw(win, y+6, x, "RST: IRQ: NMI: STP: CRASH:");
     mvwprintw(win, y, x+22, "NVMXDIZC|E");
     mvwprintw(win, y+3, x+22, "Cycles:");
@@ -94,8 +94,8 @@ void print_cpu_regs(WINDOW *win, CPU_t *cpu, int y, int x)
     wattron(win, A_BOLD);
     mvwprintw(win, y+1, x, "%04x %04x %04x %04x",
               cpu->C, cpu->X, cpu->Y, cpu->SP);
-    mvwprintw(win, y+4, x, "%02x   %02x   %04x",
-              cpu->DBR, cpu->PBR, cpu->PC);
+    mvwprintw(win, y+4, x, "%02x   %02x   %04x %04x",
+              cpu->DBR, cpu->PBR, cpu->PC, cpu->D);
     mvwprintw(win, y+7, x, "%d    %d    %d    %d    %d",
               cpu->P.RST, cpu->P.IRQ, cpu->P.NMI, cpu->P.STP, cpu->P.CRASH);
     mvwprintw(win, y+1, x+22, "%d%d%d%d%d%d%d%d|%d",
@@ -209,6 +209,9 @@ void print_cpu_hist(hist_t *hist)
             }
             if (pcpu->Y != ccpu->Y) {
                 str_index = sprintf(buf + str_index, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
+            }
+            if (pcpu->D != ccpu->D) {
+                str_index = sprintf(buf + str_index, " D:%04x->%04x", pcpu->D, ccpu->D);
             }
             if (pcpu->DBR != ccpu->DBR) {
                 str_index = sprintf(buf + str_index, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
