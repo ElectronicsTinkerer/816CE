@@ -26,10 +26,12 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 9, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz"},
+    {"HELP", 10, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename.bin"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
-    {"ERROR!", 3, 30, "Overflow in numeric value."}
+    {"ERROR!", 3, 30, "Overflow in numeric value."},
+    {"ERROR!", 3, 24, "Expected filename."},
+    {"ERROR!", 3, 25, "Unable to open file."}
 };
 
 
@@ -454,6 +456,49 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "exit") == 0) { // Exit
         return CMD_ERR_EXIT;
+    }
+    else if (strcmp(tok, "save") == 0) { // Save
+
+        tok = strtok(NULL, " ");
+        
+        if (!tok) {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        char *filename = strtok(NULL, " ");
+
+        if (!filename) {
+            return CMD_ERR_EXPECTED_FILENAME;
+        }
+
+        // Secondary level command
+        if (strcmp(tok, "mem") == 0) {
+
+            FILE *fp = fopen(filename, "w");
+            if (!fp) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+            if (fwrite(mem, sizeof(*mem), 0x1000000, fp) != 0x1000000) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+            fclose(fp);
+        }
+        else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
+
+            FILE *fp = fopen(filename, "w");
+            if (!fp) {
+                return CMD_ERR_FILE_IO_ERROR;
+            }
+            char buf[160];
+            tostrCPU(cpu, (char*)&buf);
+            fprintf(fp, "%s", buf);
+            fclose(fp);
+        }
+        else {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        return CMD_ERR_OK;
     }
 
     // Not a named command, maybe it's a memory access?

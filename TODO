@@ -2,7 +2,6 @@ TODO:
 * Add file loading
 * Verify 65816 core
 * Check 65816 disassembler output
-* "save" command -> dumps memory & CPU
 
 TODONE:
 * Help menu (multi-level)
@@ -12,4 +11,5 @@ TODONE:
 * nmi [set|clear]
 * Add memory store command syntax
 * "exit" command
+* "save" command -> dumps memory & CPU
 

@@ -64,6 +64,7 @@ typedef enum CPU_Error_Code_t
      CPU_ERR_STP, // Returned if stepCPU() is called on a CPU which is in the SToPped state due to a STP instruction
      CPU_ERR_NULL_CPU, // Only used if `CPU_DEBUG_CHECK_NULL` is defined
      CPU_ERR_CRASH, // Returned if stepCPU() is called on a CPU which has reached an unhandled sim state
+     CPU_ERR_STR_PARSE, // Returned in fromstrCPU() if scanning of the input string fails
  } CPU_Error_Code_t;
 
 // Used to specify if the call to stack operations should allow
@@ -104,7 +105,11 @@ typedef enum CPU_Addr_Mode_t
 
 typedef uint8_t memory_t;
 
+
+CPU_Error_Code_t tostrCPU(CPU_t *, char *);
+CPU_Error_Code_t fromstrCPU(CPU_t *, char *);
 CPU_Error_Code_t resetCPU(CPU_t *);
 CPU_Error_Code_t stepCPU(CPU_t *, memory_t *);
+
 
 #endif

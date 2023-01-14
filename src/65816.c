@@ -1,7 +1,85 @@
 
+#include <stddef.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <inttypes.h>
+
 #include "65816.h"
 #include "65816-ops.h"
 #include "65816-util.h"
+
+
+/**
+ * Print out the state of a CPU to a string
+ * 
+ * @param *cpu The cpu to print
+ * @param *buf The buffer to write the string to. This must be >160 chars long!
+ * @param Error code
+ */
+CPU_Error_Code_t tostrCPU(CPU_t *cpu, char *buf)
+{    
+#ifdef CPU_DEBUG_CHECK_NULL
+    if (cpu == NULL)
+    {
+        return CPU_ERR_NULL_CPU;
+    }
+#endif
+
+    sprintf(buf, "{C:%04x,X:%04x,Y:%04x,SP:%04x,D:%04x,DBR:%02x,PBR:%02x,PC:%04x,RST:%d,IRQ:%d,NMI:%d,STP:%d,CRASH:%d,PSC:%d,PSZ:%d,PSI:%d,PSD:%d,PSXB:%d,PSM:%d,PSV:%d,PSN:%d,PSE:%d,cycles:%" PRIu64 "}",
+            cpu->C, cpu->X, cpu->Y, cpu->SP, cpu->D, cpu->DBR, cpu->PBR,
+            cpu->PC, cpu->P.RST, cpu->P.IRQ, cpu->P.NMI, cpu->P.STP,
+            cpu->P.CRASH, cpu->P.C, cpu->P.Z, cpu->P.I, cpu->P.D,
+            cpu->P.XB, cpu->P.M, cpu->P.V, cpu->P.N, cpu->P.E,
+            cpu->cycles);
+
+    return CPU_ERR_OK;
+}
+
+
+/**
+ * Read in CPU data from a string and store it into a CPU structure
+ * 
+ * @param *cpu The CPU to modify
+ * @param *buf The buffer to read
+ * @return Error code based on parsing sucess
+ */
+CPU_Error_Code_t fromstrCPU(CPU_t *cpu, char *buf)
+{    
+#ifdef CPU_DEBUG_CHECK_NULL
+    if (cpu == NULL)
+    {
+        return CPU_ERR_NULL_CPU;
+    }
+#endif
+
+    int rst, irq, nmi, stp, crash, prc, prz, pri, prd, prxb, prm, prv, prn, pre;
+    
+    size_t num = sscanf(buf, "{ C : %04hx , X : %04hx , Y : %04hx , SP : %04hx , D : %04hx , DBR : %02hhx , PBR : %02hhx , PC : %04hx , RST : %d , IRQ : %d , NMI : %d , STP : %d , CRASH : %d , PSC : %d , PSZ : %d , PSI : %d , PSD : %d , PSXB : %d , PSM : %d , PSV : %d , PSN : %d , PSE : %d , cycles : %" PRIu64 " }",
+                        &(cpu->C), &(cpu->X), &(cpu->Y), &(cpu->SP), &(cpu->D), &(cpu->DBR), &(cpu->PBR),
+                        &(cpu->PC), &rst, &irq, &nmi, &stp, &crash, &prc, &prz, &pri, &prd, &prxb, &prm, &prv, &prn, &pre,
+                        &(cpu->cycles));
+
+    cpu->P.RST = rst;
+    cpu->P.IRQ = irq;
+    cpu->P.STP = stp;
+    cpu->P.CRASH = crash;
+    cpu->P.C = prc;
+    cpu->P.Z = prz;
+    cpu->P.I = pri;
+    cpu->P.D = prd;
+    cpu->P.XB = prxb;
+    cpu->P.M = prm;
+    cpu->P.V = prv;
+    cpu->P.N = prn;
+    cpu->P.E = pre;
+
+    // Make sure all elements were scanned
+    if (num != 23) {
+        return CPU_ERR_STR_PARSE;
+    }
+    return CPU_ERR_OK;
+}
+
 
 /**
  * Resets a CPU to its post-/RST value
