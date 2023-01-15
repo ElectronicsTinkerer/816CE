@@ -233,22 +233,32 @@ void print_cpu_hist(hist_t *hist)
             // Give some margin so that there is not a dangling register
             // diff at the top of the window without an instruction above it.
             if (row >= 3 && str_index > 0) {
-                mvwprintw(hist->win, row - 1, 2, "  %s", buf);
+                
+                // Clear the line first
+                wmove(hist->win, row - 1, 2);
+                wclrtoeol(hist->win);
+                
+                // The print the changes
+                mvwprintw(hist->win, row - 1, 4, "%s", buf);
                 row_mod = 2;
             }
 
             if (row >= 2 || !prev_has_diff || (prev_has_diff && row_prev >= 3)) {
                 // Print address (PC)
                 wattron(hist->win, A_DIM);
-                mvwprintw(hist->win, row, 2, "%06x:                         ", hist->cpu[j].PC);
+                mvwprintw(hist->win, row, 2, "%06x:", hist->cpu[j].PC);
                 wattroff(hist->win, A_DIM);
+
+                // Clear rest of line
+                wclrtoeol(hist->win);
 
                 // Print the current opcode
                 get_opcode_by_addr((memory_t*)&(hist->mem[j]), &(hist->cpu[j]), buf, 0);
                 mvwprintw(hist->win, row, 10, "%s", buf);
             }
             else {
-                mvwprintw(hist->win, row, 2, "                            ");
+                wmove(hist->win, row, 2);
+                wclrtoeol(hist->win);
             }
 
             prev_has_diff = curr_has_diff;
@@ -274,8 +284,10 @@ void print_cpu_hist(hist_t *hist)
  */
 void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
 {
+    wmove(win, 1, CMD_DISP_X_OFFS);
+    wclrtoeol(win);
+
     for (size_t i = 1; i < MAX_CMD_LEN + 1; ++i) {
-        mvwaddch(win, 1, i + CMD_DISP_X_OFFS, ' ');
         cmdbuf[i] = '\0';
     }
     *cmdbuf_index = 0;
@@ -310,9 +322,8 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 
     // Make sure the command line is cleared if typing
     if (*cmdbuf_index == 0) {
-        for (size_t i = 0; i < MAX_CMD_LEN; ++i) {
-            mvwaddch(win, 1, CMD_DISP_X_OFFS + i, ' ');
-        }
+        wmove(win, 1, CMD_DISP_X_OFFS);
+        wclrtoeol(win);
     }
 
     wattron(win, A_BOLD);
@@ -710,8 +721,11 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 
             i = _addr_add_val_bank_wrap(i, get_opcode(mem, &cpu_dup, buf));
 
+            wmove(w->win, 1 + row, 2);
+            wclrtoeol(w->win);
+            
             wattron(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
-            mvwprintw(w->win, 1 + row, 2, "%06x:                         ", cpu_dup.PC);
+            mvwprintw(w->win, 1 + row, 2, "%06x:", cpu_dup.PC);
             wattroff(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
 
             mvwprintw(w->win, 1 + row, 10, "%s", buf);
