@@ -17,6 +17,7 @@
 #include <ncurses.h>
 
 #include <sys/stat.h> // For getting file sizes
+#include <errno.h>
 
 #include "disassembler.h"
 #include "65816.h"
@@ -39,6 +40,11 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 24, "Unable to open file."},
     {"ERROR!", 3, 19, "File too large."},
     {"ERROR!", 3, 41, "File will wrap due to offset address."},
+    {"ERROR!", 3, 27, "File permission denied."},
+    {"ERROR!", 3, 29, "Too many symbolic links."},
+    {"ERROR!", 3, 22, "Filename too long."},
+    {"ERROR!", 3, 24, "File does not exist."},
+    {"ERROR!", 3, 33, "Unhandled file-related error."},
     {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."}
 };
 
@@ -272,6 +278,128 @@ void print_cpu_hist(hist_t *hist)
         row -= row_mod;
     }
     
+}
+
+
+/**
+ * Load a file into memory
+ * 
+ * @param *filename The path of the file to load
+ * @param *mem The memory to store the data into
+ * @param base_addr The base address to load the file at
+ * @return A status code indicating errors if any occur
+ */
+cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
+{
+    // Get the size of the file
+    struct stat finfo;
+
+    // Lots of error values!
+    if (stat(filename, &finfo) != 0) {
+        switch (errno) {
+        case EACCES:
+            return CMD_ERR_FILE_PERM_DENIED;
+            break;
+        case ELOOP:
+            return CMD_ERR_FILE_LOOP;
+            break;
+        case ENAMETOOLONG:
+            return CMD_ERR_FILE_NAME_TOO_LONG;
+            break;
+        case ENOTDIR:
+        case ENOENT:
+
+            endwin();
+            printf("FILE: '%s'\n", filename);
+            refresh();
+            return CMD_ERR_FILE_NOT_EXIST;
+            break;
+        default:
+            return CMD_ERR_FILE_UNKNOWN_ERROR;
+        }
+    }
+    
+    size_t size = finfo.st_size;
+            
+    // Check file size
+    if (size / sizeof(*mem) > 0x1000000) {
+        return CMD_ERR_FILE_TOO_LARGE;
+    }
+
+    // Make sure the file won't wrap
+    if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
+        return CMD_ERR_FILE_WILL_WRAP;
+    }
+            
+    // All good, let's open the file
+    FILE *fp = fopen(filename, "rb");
+    if (!fp) {
+        return CMD_ERR_FILE_IO_ERROR;
+    }
+            
+    size = size / sizeof(*mem);
+            
+    // Yes, this violates the requirement that memory should only be
+    // accessed through the helper functions.
+    if (fread(mem + base_addr, sizeof(*mem), size, fp) != size) {
+        return CMD_ERR_FILE_IO_ERROR;
+    }
+    fclose(fp);
+    return CMD_ERR_OK;
+}
+
+
+/**
+ * Load a file's contents into the CPU state
+ * 
+ * @param *filename The path of the file to load
+ * @param *cpu The CPU to save the file's contents into
+ * @return The error status of the load operation
+ */
+cmd_err_t load_file_cpu(char *filename, CPU_t *cpu)
+{
+    // Get the size of the file
+    struct stat finfo;
+
+    // Lots of error values!
+    if (stat(filename, &finfo) != 0) {
+        switch (errno) {
+        case EACCES:
+            return CMD_ERR_FILE_PERM_DENIED;
+            break;
+        case ELOOP:
+            return CMD_ERR_FILE_LOOP;
+            break;
+        case ENAMETOOLONG:
+            return CMD_ERR_FILE_NAME_TOO_LONG;
+            break;
+        case ENOTDIR:
+        case ENOENT:
+            return CMD_ERR_FILE_NOT_EXIST;
+            break;
+        default:
+            return CMD_ERR_FILE_UNKNOWN_ERROR;
+        }
+    }
+    
+    size_t size = finfo.st_size;
+
+    if (size > 1024) { // Arbitrary max file size limit (should not need to be increased!)
+        return CMD_ERR_FILE_TOO_LARGE;
+    }
+
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        return CMD_ERR_FILE_IO_ERROR;
+    }
+
+    char buf[size];
+    fread(&buf, sizeof(*buf), size, fp);
+    if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
+        return CMD_ERR_CPU_CORRUPT_FILE;
+    }
+    fclose(fp);
+    return CMD_ERR_OK;
 }
 
 
@@ -563,8 +691,19 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             }
 
             uint32_t base_addr = 0;
-            
-            if (isxdigit(*tok) || isspace(*tok)) {
+
+            // Determine if this is actually a hex address
+            // or if it is just a filename starting with
+            // a hex character
+            char *tmp = tok;
+            while (isxdigit(*tmp)) {
+                /* spin */
+                ++tmp;
+            }
+
+            // If a load offset is given, parse it
+            if (*tmp == '\0') {
+                
                 unsigned long a = strtoul(tok, NULL, 16);
                 if (a > 0xffffff) {
                     return CMD_ERR_VAL_OVERFLOW;
@@ -578,35 +717,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
                 }
             }
 
-            // Get the size of the file
-            struct stat finfo;
-            stat(tok, &finfo);
-            size_t size = finfo.st_size;
-            
-            // Check file size
-            if (size / sizeof(*mem) > 0x1000000) {
-                return CMD_ERR_FILE_TOO_LARGE;
-            }
-
-            // Make sure the file won't wrap
-            if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
-                return CMD_ERR_FILE_WILL_WRAP;
-            }
-            
-            // All good, let's open the file
-            FILE *fp = fopen(tok, "rb");
-            if (!fp) {
-                return CMD_ERR_FILE_IO_ERROR;
-            }
-            
-            size = size / sizeof(*mem);
-            
-            // Yes, this violates the requirement that memory should only be
-            // accessed through the helper functions.
-            if (fread(mem + base_addr, sizeof(*mem), size, fp) != size) {
-                return CMD_ERR_FILE_IO_ERROR;
-            }
-            fclose(fp);
+            return load_file_mem(tok, mem, base_addr);
         }
         else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
 
@@ -617,26 +728,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
                 return CMD_ERR_EXPECTED_FILENAME;
             }
 
-            // Get the size of the file
-            struct stat finfo;
-            stat(tok, &finfo);
-            size_t size = finfo.st_size;
-
-            if (size > 1024) { // Arbitrary max file size limit (should not need to be increased!)
-                return CMD_ERR_FILE_TOO_LARGE;
-            }
-
-            FILE *fp = fopen(tok, "r");
-            if (!fp) {
-                return CMD_ERR_FILE_IO_ERROR;
-            }
-
-            char buf[size];
-            fread(&buf, sizeof(*buf), size, fp);
-            if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
-                return CMD_ERR_CPU_CORRUPT_FILE;
-            }
-            fclose(fp);
+            return load_file_cpu(tok, cpu);
         }
         else {
             return CMD_ERR_UNKNOWN_ARG;
