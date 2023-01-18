@@ -32,7 +32,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 14, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem [offset] filename\n > load cpu filename\n ^C to clear command input"},
+    {"HELP", 14, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem (offset) filename\n > load cpu filename\n ^C to clear command input"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
@@ -308,10 +308,6 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
             break;
         case ENOTDIR:
         case ENOENT:
-
-            endwin();
-            printf("FILE: '%s'\n", filename);
-            refresh();
             return CMD_ERR_FILE_NOT_EXIST;
             break;
         default:
@@ -939,6 +935,22 @@ void hist_init(hist_t *h)
 }
 
 
+void print_help_and_exit()
+{
+    printf(
+        "65816 Simulator (C) Ray Clemens 2022-2023\n"
+        "USAGE:\n"
+        " $ 816ce (--cpu filename) (--mem (offset) filename)\n"
+        "\n"
+        "Args:\n"
+        " --cpu filename ............ Preload the CPU with a saved state\n"
+        " --mem (offset) filename ... Load memory at offset (in hex) with a file\n"
+        "\n"
+        );
+    exit(EXIT_SUCCESS);
+}
+
+
 int main(int argc, char *argv[])
 {	
     int c, prev_c;          // User key press (c = current, prev_c = previous)
@@ -964,12 +976,91 @@ int main(int argc, char *argv[])
     resetCPU(&cpu);
 
     memory_t *memory = malloc(sizeof(*memory) * 0x1000000); // 16MiB
-    memory_t prog[] = {0xea, 0x1a, 0xe8, 0x88, 0x4c, 0x00, 0x00};
-    memcpy(memory, &prog, 7);
 
     if (!memory) {
         printf("Unable to allocate system memory!\n");
         exit(EXIT_FAILURE);
+    }
+
+    // Command line parsing
+    printf("Loading simulator...\n");
+
+    {
+        uint32_t base_addr = 0;
+        int cli_pstate = 0;
+        char *tmp;
+        for (size_t i = 1; i < argc; ++i) {
+            switch (cli_pstate) {
+            case 0:
+                if (strcmp(argv[i], "--cpu") == 0) {
+                    cli_pstate = 1;
+                }
+                else if (strcmp(argv[i], "--mem") == 0) {
+                    cli_pstate = 2;
+                }
+                else if (strcmp(argv[i], "--help") == 0) {
+                    print_help_and_exit();
+                }
+                else {
+                    printf("Unknown argument: '%s'\n", argv[i]);
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case 1: // CPU load
+                if ((cmd_err = load_file_cpu(argv[i], &cpu)) > 0) {
+                    printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
+                    exit(EXIT_FAILURE);
+                }
+                cli_pstate = 0;
+                break;
+            case 2: // MEM load
+                // Determine if this is actually a hex address
+                // or if it is just a filename starting with
+                // a hex character
+                tmp = argv[i];
+                while (isxdigit(*tmp)) {
+                    /* spin */
+                    ++tmp;
+                }
+
+                // If the entire argument is hex, use it as an address
+                if (*tmp == '\0') {
+                    base_addr = strtol(argv[i], NULL, 16);
+                }
+                else {
+                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr)) > 0) {
+                        printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
+                        exit(EXIT_FAILURE);
+                    }
+                    cli_pstate = 0;
+                }
+                break;
+            default:
+                printf(
+                    "Internal cli parser error!\ni=%ld, argv[%ld]='%s', cli_pstate=%d\n",
+                    i, i, argv[i], cli_pstate);
+                exit(EXIT_FAILURE);
+                break;
+            }
+            // printf("i=%ld, argv[%ld]='%s', cli_pstate=%d\n",
+                    // i, i, argv[i], cli_pstate);
+        }
+    
+        if (cli_pstate != 0) {
+            printf("Mising argument to --");
+            switch (cli_pstate) {
+            case 1: // CPU load
+                printf("cpu\n");
+                break;
+            case 2: // MEM load
+                printf("mem\n");
+                break;
+            default:
+                printf("Unhandled cli_pstate in missing arg handler\n");
+                break;
+            }
+            exit(EXIT_FAILURE);
+        }
     }
 
     initscr();              // Start curses mode
@@ -1140,6 +1231,8 @@ int main(int argc, char *argv[])
     endwin();			// Clean up curses mode
 
     free(memory);
+
+    printf("Stopped simulator\n");
     
     return 0;
 }
