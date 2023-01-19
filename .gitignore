@@ -4,6 +4,7 @@
 *.h~
 *.out
 build
+extra
 *.bin
 *.log
 *~

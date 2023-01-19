@@ -1256,6 +1256,11 @@ void i_jsl(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint
 
 void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
+    if (mode == CPU_ADDR_IMMD && !cpu->P.E && !cpu->P.M) // 16-bit immediate, add a byte
+    {
+        size += 1;
+    }
+
     switch (mode)
     {
     case CPU_ADDR_DP:
@@ -1334,7 +1339,7 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         cpu->P.Z = ((cpu->C & 0xff) == 0);
         cpu->P.N = ((cpu->C & 0x80) == 0x80);
     }
-    else
+    else // 16-bit
     {
         cpu->P.Z = (cpu->C == 0);
         cpu->P.N = ((cpu->C & 0x8000) == 0x8000);

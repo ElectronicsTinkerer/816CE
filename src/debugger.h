@@ -19,28 +19,13 @@
 
 #define CMD_HIST_ENTRIES 20
 
-/*
-#define MIN(a, b) ({\
-    __typeof__(a) _local_a = (a);\
-    __typeof__(b) _local_b = (b);\
-    ((_local_a < _local_b) ? _local_a : _local_b);});
-*/
-
 // Keep in sync with status_msgs
 typedef enum status_t {
     STATUS_NONE,
     STATUS_F12,
     STATUS_RESET,
     STATUS_CRASH
-} status_t;
-
-static char status_msgs[][64] = {
-    "Normal",
-    "Press F12 again to exit. Any other key to cancel.",
-    "CPU Reset",
-    "CPU Crashed - internal error"
-};
-    
+} status_t;    
 
 // Memory watch window
 typedef struct watch_t {
@@ -70,6 +55,8 @@ typedef enum cmd_err_t {
     CMD_ERR_EXIT = -1,
     CMD_ERR_OK = 0, // Start of cmd_err_msgs index
     CMD_ERR_EXPECTED_ARG,
+    CMD_ERR_EXPECTED_REG,
+    CMD_ERR_EXPECTED_VALUE,
     CMD_ERR_UNKNOWN_ARG,
     CMD_ERR_UNKNOWN_CMD,
     CMD_ERR_HELP_MAIN,

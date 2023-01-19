@@ -25,14 +25,25 @@
 #include "debugger.h"
 
 
+// Messages to print in the status bar at the top of the screen
+// Keep in sync with status_msgs
+static char status_msgs[][64] = {
+    "Normal",
+    "Press F12 again to exit. Any other key to cancel.",
+    "CPU Reset",
+    "CPU Crashed - internal error"
+};
+
 // Error messages for command parsing/execution
 // Keep in sync with the cmd_err_t enum in debugger.h
 cmd_err_msg cmd_err_msgs[] = {
     {"",0,0,""}, // OK
     {"ERROR!", 3, 34, "Expected argument for command."},
+    {"ERROR!", 3, 27, "Expected register name."},
+    {"ERROR!", 3, 19, "Expected value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 14, 40, "Available commands\n > ? ... Help Menu\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem (offset) filename\n > load cpu filename\n ^C to clear command input"},
+    {"HELP", 15, 40, "Available commands\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem (offset) filename\n > load cpu filename\n > cpu [reg] xxxx\n ? ... Help Menu\n ^C to clear command input"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
@@ -225,8 +236,8 @@ void print_cpu_hist(hist_t *hist)
             if (pcpu->PBR != ccpu->PBR) {
                 str_index = sprintf(buf + str_index, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
             }
-            if (*(uint8_t*) &(pcpu->P) != *(uint8_t*) &(ccpu->P)) {
-                str_index = sprintf(buf + str_index, " SR:%02x->%02x", *(uint8_t*) &(pcpu->P), *(uint8_t*) &(ccpu->P));
+            if (_cpu_get_sr(pcpu) != _cpu_get_sr(ccpu)) {
+                    str_index = sprintf(buf + str_index, " SR:%02x->%02x", _cpu_get_sr(pcpu), _cpu_get_sr(ccpu));
             }
 
             if (str_index > 0) {
@@ -732,6 +743,179 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
         return CMD_ERR_OK;
     }
+    else if (strcmp(tok, "cpu") == 0) {
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_EXPECTED_REG;
+        }
+
+        char *hexval = strtok(NULL, " ");
+        char *tmp = hexval;
+
+        if (!hexval) {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        // Make sure it's hex
+        while (isxdigit(*tmp)) {
+            /* spin */
+            ++tmp;
+        }
+
+        if (*tmp != '\0') {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        unsigned long val = strtoul(hexval, NULL, 16);
+        if (val > 0xffffff) {
+            return CMD_ERR_VAL_OVERFLOW;
+        }
+
+        if (strcmp(tok, "C") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->C = val;
+        }
+        else if (strcmp(tok, "X") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->X = val;
+        }
+        else if (strcmp(tok, "Y") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->Y = val;
+        }
+        else if (strcmp(tok, "SP") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->SP = val;
+        }
+        else if (strcmp(tok, "DBR") == 0) {
+            if (val > 0xff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->DBR = val;
+        }
+        else if (strcmp(tok, "PBR") == 0) {
+            if (val > 0xff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->PBR = val;
+        }
+        else if (strcmp(tok, "PC") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->PC = val;
+        }
+        else if (strcmp(tok, "D") == 0) {
+            if (val > 0xffff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->D = val;
+        }
+        else if (strcmp(tok, "P") == 0) {
+            if (val > 0xff) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            _cpu_set_sp(cpu, (uint8_t)val);
+        }
+        else if (strcmp(tok, "P.N") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.N = val;
+        }
+        else if (strcmp(tok, "P.V") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.V = val;
+        }
+        else if (strcmp(tok, "P.M") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.M = val;
+        }
+        else if (strcmp(tok, "P.X") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.XB = val;
+        }
+        else if (strcmp(tok, "P.D") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.D = val;
+        }
+        else if (strcmp(tok, "P.I") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.I = val;
+        }
+        else if (strcmp(tok, "P.Z") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.Z = val;
+        }
+        else if (strcmp(tok, "P.C") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.C = val;
+        }
+        else if (strcmp(tok, "P.E") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.E = val;
+        }
+        else if (strcmp(tok, "RST") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.RST = val;
+        }
+        else if (strcmp(tok, "IRQ") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.IRQ = val;
+        }
+        else if (strcmp(tok, "NMI") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.NMI = val;
+        }
+        else if (strcmp(tok, "STP") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.STP = val;
+        }
+        else if (strcmp(tok, "CRASH") == 0) {
+            if (val > 0x1) {
+                return CMD_ERR_VAL_OVERFLOW;
+            }
+            cpu->P.CRASH = val;
+        }
+        else {
+            return CMD_ERR_UNKNOWN_ARG;
+        }
+        return CMD_ERR_OK;
+    }
 
     // Not a named command, maybe it's a memory access?
     uint32_t val, addr;
@@ -975,7 +1159,7 @@ int main(int argc, char *argv[])
     CPU_t cpu;
     resetCPU(&cpu);
 
-    memory_t *memory = malloc(sizeof(*memory) * 0x1000000); // 16MiB
+    memory_t *memory = calloc(0x1000000, sizeof(*memory)); // 16MiB
 
     if (!memory) {
         printf("Unable to allocate system memory!\n");
@@ -1113,6 +1297,11 @@ int main(int argc, char *argv[])
             break; // Handled below
         case KEY_CTRL_C:
             command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+            break;
+        case '?': {
+            cmd_err_msg *msg = &cmd_err_msgs[CMD_ERR_HELP_MAIN];
+            msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
+        }
             break;
         default:
             if (c == EOF) {

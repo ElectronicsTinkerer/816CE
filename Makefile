@@ -10,18 +10,19 @@ BIN_NAME := sim
 
 PROG := $(BUILD_DIR)/$(BIN_NAME)
 
-SRCS := $(shell find $(SRC_DIR) -name '*.c')
-SRCSP := $(SRCS:%.c=%.c)
-OBJS := ${SRCS:.c=.o}
-OBJSP :=$(SRCS:%.c=$(BUILD_DIR)/%.o)
-SNAMES := ${SRCS:.c=}
+# SRCS := $(shell find $(SRC_DIR) -name '*.c')
+SRCQ := debugger.c disassembler.c 65816.c 65816-util.c 65816-ops.c
+SRCS := $(SRCQ:%.c=$(SRC_DIR)/%.c)
+# OBJS := ${SRCS:.c=.o}
+# OBJSP :=$(SRCS:%.c=$(BUILD_DIR)/%.o)
+# SNAMES := ${SRCS:.c=}
 
 CC := gcc
 
 # .PHONY: all
 all: $(BUILD_DIR) $(PROG)
 
-$(PROG): $(SRCSP)
+$(PROG): $(SRCS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBFLAGS) -iquote$(SRC_DIR) -iquote$(BUILD_DIR)
 
 $(BUILD_DIR):
