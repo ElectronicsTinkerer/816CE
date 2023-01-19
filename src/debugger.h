@@ -1,6 +1,6 @@
 /**
- * 65(c)816 emulator/simulator
- * (C) Ray Clemens 2023
+ * 65(c)816 simulator/emulator (816CE)
+ * Copyright (C) 2023 Ray Clemens
  */
 
 #ifndef _DEBUGGER_H

@@ -1,3 +1,7 @@
+/**
+ * 65(c)816 simulator/emulator (816CE)
+ * Copyright (C) 2023 Ray Clemens
+ */
 
 #include <stddef.h>
 #include <stdio.h>

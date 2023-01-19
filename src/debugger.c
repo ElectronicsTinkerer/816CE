@@ -1,8 +1,6 @@
 /**
- * 65(c)816 emulator/simulator
- * (C) Ray Clemens 2023
- * Started: 2021-12-31 Ray Clemens
- * Updated: 2023-01-07
+ * 65(c)816 simulator/emulator (816CE)
+ * Copyright (C) 2023 Ray Clemens
  */
 
 // For sys/stat operations
