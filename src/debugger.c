@@ -289,6 +289,31 @@ void print_cpu_hist(hist_t *hist)
     
 }
 
+/**
+ * Check if a string is a hex string and parse it if so
+ * 
+ * @param *str The string to parse
+ * @param *val A pointer to the variable to store the parsed value in
+ * @return false if the string is not hex (val will not be modified if so)
+ *         true if the string is hex and was successfully parsed
+ */
+bool is_hex_do_parse(char *str, uint32_t *val)
+{
+    // Determine if this is actually a hex address
+    char *tmp = str;
+    while (isxdigit(*tmp)) {
+        /* scan */
+        ++tmp;
+    }
+
+    // If the entire argument is hex, use it as an address
+    if (*tmp == '\0') {
+        *val = strtoul(str, NULL, 16);
+        return true;
+    }
+    return false;
+}
+
 
 /**
  * Load a file into memory
@@ -513,12 +538,11 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
     }
     else {
         // Check if user is setting watch start address
-        if (isxdigit(*tok) || isspace(*tok)) {
-            unsigned long a = strtoul(tok, NULL, 16);
-            if (a > 0xffffff) {
+        if (is_hex_do_parse(tok, &(watch->addr_s))) {
+
+            if (watch->addr_s > 0xffffff) {
                 return CMD_ERR_VAL_OVERFLOW;
             }
-            watch->addr_s = a;
         }
         else {
             return CMD_ERR_UNKNOWN_ARG; // Syntax error!
@@ -697,23 +721,12 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
             uint32_t base_addr = 0;
 
-            // Determine if this is actually a hex address
-            // or if it is just a filename starting with
-            // a hex character
-            char *tmp = tok;
-            while (isxdigit(*tmp)) {
-                /* spin */
-                ++tmp;
-            }
-
             // If a load offset is given, parse it
-            if (*tmp == '\0') {
-                
-                unsigned long a = strtoul(tok, NULL, 16);
-                if (a > 0xffffff) {
+            if (is_hex_do_parse(tok, &base_addr)) {
+
+                if (base_addr > 0xffffff) {
                     return CMD_ERR_VAL_OVERFLOW;
                 }
-                base_addr = a;
 
                 tok = strtok(NULL, " ");
 
@@ -750,23 +763,18 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         }
 
         char *hexval = strtok(NULL, " ");
-        char *tmp = hexval;
 
         if (!hexval) {
             return CMD_ERR_EXPECTED_VALUE;
         }
 
+        uint32_t val = 0;
+        
         // Make sure it's hex
-        while (isxdigit(*tmp)) {
-            /* spin */
-            ++tmp;
-        }
-
-        if (*tmp != '\0') {
+        if (!is_hex_do_parse(tok, &val)) {
             return CMD_ERR_EXPECTED_VALUE;
         }
 
-        unsigned long val = strtoul(hexval, NULL, 16);
         if (val > 0xffffff) {
             return CMD_ERR_VAL_OVERFLOW;
         }
@@ -1170,7 +1178,6 @@ int main(int argc, char *argv[])
     {
         uint32_t base_addr = 0;
         int cli_pstate = 0;
-        char *tmp;
         for (size_t i = 1; i < argc; ++i) {
             switch (cli_pstate) {
             case 0:
@@ -1196,20 +1203,9 @@ int main(int argc, char *argv[])
                 cli_pstate = 0;
                 break;
             case 2: // MEM load
-                // Determine if this is actually a hex address
-                // or if it is just a filename starting with
-                // a hex character
-                tmp = argv[i];
-                while (isxdigit(*tmp)) {
-                    /* spin */
-                    ++tmp;
-                }
-
-                // If the entire argument is hex, use it as an address
-                if (*tmp == '\0') {
-                    base_addr = strtol(argv[i], NULL, 16);
-                }
-                else {
+                // If the argument is hex, use it as an address
+                // Otherwise just load the file
+                if (!is_hex_do_parse(argv[i], &base_addr)) {
                     if ((cmd_err = load_file_mem(argv[i], memory, base_addr)) > 0) {
                         printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                         exit(EXIT_FAILURE);
