@@ -110,7 +110,7 @@ char addr_fmts[][16] = {
     " $%02x",     // Direct page
     " $%02x,X",   // Direct page indexed, x
     " ($%02x,X)", // Direct page indexed indirect X
-    " $%02,Y",    // Direct page indexed, y
+    " $%02x,Y",   // Direct page indexed, y
     " ($%02x),Y", // Direct page indirect indexed y
     " [$%02x],Y", // Direct page indirect long indexed y
     " ($%02x)",   // Direct page indirect

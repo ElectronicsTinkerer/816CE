@@ -29,7 +29,8 @@ static char status_msgs[][64] = {
     "Normal",
     "Press F12 again to exit. Any other key to cancel.",
     "CPU Reset",
-    "CPU Crashed - internal error"
+    "CPU Crashed - internal error",
+    "Running"
 };
 
 // Error messages for command parsing/execution
@@ -771,7 +772,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         uint32_t val = 0;
         
         // Make sure it's hex
-        if (!is_hex_do_parse(tok, &val)) {
+        if (!is_hex_do_parse(hexval, &val)) {
             return CMD_ERR_EXPECTED_VALUE;
         }
 
@@ -1148,6 +1149,7 @@ int main(int argc, char *argv[])
     status_t status_id = STATUS_NONE;
     bool alert = true;
     bool cmd_exit = false;
+    bool in_run_mode = false;
     WINDOW *win_cpu, *win_cmd, *win_msg = NULL;
     char cmdbuf[MAX_CMD_LEN];
     char cmdbuf_dup[MAX_CMD_LEN];
@@ -1276,8 +1278,17 @@ int main(int argc, char *argv[])
 
         // Handle key press
         switch (c) {
-        // case KEY_F(4): // Halt
-        // case KEY_F(5): // Run (until BRK)
+        case ERR: // During run mode, ERR is returned from getch if no key is available
+            break; 
+        case KEY_F(4): // Halt
+            in_run_mode = false;
+            timeout(-1); // Enable keypress waiting
+            break;
+        case KEY_F(5): // Run (until BRK)
+            in_run_mode = true;
+            timeout(0); // Disable waiting for keypresses
+            status_id = STATUS_RUN;
+            break;
         // case KEY_F(6): // Run until breakpoint
         case KEY_F(7): // Step
             stepCPU(&cpu, memory);
@@ -1335,6 +1346,12 @@ int main(int argc, char *argv[])
             break;
         }
 
+
+        // RUN mode
+        if (in_run_mode) {
+            stepCPU(&cpu, memory);
+        }
+        
         // Handle exiting
         if (c == KEY_F(12)) {
             status_id = STATUS_F12;
@@ -1343,10 +1360,12 @@ int main(int argc, char *argv[])
         else if (cpu.P.CRASH) {
             status_id = STATUS_CRASH;
             alert = true;
+            in_run_mode = false;
         }
         else if (cpu.P.RST) {
             status_id = STATUS_RESET;
             alert = true;
+            in_run_mode = false;
         }
 
         // Update screen

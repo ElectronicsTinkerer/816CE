@@ -24,7 +24,8 @@ typedef enum status_t {
     STATUS_NONE,
     STATUS_F12,
     STATUS_RESET,
-    STATUS_CRASH
+    STATUS_CRASH,
+    STATUS_RUN
 } status_t;    
 
 // Memory watch window
