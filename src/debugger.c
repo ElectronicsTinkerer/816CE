@@ -981,6 +981,15 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
     
     pc = _cpu_get_effective_pc(cpu);
 
+    cols = (w->win_width - 10) / 3;
+    if (cols < 16) {
+        cols = 8;
+    } else if (cols < 32) {
+        cols = 16;
+    } else {
+        cols = 32; // WIDE! screen
+    }
+
     if (w->disasm_mode) { // Show disassembly
         
         CPU_t cpu_dup = *cpu;
@@ -1002,25 +1011,30 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 
             wmove(w->win, 1 + row, 2);
             wclrtoeol(w->win);
-            
+
+            // Print the address
             wattron(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
             mvwprintw(w->win, 1 + row, 2, "%06x:", cpu_dup.PC);
             wattroff(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
 
+            // Print the instruction
             mvwprintw(w->win, 1 + row, 10, "%s", buf);
 
-            cpu_dup.PC = i;
+            // Print the bytes
+            if (cols > 8) {
+                wmove(w->win, 1+row, 24);
+                while (cpu_dup.PC < i) {
+                    wprintw(w->win, " %02x", _get_mem_byte(mem, cpu_dup.PC));
+
+                    cpu_dup.PC = _addr_add_val_bank_wrap(cpu_dup.PC, 1);
+                }
+            }
+            else {
+                cpu_dup.PC = i;
+            }
         }
     }
-    else { // Just show memory contents
-        cols = (w->win_width - 10) / 3;
-        if (cols < 16) {
-            cols = 8;
-        } else if (cols < 32) {
-            cols = 16;
-        } else {
-            cols = 32; // WIDE! screen
-        }
+    else {     // Just show memory contents
         i = w->follow_pc ? pc : w->addr_s;
         for (row = 0; row < w->win_height - 2; ++row) {
             wattron(w->win, A_DIM);
