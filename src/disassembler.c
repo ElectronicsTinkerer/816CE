@@ -430,6 +430,7 @@ opcode_t opcode_table[256] = {
  * @param *mem The CPU's memory to use for the opcode
  * @param *cpu The CPU to get information from (e.g., X width, PC value, etc.)
  * @param *buf[] The buffer to return the string in
+ *               Can be NULL, in which case, no disassembly is generated
  * @return The number of bytes that the instruction occupies
  */
 int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
@@ -437,8 +438,10 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
     uint32_t addr = _cpu_get_effective_pc(cpu);
     opcode_t *op = &opcode_table[mem[addr]];
     int size = addr_fmt_sizes[op->addr_mode];
-    
-    sprintf(buf, "%s", instruction_mne[op->inst]);
+
+    if (buf) {
+        sprintf(buf, "%s", instruction_mne[op->inst]);
+    }
 
     // Determine operand byte size
     switch (size) {
@@ -465,8 +468,10 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
                 fmt = " $%04x";
             }
         }
-        
-        sprintf(buf+3, fmt, val);
+
+        if (buf) {
+            sprintf(buf+3, fmt, val);
+        }
     }
         break;
     case 3: {
@@ -476,17 +481,23 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
             op->inst == I_PER) {
             val = _addrCPU_getRelative16(cpu, mem);
         } 
-         
-        sprintf(buf+3, addr_fmts[op->addr_mode], val);
+
+        if (buf) {
+            sprintf(buf+3, addr_fmts[op->addr_mode], val);
+        }
     }
         break;
     case 4:
-        sprintf(buf+3, addr_fmts[op->addr_mode],
-                _get_mem_long_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1)));
+        if (buf) {
+            sprintf(buf+3, addr_fmts[op->addr_mode],
+                    _get_mem_long_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1)));
+        }
         break;
     default:
         /* ERROR */
-        sprintf(buf+3, "INTERNAL ERROR");
+        if (buf) {
+            sprintf(buf+3, "INTERNAL ERROR");
+        }
         break;
     }
 

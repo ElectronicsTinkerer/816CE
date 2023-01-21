@@ -1,11 +1,9 @@
 TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
-* Add a socket listener (AF_UNIX, SOCK_STREAM) to emulate some form of UART
+* Add a socket listener (AF_UNIX, SOCK_STREAM) to emulate some form of UART (65C51 with and w/o TX flag bug)
 * Add block write/read functions to memory_t wrapper functions (to facilitate overlay of simulated I/O devices)
-
-"TOPTIONALS":
-* Move the CPU to its own thread to implement 'run'
+* Add break points
 
 TODONE:
 * Help menu (multi-level)
@@ -20,4 +18,5 @@ TODONE:
 * move save/load to functions to enable cli arg loading of files
 * Add cli loading of files
 * Add commands 'cpu [reg] val' to directly modify the CPU
+* Add "fast run mode"
 

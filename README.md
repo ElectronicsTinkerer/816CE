@@ -52,12 +52,12 @@ Available commands
 Additionally, the function keys are of use:
 
 ```
-F4 - Halt CPU
-F5 - Run until Halt pressed or CPU CRASH or CPU executes STP
-F6 - Run until breakpoint (UNIMPLEMENTED)
-F7 - Step by one instruction
-F9 - Reset CPU
-F12 F12 - Pressing F12 twice will exit the simulator without saving.
+F4  - Halt CPU
+F5  - Run until Halt pressed, CPU CRASH, CPU executes STP, or a breakpoint is hit
+F6  - Step over instruction at current PC
+F7  - Step by one instruction
+F9  - Reset CPU
+F12 - Pressing F12 twice will exit the simulator without saving.
 ```
 
 ### File loading & saving

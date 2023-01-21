@@ -1150,6 +1150,7 @@ int main(int argc, char *argv[])
     bool alert = true;
     bool cmd_exit = false;
     bool in_run_mode = false;
+    int run_mode_step_count = 0;
     WINDOW *win_cpu, *win_cmd, *win_msg = NULL;
     char cmdbuf[MAX_CMD_LEN];
     char cmdbuf_dup[MAX_CMD_LEN];
@@ -1286,10 +1287,13 @@ int main(int argc, char *argv[])
             break;
         case KEY_F(5): // Run (until BRK)
             in_run_mode = true;
+            run_mode_step_count = 0;
             timeout(0); // Disable waiting for keypresses
             status_id = STATUS_RUN;
             break;
-        // case KEY_F(6): // Run until breakpoint
+        case KEY_F(6): // Step over
+            cpu.PC += get_opcode(memory, &cpu, NULL);
+            break;
         case KEY_F(7): // Step
             stepCPU(&cpu, memory);
             update_cpu_hist(&inst_hist, &cpu, memory);
@@ -1350,6 +1354,12 @@ int main(int argc, char *argv[])
         // RUN mode
         if (in_run_mode) {
             stepCPU(&cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory);
+
+            ++run_mode_step_count;
+            if (run_mode_step_count == RUN_MODE_STEPS_UNTIL_DISP_UPDATE) {
+                run_mode_step_count = 0;
+            }
         }
         
         // Handle exiting
@@ -1370,49 +1380,52 @@ int main(int argc, char *argv[])
 
         // Update screen
         // getmaxyx(stdscr, scrh, scrw); // Get screen dimensions
-        print_header(scrw, status_id, alert);
-        print_cpu_regs(win_cpu, &cpu, 1, 2);
-        mem_watch_print(&watch1, memory, &cpu);
-        mem_watch_print(&watch2, memory, &cpu);
-        print_cpu_hist(&inst_hist);
+        if (!in_run_mode || (run_mode_step_count == 0)) {
 
-        mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
+            print_header(scrw, status_id, alert);
+            print_cpu_regs(win_cpu, &cpu, 1, 2);
+            mem_watch_print(&watch1, memory, &cpu);
+            mem_watch_print(&watch2, memory, &cpu);
+            print_cpu_hist(&inst_hist);
 
-        // Window borders (DIM)
-        wattron(watch1.win, A_DIM);
-        wattron(watch2.win, A_DIM);
-        wattron(win_cpu, A_DIM);
-        wattron(win_cmd, A_DIM);
-        wattron(inst_hist.win, A_DIM);
-        box(watch1.win, 0, 0);
-        box(watch2.win, 0, 0);
-        box(win_cpu, 0, 0);
-        box(win_cmd, 0, 0);
-        box(inst_hist.win, 0, 0);
+            mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
 
-        // Window Titles (Normal)
-        wattroff(watch1.win, A_DIM);
-        wattroff(watch2.win, A_DIM);
-        wattroff(win_cpu, A_DIM);
-        wattroff(win_cmd, A_DIM);
-        wattroff(inst_hist.win, A_DIM);
-        mvwprintw(watch1.win, 0, 3, " MEM WATCH 1 ");
-        mvwprintw(watch2.win, 0, 3, " MEM WATCH 2 ");
-        mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
-        mvwprintw(win_cmd, 0, 3, " COMMAND ");
-        mvwprintw(inst_hist.win, 0, 3, " INSTRUCTION HISTORY ");
+            // Window borders (DIM)
+            wattron(watch1.win, A_DIM);
+            wattron(watch2.win, A_DIM);
+            wattron(win_cpu, A_DIM);
+            wattron(win_cmd, A_DIM);
+            wattron(inst_hist.win, A_DIM);
+            box(watch1.win, 0, 0);
+            box(watch2.win, 0, 0);
+            box(win_cpu, 0, 0);
+            box(win_cmd, 0, 0);
+            box(inst_hist.win, 0, 0);
 
-        // If message box, prevent the other windows from updating
-        if (win_msg) {
-            wrefresh(win_msg);
-        }
-        else {
-            // Order of refresh matters - layering of title bars
-            wrefresh(win_cpu);
-            wrefresh(inst_hist.win);
-            wrefresh(win_cmd);
-            wrefresh(watch1.win);
-            wrefresh(watch2.win);
+            // Window Titles (Normal)
+            wattroff(watch1.win, A_DIM);
+            wattroff(watch2.win, A_DIM);
+            wattroff(win_cpu, A_DIM);
+            wattroff(win_cmd, A_DIM);
+            wattroff(inst_hist.win, A_DIM);
+            mvwprintw(watch1.win, 0, 3, " MEM WATCH 1 ");
+            mvwprintw(watch2.win, 0, 3, " MEM WATCH 2 ");
+            mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
+            mvwprintw(win_cmd, 0, 3, " COMMAND ");
+            mvwprintw(inst_hist.win, 0, 3, " INSTRUCTION HISTORY ");
+
+            // If message box, prevent the other windows from updating
+            if (win_msg) {
+                wrefresh(win_msg);
+            }
+            else {
+                // Order of refresh matters - layering of title bars
+                wrefresh(win_cpu);
+                wrefresh(inst_hist.win);
+                wrefresh(win_cmd);
+                wrefresh(watch1.win);
+                wrefresh(watch2.win);
+            }
         }
         
         refresh();

@@ -19,6 +19,8 @@
 
 #define CMD_HIST_ENTRIES 20
 
+#define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 1000
+
 // Keep in sync with status_msgs
 typedef enum status_t {
     STATUS_NONE,
