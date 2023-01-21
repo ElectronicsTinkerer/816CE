@@ -21,6 +21,9 @@
 
 #define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 1000
 
+#define REPLACE_INST true
+#define PUSH_INST false
+
 // Keep in sync with status_msgs
 typedef enum status_t {
     STATUS_NONE,

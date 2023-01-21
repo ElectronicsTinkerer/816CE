@@ -130,8 +130,10 @@ void print_cpu_regs(WINDOW *win, CPU_t *cpu, int y, int x)
  * @param *hist The history structure to reference and update
  * @param *cpu The CPU to conitor
  * @param *mem The memory to use for instruction disassembly
+ * @param replace If true, then the last instruction on the history
+ *                buffer will be replaced with the current instruction
  */
-void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
+void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
 {
     uint32_t val;
     size_t i;
@@ -151,12 +153,22 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem)
         lines = CMD_HIST_ENTRIES;
         if (hist->entry_count < lines) {
             i = hist->entry_count;
-            ++hist->entry_count;
+
+            if (!replace) {
+                ++hist->entry_count;
+            } else {
+                --i;
+            }
         }
         else {
             i = hist->entry_start;
-            hist->entry_start += 1;
-            hist->entry_start %= lines;
+
+            if (!replace) {
+                hist->entry_start += 1;
+                hist->entry_start %= lines;
+            } else {
+                --i;
+            }
         }
     }
     
@@ -1281,7 +1293,7 @@ int main(int argc, char *argv[])
     
     refresh();  // Necessary for window borders
 
-    update_cpu_hist(&inst_hist, &cpu, memory);
+    update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
 
     // Set up command input
     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
@@ -1313,14 +1325,15 @@ int main(int argc, char *argv[])
             break;
         case KEY_F(6): // Step over
             cpu.PC += get_opcode(memory, &cpu, NULL);
+            update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
             break;
         case KEY_F(7): // Step
             stepCPU(&cpu, memory);
-            update_cpu_hist(&inst_hist, &cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
             break;
         case KEY_F(9):
             resetCPU(&cpu);
-            update_cpu_hist(&inst_hist, &cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
             break;
         case KEY_F(12):
             break; // Handled below
@@ -1374,7 +1387,7 @@ int main(int argc, char *argv[])
         // RUN mode
         if (in_run_mode) {
             stepCPU(&cpu, memory);
-            update_cpu_hist(&inst_hist, &cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
 
             ++run_mode_step_count;
             if (run_mode_step_count == RUN_MODE_STEPS_UNTIL_DISP_UPDATE) {
