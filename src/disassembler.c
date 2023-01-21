@@ -431,9 +431,12 @@ opcode_t opcode_table[256] = {
  * @param *cpu The CPU to get information from (e.g., X width, PC value, etc.)
  * @param *buf[] The buffer to return the string in
  *               Can be NULL, in which case, no disassembly is generated
+ * @param addr_offs An offset to be used to correct relative addressing 
+ *                  calculations. Typically the address of the instruction
+ *                  with relative addressing
  * @return The number of bytes that the instruction occupies
  */
-int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
+static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
 {
     uint32_t addr = _cpu_get_effective_pc(cpu);
     opcode_t *op = &opcode_table[mem[addr]];
@@ -454,6 +457,7 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
         // Correct operand value to be an address for branches
         if (op->addr_mode == CPU_ADDR_PCR) {
             val = _addrCPU_getRelative8(cpu, mem);
+            val = _addr_add_val_bank_wrap(val, addr_offs);
         }
         // Correct value for immediate
         else if (op->addr_mode == CPU_ADDR_IMMD) {
@@ -480,6 +484,7 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
         if (op->addr_mode == CPU_ADDR_PCRL ||
             op->inst == I_PER) {
             val = _addrCPU_getRelative16(cpu, mem);
+            val = _addr_add_val_bank_wrap(val, addr_offs);
         } 
 
         if (buf) {
@@ -506,6 +511,21 @@ int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
 
 
 /**
+ * Generate the opcode string for a CPU's PC address
+ * 
+ * @param *mem The CPU's memory to use for the opcode
+ * @param *cpu The CPU to get information from (e.g., X width, PC value, etc.)
+ * @param *buf[] The buffer to return the string in
+ *               Can be NULL, in which case, no disassembly is generated
+ * @return The number of bytes that the instruction occupies
+ */
+int get_opcode(memory_t *mem, CPU_t *cpu, char *buf)
+{
+    return _get_opcode(mem, cpu, buf, 0);
+}
+
+
+/**
  * Generate the opcode string for a given address
  * 
  * @param *mem The CPU's memory to use for the opcode
@@ -524,7 +544,7 @@ int get_opcode_by_addr(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr)
     cpu_dup.PC = addr & 0xffff;
     cpu_dup.PBR = (addr >> 16) & 0xff;
 
-    return get_opcode(mem, &cpu_dup, buf);
+    return _get_opcode(mem, &cpu_dup, buf, _cpu_get_effective_pc(cpu));
 }
 
 

@@ -251,16 +251,11 @@ void print_cpu_hist(hist_t *hist)
                     str_index = sprintf(buf + str_index, " SR:%02x->%02x", _cpu_get_sr(pcpu), _cpu_get_sr(ccpu));
             }
 
-            if (str_index > 0) {
-                curr_has_diff = true;
-            }
-            else {
-                curr_has_diff = false;
-            }
+            curr_has_diff = (str_index > 0);
                 
             // Give some margin so that there is not a dangling register
             // diff at the top of the window without an instruction above it.
-            if (row >= 3 && str_index > 0) {
+            if (row >= 3 && curr_has_diff) {
                 
                 // Clear the line first
                 wmove(hist->win, row - 1, 2);
