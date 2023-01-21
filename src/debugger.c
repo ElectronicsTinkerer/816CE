@@ -1280,7 +1280,13 @@ int main(int argc, char *argv[])
         // Handle key press
         switch (c) {
         case ERR: // During run mode, ERR is returned from getch if no key is available
-            break; 
+            break;
+        case KEY_F(2): // IRQ
+            cpu.P.IRQ = !cpu.P.IRQ;
+            break;
+        case KEY_F(3): // NMI
+            cpu.P.NMI = !cpu.P.NMI;
+            break;
         case KEY_F(4): // Halt
             in_run_mode = false;
             timeout(-1); // Enable keypress waiting
