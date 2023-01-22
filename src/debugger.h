@@ -53,7 +53,7 @@ typedef struct hist_t {
     int entry_count;
     int entry_start;
     CPU_t cpu[CMD_HIST_ENTRIES];
-    uint8_t mem[CMD_HIST_ENTRIES][4];
+    memory_t mem[CMD_HIST_ENTRIES][4];
 } hist_t;
     
 

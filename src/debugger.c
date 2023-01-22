@@ -177,11 +177,11 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
     memcpy(hist->cpu + i, cpu, sizeof(*cpu));
 
     // Copy in memory in case there is self-modifying asm code
-    hist->mem[i][0] = _get_mem_byte(mem, _cpu_get_effective_pc(cpu), false);
+    hist->mem[i][0].val = _get_mem_byte(mem, _cpu_get_effective_pc(cpu), false);
     val = _cpu_get_immd_long(cpu, mem, false);
-    hist->mem[i][1] = val & 0xff;
-    hist->mem[i][2] = (val >> 8) & 0xff;
-    hist->mem[i][3] = (val >> 16) & 0xff;
+    hist->mem[i][1].val = val & 0xff;
+    hist->mem[i][2].val = (val >> 8) & 0xff;
+    hist->mem[i][3].val = (val >> 16) & 0xff;
 }
 
 
@@ -1148,15 +1148,16 @@ void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int sc
  * 
  * @param *w The watch struct to initialize
  * @param disasm_mode True to switch to disassembly mode
+ * @param follow_pc True to follow the CPU's PC
  */
-void watch_init(watch_t *w, bool disasm_mode)
+void watch_init(watch_t *w, bool disasm_mode, bool follow_pc)
 {
     w->win = NULL;
     w->addr_s = 0;
     w->win_height = 0;
     w->win_width = 0;
     w->disasm_mode = disasm_mode;
-    w->follow_pc = false;
+    w->follow_pc = follow_pc;
 }
 
 
@@ -1210,8 +1211,8 @@ int main(int argc, char *argv[])
     size_t cmdbuf_index = 0;
     cmd_err_t cmd_err;
     watch_t watch1, watch2;
-    watch_init(&watch1, false);
-    watch_init(&watch2, true);
+    watch_init(&watch1, false, false);
+    watch_init(&watch2, true, true); // Disasm & follow PC
 
     hist_t inst_hist;
     hist_init(&inst_hist);
@@ -1220,7 +1221,7 @@ int main(int argc, char *argv[])
     resetCPU(&cpu);
     cpu.setacc = true; // Enable CPU to update access flags
 
-    memory_t *memory = calloc(0x1000000, sizeof(*memory)); // 16MiB
+    memory_t *memory = calloc(MEMORY_SIZE, sizeof(*memory));
 
     if (!memory) {
         printf("Unable to allocate system memory!\n");

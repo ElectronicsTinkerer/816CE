@@ -480,15 +480,20 @@ static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
         break;
     case 3: {
         uint32_t val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
-
+        uint32_t val2 = 0;
+        
         if (op->addr_mode == CPU_ADDR_PCRL ||
             op->inst == I_PER) {
             val = _addrCPU_getRelative16(cpu, mem, false);
             val = _addr_add_val_bank_wrap(val, addr_offs);
-        } 
-
+        }
+        else if (op->addr_mode == CPU_ADDR_BMV) {
+            val2 = (val >> 8) & 0xff;
+            val = val & 0xff;
+        }
+        
         if (buf) {
-            sprintf(buf+3, addr_fmts[op->addr_mode], val);
+            sprintf(buf+3, addr_fmts[op->addr_mode], val, val2);
         }
     }
         break;
