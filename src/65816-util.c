@@ -331,6 +331,18 @@ void _save_mem_arr(memory_t *mem, uint8_t *dst, uint32_t base_addr, uint32_t cou
 }
 
 /**
+ * Get the values of the flags on an address without modifying them
+ * 
+ * @param *mem The memory to read
+ * @param addr The address in memory to access
+ * @return The flag data present at address
+ */
+mem_flag_t _test_mem_flags(memory_t *mem, uint32_t addr)
+{
+    return mem[addr].acc;
+}
+
+/**
  * Get the values of the flags on an address then reset them
  * 
  * @param *mem The memory to read
@@ -340,16 +352,50 @@ void _save_mem_arr(memory_t *mem, uint8_t *dst, uint32_t base_addr, uint32_t cou
  *             bit 1: Write flag
  *             bit 2: Break flag
  *             bit 3..7: Unused
- * @return The flag data present at address prior to calling this function
  */
 mem_flag_t _test_and_reset_mem_flags(memory_t *mem, uint32_t addr, uint8_t mask)
 {
     mem_flag_t t = mem[addr].acc;
 
     // Flag resetting
-    *(uint8_t *)&(mem[addr].acc) = (~mask) & *(uint8_t *) &(mem[addr].acc);
+    _reset_mem_flags(mem, addr, mask);
     
     return t;
+}
+
+/**
+ * Reset the values of the flags on an address
+ * 
+ * @param *mem The memory to modify
+ * @param addr The address in memory to access
+ * @param mask A mask to determine which flags are reset (set a bit to reset that flag)
+ *             bit 0: Read flag
+ *             bit 1: Write flag
+ *             bit 2: Break flag
+ *             bit 3..7: Unused
+ */
+void _reset_mem_flags(memory_t *mem, uint32_t addr, uint8_t mask)
+{
+    // Flag resetting
+    *(uint8_t *)&(mem[addr].acc) = (~mask) & *(uint8_t *) &(mem[addr].acc);
+}
+
+/**
+ * Set the values of the flags on an address
+ * 
+ * @param *mem The memory to modify
+ * @param addr The address in memory to access
+ * @param mask A mask to determine which flags are set
+ *             bit 0: Read flag
+ *             bit 1: Write flag
+ *             bit 2: Break flag
+ *             bit 3..7: Unused
+ * @return The flag data present at address prior to calling this function
+ */
+void _set_mem_flags(memory_t *mem, uint32_t addr, uint8_t mask)
+{
+    // Flag resetting
+    *(uint8_t *)&(mem[addr].acc) = (mask) | *(uint8_t *) &(mem[addr].acc);
 }
 
 

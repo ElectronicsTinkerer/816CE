@@ -2,8 +2,8 @@ TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
 * Add a socket listener (AF_UNIX, SOCK_STREAM) to emulate some form of UART (65C51 with and w/o TX flag bug)
-* Add break points
 * Manually changing the PC via commands incorrectly adds previous PC instruction to history. (Fix this)
+* Add save (and restore) of full sim state to a file (oh boy...)
 
 TODONE:
 * Help menu (multi-level)
@@ -20,4 +20,5 @@ TODONE:
 * Add commands 'cpu [reg] val' to directly modify the CPU
 * Add "fast run mode"
 * Add block write/read functions to memory_t wrapper functions (to facilitate overlay of simulated I/O devices)
+* Add break points
 

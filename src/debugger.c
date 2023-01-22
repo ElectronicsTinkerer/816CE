@@ -42,7 +42,20 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 19, "Expected value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 15, 40, "Available commands\n > exit ... Close simulator\n > mw[1|2] [mem|asm] (pc|addr)\n > mw[1|2] aaaaaa\n > irq [set|clear]\n > nmi [set|clear]\n > aaaaaa: xx yy zz\n > save [mem|cpu] filename\n > load mem (offset) filename\n > load cpu filename\n > cpu [reg] xxxx\n ? ... Help Menu\n ^C to clear command input"},
+    {"HELP", 16, 40, "Available commands\n"
+     " > exit ... Close simulator\n"
+     " > mw[1|2] [mem|asm] (pc|addr)\n"
+     " > mw[1|2] aaaaaa\n"
+     " > irq [set|clear]\n"
+     " > nmi [set|clear]\n"
+     " > aaaaaa: xx yy zz\n"
+     " > save [mem|cpu] filename\n"
+     " > load mem (offset) filename\n"
+     " > load cpu filename\n"
+     " > cpu [reg] xxxx\n"
+     " > bp aaaaaa\n"
+     " ? ... Help Menu\n"
+     " ^C to clear command input"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
@@ -960,6 +973,30 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         }
         return CMD_ERR_OK;
     }
+    else if (strcmp(tok, "bp") == 0) { // Break point
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        uint32_t addr;
+
+        if (!is_hex_do_parse(tok, &addr)) {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        // Toggle breakpoint
+        if (_test_mem_flags(mem, addr).B == 0) {
+            _set_mem_flags(mem, addr, MEM_FLAG_B);
+        }
+        else {
+            _reset_mem_flags(mem, addr, MEM_FLAG_B);
+        }
+
+        return CMD_ERR_OK;
+    }
 
     // Not a named command, maybe it's a memory access?
     uint32_t val, addr;
@@ -1046,12 +1083,19 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 
             i = _addr_add_val_bank_wrap(i, get_opcode(mem, &cpu_dup, buf));
 
-            wmove(w->win, 1 + row, 2);
+            wmove(w->win, 1 + row, 1);
             wclrtoeol(w->win);
 
+            // Print break points as '@'
+            if (_test_mem_flags(mem, _cpu_get_effective_pc(&cpu_dup)).B == 1) {
+                wattron(w->win, A_BOLD);
+                mvwprintw(w->win, 1 + row, 1, "@");
+                wattroff(w->win, A_BOLD);
+            }
+            
             // Print the address
             wattron(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
-            mvwprintw(w->win, 1 + row, 2, "%06x:", cpu_dup.PC);
+            mvwprintw(w->win, 1 + row, 2, "%06x:", _cpu_get_effective_pc(&cpu_dup));
             wattroff(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
 
             // Print the instruction
@@ -1349,6 +1393,10 @@ int main(int argc, char *argv[])
             run_mode_step_count = 0;
             timeout(0); // Disable waiting for keypresses
             status_id = STATUS_RUN;
+            // CPU stepping is needed to get over a breakpoint
+            // if RUN is started while on a breakpoint
+            stepCPU(&cpu, memory);
+            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
             break;
         case KEY_F(6): // Step over
             cpu.PC += get_opcode(memory, &cpu, NULL);
@@ -1410,7 +1458,12 @@ int main(int argc, char *argv[])
             break;
         }
 
-
+        // Check for break points
+        if (_test_mem_flags(memory, _cpu_get_effective_pc(&cpu)).B == 1) {
+            in_run_mode = false;
+            timeout(-1); // Back to waiting for key handling
+        }
+        
         // RUN mode
         if (in_run_mode) {
             stepCPU(&cpu, memory);
@@ -1489,7 +1542,9 @@ int main(int argc, char *argv[])
         }
         
         refresh();
-        status_id = STATUS_NONE;
+        if (!in_run_mode) {
+            status_id = STATUS_NONE;
+        }
         alert = false;
         prev_c = c;
 

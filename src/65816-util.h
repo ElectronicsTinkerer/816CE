@@ -40,7 +40,10 @@ void _set_mem_word(memory_t *, uint32_t, uint16_t, bool);
 void _set_mem_word_bank_wrap(memory_t *, uint32_t, uint16_t, bool);
 void _init_mem_arr(memory_t *, uint8_t *, uint32_t, uint32_t);
 void _save_mem_arr(memory_t *, uint8_t *, uint32_t, uint32_t);
+mem_flag_t _test_mem_flags(memory_t *, uint32_t);
 mem_flag_t _test_and_reset_mem_flags(memory_t *, uint32_t, uint8_t);
+void _reset_mem_flags(memory_t *, uint32_t, uint8_t);
+void _set_mem_flags(memory_t *, uint32_t, uint8_t);
 
 // CPU-Addressing Modes
 void _stackCPU_pushByte(CPU_t *, memory_t *, uint8_t, bool);

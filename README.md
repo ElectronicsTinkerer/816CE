@@ -35,7 +35,7 @@ While the simulator is open, press `?` to access the command help menu.
 
 ```
 Available commands
- > exit ... Close simulator
+ > exit
  > mw[1|2] [mem|asm] (pc|addr)
  > mw[1|2] aaaaaa
  > irq [set|clear]
@@ -45,9 +45,17 @@ Available commands
  > load mem (offset) filename
  > load cpu filename
  > cpu [reg] xxxx
+ > bp aaaaaa
  ? ... Help Menu
  ^C to clear command input
 ```
+
+Some explanation:
+
+* `[cat|dog]` - either `cat` or `dog` can be entered but the field is required
+* `(value)` - an optional field
+* `aaaaaa` - an address in hex
+* `reg` - a CPU register in all caps (e.g. PC)
 
 Additionally, the function keys are of use:
 
