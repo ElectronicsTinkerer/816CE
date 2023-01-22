@@ -21,4 +21,5 @@ TODONE:
 * Add "fast run mode"
 * Add block write/read functions to memory_t wrapper functions (to facilitate overlay of simulated I/O devices)
 * Add break points
+* Optimize memory in memory_t so each address location doesn't take 64bits
 

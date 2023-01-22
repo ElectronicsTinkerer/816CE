@@ -114,10 +114,10 @@ typedef enum CPU_Addr_Mode_t
 // Note: keep the ordering of bits consistent with the
 // mask used in the flag test functions in 65816-util
 typedef struct mem_flag_t {
-    unsigned int R : 1; // Set if address read by CPU
-    unsigned int W : 1; // Set if address written by CPU
-    unsigned int B : 1; // Set if breakpoint active on address
-                        // (UNUSED by CPU CORE but used by debugger)
+    uint8_t R : 1; // Set if address read by CPU
+    uint8_t W : 1; // Set if address written by CPU
+    uint8_t B : 1; // Set if breakpoint active on address
+                   // (UNUSED by CPU CORE but used by debugger)
 } mem_flag_t;
 
 #define MEM_FLAG_R 0x01
