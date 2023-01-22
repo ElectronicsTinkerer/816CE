@@ -439,7 +439,7 @@ opcode_t opcode_table[256] = {
 static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
 {
     uint32_t addr = _cpu_get_effective_pc(cpu);
-    opcode_t *op = &opcode_table[mem[addr]];
+    opcode_t *op = &opcode_table[_get_mem_byte(mem, addr, false)];
     int size = addr_fmt_sizes[op->addr_mode];
 
     if (buf) {
@@ -451,23 +451,23 @@ static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
     case 1:
         break;
     case 2: {
-        uint32_t val = _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1));
+        uint32_t val = _get_mem_byte(mem, _addr_add_val_bank_wrap(addr, 1), false);
         char *fmt = addr_fmts[op->addr_mode];
 
         // Correct operand value to be an address for branches
         if (op->addr_mode == CPU_ADDR_PCR) {
-            val = _addrCPU_getRelative8(cpu, mem);
+            val = _addrCPU_getRelative8(cpu, mem, false);
             val = _addr_add_val_bank_wrap(val, addr_offs);
         }
         // Correct value for immediate
         else if (op->addr_mode == CPU_ADDR_IMMD) {
             if (op->reg == REG_A && !(cpu->P.E || (!cpu->P.E && cpu->P.M))) { // 16-bit
-                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
                 size = 3;
                 fmt = " $%04x";
             }
             else if (op->reg == REG_X && !(cpu->P.E || (!cpu->P.E && cpu->P.XB))) { // 16-bit
-                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
                 size = 3;
                 fmt = " $%04x";
             }
@@ -479,11 +479,11 @@ static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
     }
         break;
     case 3: {
-        uint32_t val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1));
+        uint32_t val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
 
         if (op->addr_mode == CPU_ADDR_PCRL ||
             op->inst == I_PER) {
-            val = _addrCPU_getRelative16(cpu, mem);
+            val = _addrCPU_getRelative16(cpu, mem, false);
             val = _addr_add_val_bank_wrap(val, addr_offs);
         } 
 
@@ -495,7 +495,7 @@ static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
     case 4:
         if (buf) {
             sprintf(buf+3, addr_fmts[op->addr_mode],
-                    _get_mem_long_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1)));
+                    _get_mem_long_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false));
         }
         break;
     default:

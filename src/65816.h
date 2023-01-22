@@ -8,6 +8,7 @@
 #define CPU_65816_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Interrupt Vectors
 #define CPU_VEC_NATIVE_COP 0xffe4
@@ -58,6 +59,9 @@ struct CPU_t
     // Total phi-1 cycles the CPU has run
     // Just prepairing for the end of the Universe ... don't worry about it :)
     uint64_t cycles;
+
+    // Enables this CPU to update access flags on memory addresses
+    bool setacc;
 };
 
 // Possible error codes from CPU public (non-static) functions
@@ -107,7 +111,23 @@ typedef enum CPU_Addr_Mode_t
     CPU_ADDR_PCRL     // Program counter relative (16-bit)
 } CPU_Addr_Mode_t;
 
-typedef uint8_t memory_t;
+// Note: keep the ordering of bits consistent with the
+// mask used in the flag test functions in 65816-util
+typedef struct mem_flag_t {
+    unsigned int R : 1; // Set if address read by CPU
+    unsigned int W : 1; // Set if address written by CPU
+    unsigned int B : 1; // Set if breakpoint active on address
+                        // (UNUSED by CPU CORE but used by debugger)
+} mem_flag_t;
+
+#define MEM_FLAG_R 0x01
+#define MEM_FLAG_W 0x02
+#define MEM_FLAG_B 0x04
+
+typedef struct memory_t {
+    uint8_t val;
+    mem_flag_t acc;
+} memory_t;
 
 
 CPU_Error_Code_t tostrCPU(CPU_t *, char *);

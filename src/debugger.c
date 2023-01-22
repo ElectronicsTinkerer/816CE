@@ -55,7 +55,8 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 22, "Filename too long."},
     {"ERROR!", 3, 24, "File does not exist."},
     {"ERROR!", 3, 33, "Unhandled file-related error."},
-    {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."}
+    {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."},
+    {"ERROR!", 3, 44, "Unable to allocate memory for operation."}
 };
 
 
@@ -176,8 +177,8 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
     memcpy(hist->cpu + i, cpu, sizeof(*cpu));
 
     // Copy in memory in case there is self-modifying asm code
-    hist->mem[i][0] = _get_mem_byte(mem, _cpu_get_effective_pc(cpu));
-    val = _cpu_get_immd_long(cpu, mem);
+    hist->mem[i][0] = _get_mem_byte(mem, _cpu_get_effective_pc(cpu), false);
+    val = _cpu_get_immd_long(cpu, mem, false);
     hist->mem[i][1] = val & 0xff;
     hist->mem[i][2] = (val >> 8) & 0xff;
     hist->mem[i][3] = (val >> 16) & 0xff;
@@ -375,14 +376,32 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
         return CMD_ERR_FILE_IO_ERROR;
     }
             
-    size = size / sizeof(*mem);
-            
-    // Yes, this violates the requirement that memory should only be
-    // accessed through the helper functions.
-    if (fread(mem + base_addr, sizeof(*mem), size, fp) != size) {
+    uint8_t *tmp;
+
+    size = size / sizeof(*tmp);
+
+    // We need a temporary buffer since there
+    // is a wrapper needed to access the CPU's
+    // memory structure
+    tmp = malloc(sizeof(*tmp) * size);
+
+    if (!tmp) {
+        fclose(fp);
+        return CMD_ERR_OUT_OF_MEM;
+    }
+    
+    if (fread(tmp, sizeof(*tmp), size, fp) != size) {
+        free(tmp);
         return CMD_ERR_FILE_IO_ERROR;
     }
     fclose(fp);
+
+    // Copy data into the memory
+    _init_mem_arr(mem, tmp, base_addr, size);
+
+    // Don't want memory leaks
+    free(tmp);
+    
     return CMD_ERR_OK;
 }
 
@@ -685,13 +704,24 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             if (!fp) {
                 return CMD_ERR_FILE_IO_ERROR;
             }
+
+            uint8_t *tmp = malloc(sizeof(*tmp) * MEMORY_SIZE);
+
+            if (!tmp) {
+                fclose(fp);
+                return CMD_ERR_OUT_OF_MEM;
+            }
+
+            // Get the memory contents
+            _save_mem_arr(mem, tmp, 0, MEMORY_SIZE);
             
-            // Yes, this violates the requirement that memory should only be
-            // accessed through the helper functions.
-            if (fwrite(mem, sizeof(*mem), 0x1000000, fp) != 0x1000000) {
+            if (fwrite(tmp, sizeof(*tmp), MEMORY_SIZE, fp) != MEMORY_SIZE) {
+                free(tmp);
                 return CMD_ERR_FILE_IO_ERROR;
             }
             fclose(fp);
+
+            free(tmp);
         }
         else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
 
@@ -955,7 +985,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
                 addr = val;
             }
             else {
-                _set_mem_byte(mem, addr, val);
+                _set_mem_byte(mem, addr, val, true); // DO tell I/O devices that a value has been written here!
                 ++addr;
             }
         }
@@ -1031,7 +1061,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
             if (cols > 8) {
                 wmove(w->win, 1+row, 24);
                 while (cpu_dup.PC < i) {
-                    wprintw(w->win, " %02x", _get_mem_byte(mem, cpu_dup.PC));
+                    wprintw(w->win, " %02x", _get_mem_byte(mem, cpu_dup.PC, false));
 
                     cpu_dup.PC = _addr_add_val_bank_wrap(cpu_dup.PC, 1);
                 }
@@ -1054,7 +1084,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
                 if (i == pc) {
                     wattron(w->win, A_BOLD | A_UNDERLINE);
                 }
-                wprintw(w->win, "%02x", _get_mem_byte(mem, i));
+                wprintw(w->win, "%02x", _get_mem_byte(mem, i, false));
                 if (i == pc) {
                     wattroff(w->win, A_BOLD | A_UNDERLINE);
                 }
@@ -1188,6 +1218,7 @@ int main(int argc, char *argv[])
     
     CPU_t cpu;
     resetCPU(&cpu);
+    cpu.setacc = true; // Enable CPU to update access flags
 
     memory_t *memory = calloc(0x1000000, sizeof(*memory)); // 16MiB
 
