@@ -6,6 +6,8 @@
 #ifndef UART_16C750_H
 #define UART_16C750_H
 
+#include <netinet/in.h>
+
 // Not sure how/why this would not be 1
 // for this particular use case
 #define UART_MAX_CONNECTIONS 1
@@ -119,6 +121,7 @@ typedef enum tl16c750_regs_t {
 } tl16c750_regs_t;
 
 typedef struct tl16c750_t {
+    bool enabled;
     uint32_t addr;    // Base address
     uint8_t regs[10]; // tl16c750_regs_t is index
     int sock_fd;
@@ -134,6 +137,8 @@ typedef struct tl16c750_t {
 
 void reset_16c750(tl16c750_t *);
 int init_16c750(tl16c750_t *, uint16_t);
+void stop_16c750(tl16c750_t *);
+bool step_16c750(tl16c750_t *, memory_t *);
 
 #endif
 

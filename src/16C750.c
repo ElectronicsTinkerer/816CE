@@ -10,6 +10,9 @@
  * It is, quite frankly, a mess :(
  */
 
+#include <stdio.h> // DEBUG
+#include <ncurses.h>
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -71,6 +74,12 @@ int init_16c750(tl16c750_t *uart, uint16_t port)
         return errno;
     }
 
+    int flags = fcntl(uart->sock_fd, F_GETFL, 0);
+    if (flags != -1) {
+        fcntl(uart->sock_fd, F_SETFL, flags | O_NONBLOCK);
+    }
+    // TODO: Error value?
+
     // According to the man7.org man page, some implementations
     // have "nonstandard" fields, so make sure everything is
     // zeroed out
@@ -97,7 +106,26 @@ int init_16c750(tl16c750_t *uart, uint16_t port)
         return errno;
     }
 
+    uart->data_socket = -1;
+    uart->enabled = false;
+
     return 0;
+}
+
+
+/*
+ * Close network connections
+ * 
+ * @param *uart The UART to close
+ */
+void stop_16c750(tl16c750_t *uart)
+{
+    if (uart->data_socket >= 0) {
+        close(uart->data_socket);
+    }
+    if (uart->sock_fd >= 0) {
+        close(uart->sock_fd);
+    }
 }
 
 
@@ -113,6 +141,7 @@ int init_16c750(tl16c750_t *uart, uint16_t port)
 bool step_16c750(tl16c750_t *uart, memory_t *mem)
 {
     bool irq = false;
+    bool sock_closed = false;
 
     // Attempt to accept an incomming connection if one is
     // not already established
@@ -122,16 +151,17 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
         // If the accept was successfult, attempt to set the socket
         // into a nonblocking mode
         if (uart->data_socket >= 0) {
-            int flags = fcntl(uart->sock_fd, F_GETFL, 0);
+            // endwin(); fprintf(stdout, "Accepted\n"); refresh(); // THIS LINE DEBUG
+            int flags = fcntl(uart->data_socket, F_GETFL, 0);
             if (flags != -1) {
-                fcntl(uart->sock_fd, F_SETFL, flags | O_NONBLOCK);
+                fcntl(uart->data_socket, F_SETFL, flags | O_NONBLOCK);
             }
         }
     }
     
     // Check the socket for characters
     char buf;
-    if (uart->data_socket < 0 && read(uart->data_socket, &buf, 1) > 0) {
+    if (uart->data_socket >= 0 && read(uart->data_socket, &buf, 1) > 0) {
         uart->data_rx_buf[uart->data_rx_fifo_write] = buf;
         uart->data_rx_fifo_write += 1;
         uart->data_rx_fifo_write %= UART_FIFO_LEN;
@@ -152,36 +182,44 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     if (uart->regs[TL_LCR] & (1u << LCR_DLAB)) {
         if (_test_and_reset_mem_flags(mem, uart->addr + TL_DLL - 8, MEM_FLAG_W).W == 1) {
             uart->regs[TL_DLL] = _get_mem_byte(mem, uart->addr + TL_DLL - 8, false);
+        } else {
+            _set_mem_byte(mem, uart->addr + TL_DLL - 8, uart->regs[TL_DLL], false);
         }
         if (_test_and_reset_mem_flags(mem, uart->addr + TL_DLM - 8, MEM_FLAG_W).W == 1) {
             uart->regs[TL_DLM] = _get_mem_byte(mem, uart->addr + TL_DLM - 8, false);
+        } else {
+            _set_mem_byte(mem, uart->addr + TL_DLM - 8, uart->regs[TL_DLM], false);
         }
     }
     // Otherwise, handle communication with the rx/tx regs
     else {
         // THR
         if (_test_and_reset_mem_flags(mem, uart->addr + TL_THR, MEM_FLAG_W).W == 1) {
-
             // Loopback
             if (uart->regs[TL_MCR] & MCR_LOOP) {
-                // Don't modify memory since the Tx and Rx regs are at same address
+                // Add value to queue
+                uart->data_rx_buf[uart->data_rx_fifo_write] = _get_mem_byte(mem, uart->addr + TL_THR, false);
+                uart->data_rx_fifo_write += 1;
+                uart->data_rx_fifo_write %= UART_FIFO_LEN;
             }
             else {
                 // SEND CHAR OVER SOCKET?
-                // FIXME: ignoring return value
                 uint8_t val = _get_mem_byte(mem, uart->addr + TL_THR, false);
-                if (uart->data_socket < 0) {
-                    write(uart->data_socket, &val, 1);
+                if (uart->data_socket >= 0) {
+                    if (write(uart->data_socket, &val, 1) == -1) {
+                        sock_closed = true;
+                    }
                 }
             }
         }
 
         // RHR
+        // Always keep the last char from the RX FIFO available
+        _set_mem_byte(mem, uart->addr + TL_RBR, uart->data_rx_buf[uart->data_rx_fifo_read], false);
         if (_test_and_reset_mem_flags(mem, uart->addr + TL_RBR, MEM_FLAG_R).R == 1) {
             
             // Get a character if available from the buffer and store it to memory
             if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) {
-                _set_mem_byte(mem, uart->addr + TL_RBR, uart->data_rx_buf[uart->data_rx_fifo_read], false);
                 uart->data_rx_fifo_read += 1;
                 uart->data_rx_fifo_read %= UART_FIFO_LEN;
             }
@@ -213,17 +251,17 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     // LSR
     // If RX FIFO is empty
     if (uart->data_rx_fifo_read == uart->data_rx_fifo_write) {
-        uart->regs[TL_LSR] |= (1u << LSR_DR);
+        uart->regs[TL_LSR] &= ~(1u << LSR_DR); // Clear bit
     } else {
-        uart->regs[TL_LSR] &= ~(1u << LSR_DR);
+        uart->regs[TL_LSR] |= (1u << LSR_DR); // Set bit
     }
     
     // If TX FIFO is empty
-    if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
-        uart->regs[TL_LSR] |= ((1u << LSR_THRE) | (1u << LSR_TEMT));
-    } else {
-        uart->regs[TL_LSR] &= ~((1u << LSR_THRE) | (1u << LSR_TEMT));
-    }
+    // if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+    //     uart->regs[TL_LSR] |= ((1u << LSR_THRE) | (1u << LSR_TEMT));
+    // } else {
+    //     uart->regs[TL_LSR] &= ~((1u << LSR_THRE) | (1u << LSR_TEMT));
+    // }
     uart->regs[TL_LSR] &= ~((1u << LSR_OE) | (1u << LSR_PE) | (1u << LSR_FE) | (1u << LSR_BI) | (1u << LSR_ERFIFO));
 
     _set_mem_byte(mem, uart->addr + TL_LSR, uart->regs[TL_LSR], false);
@@ -281,8 +319,8 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     // Update the state of the Interrupt Identification Register
     _set_mem_byte(mem, uart->addr + TL_IIR, uart->regs[TL_IIR], false);
 
-    // bad.
-    if (errno != 0) {
+    // Allow new connections
+    if (sock_closed) {
         uart->data_socket = -1;
     }
 

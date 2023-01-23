@@ -20,6 +20,7 @@
 #include "disassembler.h"
 #include "65816.h"
 #include "65816-util.h"
+#include "16C750.h"
 #include "debugger.h"
 
 
@@ -69,7 +70,8 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 24, "File does not exist."},
     {"ERROR!", 3, 33, "Unhandled file-related error."},
     {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."},
-    {"ERROR!", 3, 44, "Unable to allocate memory for operation."}
+    {"ERROR!", 3, 44, "Unable to allocate memory for operation."},
+    {"ERROR!", 3, 23, "Unsupported device."}
 };
 
 
@@ -622,7 +624,7 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
  * @param *mem The memory to modify if a command needs to
  * @return The error code from the command
  */
-cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem)
+cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, tl16c750_t *uart)
 {
     if (cmdbuf_index == 0) {
         return CMD_ERR_OK; // No command
@@ -997,9 +999,40 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
         return CMD_ERR_OK;
     }
+    else if (strcmp(tok, "uart") == 0) {
+
+        tok = strtok(NULL, " ");
+
+        if (!tok) {
+            return CMD_ERR_EXPECTED_ARG;
+        }
+
+        char *tmp = strtok(NULL, " ");
+
+        if (!tmp) {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        uint32_t addr;
+
+        if (!is_hex_do_parse(tmp, &addr)) {
+            return CMD_ERR_EXPECTED_VALUE;
+        }
+
+        if (strcmp(tok, "c750") == 0) {
+            uart->addr = addr;
+            uart->enabled = true;
+        }
+        else {
+            return CMD_ERR_UNSUPPORTED_DEVICE;
+        }
+
+        return CMD_ERR_OK;
+    }
 
     // Not a named command, maybe it's a memory access?
-    uint32_t val, addr;
+    static uint32_t addr = 0; // Retain the previous value
+    uint32_t val;
     char *next = _cmdbuf;
     bool found_store_delim = false;
     bool valid_character = true;
@@ -1265,6 +1298,12 @@ int main(int argc, char *argv[])
     resetCPU(&cpu);
     cpu.setacc = true; // Enable CPU to update access flags
 
+    tl16c750_t uart;
+    if ((c = init_16c750(&uart, UART_SOCK_PORT))) {
+        printf("ERROR: '%s'\n", strerror(c));
+        return -1;
+    }
+
     memory_t *memory = calloc(MEMORY_SIZE, sizeof(*memory));
 
     if (!memory) {
@@ -1393,10 +1432,6 @@ int main(int argc, char *argv[])
             run_mode_step_count = 0;
             timeout(0); // Disable waiting for keypresses
             status_id = STATUS_RUN;
-            // CPU stepping is needed to get over a breakpoint
-            // if RUN is started while on a breakpoint
-            stepCPU(&cpu, memory);
-            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
             break;
         case KEY_F(6): // Step over
             cpu.PC += get_opcode(memory, &cpu, NULL);
@@ -1439,7 +1474,7 @@ int main(int argc, char *argv[])
 
                 // Check for errors in the command input and execute it if none
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
-                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu, memory))) {
+                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu, memory, &uart))) {
 
                     if (cmd_err == CMD_ERR_EXIT) {
                         cmd_exit = true;
@@ -1457,12 +1492,6 @@ int main(int argc, char *argv[])
 
             break;
         }
-
-        // Check for break points
-        if (_test_mem_flags(memory, _cpu_get_effective_pc(&cpu)).B == 1) {
-            in_run_mode = false;
-            timeout(-1); // Back to waiting for key handling
-        }
         
         // RUN mode
         if (in_run_mode) {
@@ -1472,6 +1501,19 @@ int main(int argc, char *argv[])
             ++run_mode_step_count;
             if (run_mode_step_count == RUN_MODE_STEPS_UNTIL_DISP_UPDATE) {
                 run_mode_step_count = 0;
+            }
+        }
+
+        // Check for break points
+        if (_test_mem_flags(memory, _cpu_get_effective_pc(&cpu)).B == 1) {
+            in_run_mode = false;
+            timeout(-1); // Back to waiting for key handling
+        }
+
+        // Handle UART updating & control
+        if (uart.enabled) {
+            if (step_16c750(&uart, memory)) {
+                cpu.P.IRQ = 1;
             }
         }
         
@@ -1561,6 +1603,8 @@ int main(int argc, char *argv[])
     endwin();			// Clean up curses mode
 
     free(memory);
+
+    stop_16c750(&uart);
 
     printf("Stopped simulator\n");
     

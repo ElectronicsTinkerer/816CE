@@ -10,6 +10,8 @@
 
 #define MEMORY_SIZE 0x1000000 // 16MiB
 
+#define UART_SOCK_PORT 6501
+
 #define KEY_CTRL_C 3
 #define KEY_CTRL_H 8
 #define KEY_CR 10
@@ -81,7 +83,8 @@ typedef enum cmd_err_t {
     CMD_ERR_FILE_NOT_EXIST,
     CMD_ERR_FILE_UNKNOWN_ERROR,
     CMD_ERR_CPU_CORRUPT_FILE,
-    CMD_ERR_OUT_OF_MEM
+    CMD_ERR_OUT_OF_MEM,
+    CMD_ERR_UNSUPPORTED_DEVICE
 } cmd_err_t;
 
 // Error message box type
