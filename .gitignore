@@ -1,12 +1,19 @@
+# Build outputs
+build
 *.exe
 *.o
+*.out
+*.log
+
+# Backups
+*~
 *.c~
 *.h~
-*.out
-build
+
+# Testing files
 extra
-*.bin
-*.log
-*~
 *.cpu
+*.cmd
+*.bin
+
 

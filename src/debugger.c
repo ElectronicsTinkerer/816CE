@@ -331,7 +331,7 @@ bool is_hex_do_parse(char *str, uint32_t *val)
     }
 
     // If the entire argument is hex, use it as an address
-    if (*tmp == '\0') {
+    if (*tmp == '\0' || *tmp == '\n') {
         *val = strtoul(str, NULL, 16);
         return true;
     }
@@ -564,7 +564,7 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
  */
 cmd_err_t command_execute_watch(watch_t *watch, char* tok)
 {
-    tok = strtok(NULL, " ");
+    tok = strtok(NULL, " \t\n\r");
 
     if (!tok) {
         return CMD_ERR_EXPECTED_ARG;
@@ -591,7 +591,7 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
         }
     }
 
-    tok = strtok(NULL, " ");
+    tok = strtok(NULL, " \t\n\r");
         
     if (!tok) {
         return CMD_ERR_OK;
@@ -634,13 +634,16 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         ++_cmdbuf; // Remove whitespace
     }
     
-    char *tok = strtok(_cmdbuf, " ");
+    char *tok = strtok(_cmdbuf, " \t\n\r");
 
     if (!tok) {
         return CMD_ERR_OK; // No command
     }
 
-
+    if (*tok == '#') { // Ignore comments
+        return CMD_ERR_OK;
+    }
+    
     if (strcmp(tok, "?") == 0) { // Main level help
         return CMD_ERR_HELP_MAIN;
     }
@@ -649,7 +652,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "irq") == 0) { // Force IRQ status change
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
@@ -670,7 +673,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "nmi") == 0) { // Force NMI status change
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
@@ -700,13 +703,13 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "save") == 0) { // Save
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
         
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
         }
 
-        char *filename = strtok(NULL, " ");
+        char *filename = strtok(NULL, " \t\n\r");
 
         if (!filename) {
             return CMD_ERR_EXPECTED_FILENAME;
@@ -757,7 +760,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "load") == 0) {
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
         
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
@@ -766,7 +769,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         // Secondary level command
         if (strcmp(tok, "mem") == 0) {
 
-            tok = strtok(NULL, " ");
+            tok = strtok(NULL, " \t\n\r");
         
             if (!tok) {
                 return CMD_ERR_EXPECTED_ARG;
@@ -781,7 +784,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
                     return CMD_ERR_VAL_OVERFLOW;
                 }
 
-                tok = strtok(NULL, " ");
+                tok = strtok(NULL, " \t\n\r");
 
                 if (!tok) {
                     return CMD_ERR_EXPECTED_FILENAME;
@@ -793,7 +796,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
 
             // Get filename
-            tok = strtok(NULL, " ");
+            tok = strtok(NULL, " \t\n\r");
 
             if (!tok) {
                 return CMD_ERR_EXPECTED_FILENAME;
@@ -809,13 +812,13 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "cpu") == 0) {
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
             return CMD_ERR_EXPECTED_REG;
         }
 
-        char *hexval = strtok(NULL, " ");
+        char *hexval = strtok(NULL, " \t\n\r");
 
         if (!hexval) {
             return CMD_ERR_EXPECTED_VALUE;
@@ -977,7 +980,7 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "bp") == 0) { // Break point
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
             return CMD_ERR_EXPECTED_VALUE;
@@ -1001,13 +1004,13 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
     else if (strcmp(tok, "uart") == 0) {
 
-        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
             return CMD_ERR_EXPECTED_ARG;
         }
 
-        char *tmp = strtok(NULL, " ");
+        char *tmp = strtok(NULL, " \t\n\r");
 
         if (!tmp) {
             return CMD_ERR_EXPECTED_VALUE;
@@ -1326,6 +1329,12 @@ int main(int argc, char *argv[])
                 else if (strcmp(argv[i], "--mem") == 0) {
                     cli_pstate = 2;
                 }
+                else if (strcmp(argv[i], "--cmd") == 0) {
+                    cli_pstate = 3;
+                }
+                else if (strcmp(argv[i], "--cmd_file") == 0) {
+                    cli_pstate = 4;
+                }
                 else if (strcmp(argv[i], "--help") == 0) {
                     print_help_and_exit();
                 }
@@ -1352,6 +1361,71 @@ int main(int argc, char *argv[])
                     cli_pstate = 0;
                 }
                 break;
+            case 3: // Execute a command directly
+                if (0 != (cmd_err = command_execute(
+                              argv[i],
+                              strlen(argv[i]),
+                              &watch1, &watch2,
+                              &cpu,
+                              memory,
+                              &uart
+                              ))) {
+
+                    if (cmd_err == CMD_ERR_EXIT) {
+                        printf("'exit' encountered.\n");
+                        exit(EXIT_SUCCESS);
+                    }
+                    else {
+                        // If there is errors, print an appropiate message
+                        printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                cli_pstate = 0;
+                break;
+            case 4: { // Execute each line in a file as a command
+                
+                FILE *fp = fopen(argv[i], "r");
+
+                if (!fp) {
+                    printf("Error! Unable to open file '%s':\n%s\n", argv[i], strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+
+                char buf[2048]; // I hope that's long enough!
+
+                while (!feof(fp)) {
+                    
+                    // Get command
+                    fgets(buf, 2048, fp);
+
+                    // Parse command
+                    if (0 != (cmd_err = command_execute(
+                                  buf,
+                                  strlen(buf),
+                                  &watch1, &watch2,
+                                  &cpu,
+                                  memory,
+                                  &uart
+                                  ))) {
+
+                        if (cmd_err == CMD_ERR_EXIT) {
+                            printf("'exit' encountered.\n");
+                            exit(EXIT_SUCCESS);
+                        }
+                        else {
+                            // If there is errors, print an appropiate message
+                            printf("Error! (%s) %s\n", buf, cmd_err_msgs[cmd_err].msg);
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+                }
+
+                fclose(fp);
+                
+                cli_pstate = 0;
+            }
+                break;
             default:
                 printf(
                     "Internal cli parser error!\ni=%ld, argv[%ld]='%s', cli_pstate=%d\n",
@@ -1371,6 +1445,12 @@ int main(int argc, char *argv[])
                 break;
             case 2: // MEM load
                 printf("mem\n");
+                break;
+            case 3: // CMD execute
+                printf("cmd\n");
+                break;
+            case 4: // CMD file execute
+                printf("cmd_file\n");
                 break;
             default:
                 printf("Unhandled cli_pstate in missing arg handler\n");
