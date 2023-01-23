@@ -1487,6 +1487,7 @@ int main(int argc, char *argv[])
                 }
                 else { // Only clear the command input if the command was successful
                     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                    update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
                 }
             }
 
