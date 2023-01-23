@@ -170,41 +170,41 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     // SCR is scratch reg, ignore its contents
 
     // Keep a local copy of the IER
-    uart->regs[TL_IER] = _get_mem_byte(mem, uart->addr + TL_IER, false);
+    uart->regs[TL_IER] = _get_mem_byte(mem, uart->addr + TLA_IER, false);
 
     // LCR
-    uart->regs[TL_LCR] = _get_mem_byte(mem, uart->addr + TL_LCR, false);
+    uart->regs[TL_LCR] = _get_mem_byte(mem, uart->addr + TLA_LCR, false);
 
     // MCR
-    uart->regs[TL_MCR] = _get_mem_byte(mem, uart->addr + TL_MCR, false);
+    uart->regs[TL_MCR] = _get_mem_byte(mem, uart->addr + TLA_MCR, false);
     
     // Handle writing to divisor latches
     if (uart->regs[TL_LCR] & (1u << LCR_DLAB)) {
-        if (_test_and_reset_mem_flags(mem, uart->addr + TL_DLL - 8, MEM_FLAG_W).W == 1) {
-            uart->regs[TL_DLL] = _get_mem_byte(mem, uart->addr + TL_DLL - 8, false);
+        if (_test_and_reset_mem_flags(mem, uart->addr + TLA_DLL, MEM_FLAG_W).W == 1) {
+            uart->regs[TL_DLL] = _get_mem_byte(mem, uart->addr + TLA_DLL, false);
         } else {
-            _set_mem_byte(mem, uart->addr + TL_DLL - 8, uart->regs[TL_DLL], false);
+            _set_mem_byte(mem, uart->addr + TLA_DLL, uart->regs[TL_DLL], false);
         }
-        if (_test_and_reset_mem_flags(mem, uart->addr + TL_DLM - 8, MEM_FLAG_W).W == 1) {
-            uart->regs[TL_DLM] = _get_mem_byte(mem, uart->addr + TL_DLM - 8, false);
+        if (_test_and_reset_mem_flags(mem, uart->addr + TLA_DLM, MEM_FLAG_W).W == 1) {
+            uart->regs[TL_DLM] = _get_mem_byte(mem, uart->addr + TLA_DLM, false);
         } else {
-            _set_mem_byte(mem, uart->addr + TL_DLM - 8, uart->regs[TL_DLM], false);
+            _set_mem_byte(mem, uart->addr + TLA_DLM, uart->regs[TL_DLM], false);
         }
     }
     // Otherwise, handle communication with the rx/tx regs
     else {
         // THR
-        if (_test_and_reset_mem_flags(mem, uart->addr + TL_THR, MEM_FLAG_W).W == 1) {
+        if (_test_and_reset_mem_flags(mem, uart->addr + TLA_THR, MEM_FLAG_W).W == 1) {
             // Loopback
-            if (uart->regs[TL_MCR] & MCR_LOOP) {
+            if (uart->regs[TL_MCR] & (1u << MCR_LOOP)) {
                 // Add value to queue
-                uart->data_rx_buf[uart->data_rx_fifo_write] = _get_mem_byte(mem, uart->addr + TL_THR, false);
+                uart->data_rx_buf[uart->data_rx_fifo_write] = _get_mem_byte(mem, uart->addr + TLA_THR, false);
                 uart->data_rx_fifo_write += 1;
                 uart->data_rx_fifo_write %= UART_FIFO_LEN;
             }
             else {
                 // SEND CHAR OVER SOCKET?
-                uint8_t val = _get_mem_byte(mem, uart->addr + TL_THR, false);
+                uint8_t val = _get_mem_byte(mem, uart->addr + TLA_THR, false);
                 if (uart->data_socket >= 0) {
                     if (write(uart->data_socket, &val, 1) == -1) {
                         sock_closed = true;
@@ -215,8 +215,8 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
 
         // RHR
         // Always keep the last char from the RX FIFO available
-        _set_mem_byte(mem, uart->addr + TL_RBR, uart->data_rx_buf[uart->data_rx_fifo_read], false);
-        if (_test_and_reset_mem_flags(mem, uart->addr + TL_RBR, MEM_FLAG_R).R == 1) {
+        _set_mem_byte(mem, uart->addr + TLA_RBR, uart->data_rx_buf[uart->data_rx_fifo_read], false);
+        if (_test_and_reset_mem_flags(mem, uart->addr + TLA_RBR, MEM_FLAG_R).R == 1) {
             
             // Get a character if available from the buffer and store it to memory
             if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) {
@@ -228,8 +228,8 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     }
 
     // If the FIFO Control Register was updated, keep a local copy
-    if (_test_and_reset_mem_flags(mem, uart->addr + TL_FCR, MEM_FLAG_W).W == 1) {
-        uart->regs[TL_FCR] = _get_mem_byte(mem, uart->addr + TL_FCR, false);
+    if (_test_and_reset_mem_flags(mem, uart->addr + TLA_FCR, MEM_FLAG_W).W == 1) {
+        uart->regs[TL_FCR] = _get_mem_byte(mem, uart->addr + TLA_FCR, false);
 
         // Changing the FIFO ENable bit clears the FIFOs
         if (uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) {
@@ -257,14 +257,14 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     }
     
     // If TX FIFO is empty
-    // if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
-    //     uart->regs[TL_LSR] |= ((1u << LSR_THRE) | (1u << LSR_TEMT));
-    // } else {
-    //     uart->regs[TL_LSR] &= ~((1u << LSR_THRE) | (1u << LSR_TEMT));
-    // }
+    if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+        uart->regs[TL_LSR] |= ((1u << LSR_THRE) | (1u << LSR_TEMT));
+    } else {
+        uart->regs[TL_LSR] &= ~((1u << LSR_THRE) | (1u << LSR_TEMT));
+    }
     uart->regs[TL_LSR] &= ~((1u << LSR_OE) | (1u << LSR_PE) | (1u << LSR_FE) | (1u << LSR_BI) | (1u << LSR_ERFIFO));
 
-    _set_mem_byte(mem, uart->addr + TL_LSR, uart->regs[TL_LSR], false);
+    _set_mem_byte(mem, uart->addr + TLA_LSR, uart->regs[TL_LSR], false);
 
     // IIR
     // If there is received data available, set bit 2
@@ -272,11 +272,11 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
         (!(uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) &&
          abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) ||
         ((uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) &&
-         abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) >
-         trigger_levels[uart->regs[(TL_FCR >> FCR_64FEN) & 0x1]][(TL_FCR >> FCR_RXTRIGL) & 0x3])
+         abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) >=
+         trigger_levels[(uart->regs[TL_FCR] >> FCR_64FEN) & 0x1][(uart->regs[TL_FCR] >> FCR_RXTRIGL) & 0x3])
         ) {
-        uart->regs[TL_IIR] |= 0x2 << 1;
         uart->regs[TL_IIR] &= ~(0x2 << 1);
+        uart->regs[TL_IIR] |= 0x2 << 1;
 
         // If RX data IRQ enabled, signal it
         if (uart->regs[TL_IER] & (1u << IER_ERBI)) {
@@ -284,13 +284,17 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
         }
     }
     else if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
-        uart->regs[TL_IIR] |= 0x1 << 1;
         uart->regs[TL_IIR] &= ~(0x1 << 1);
+        uart->regs[TL_IIR] |= 0x1 << 1;
 
         // If TX data IRQ enabled, signal it
         if (uart->regs[TL_IER] & (1u << IER_ETBEI)) {
             irq = true;
         }
+    }
+    else {
+        uart->regs[TL_IIR] &= ~(0x3 << 1);
+        // no irq
     }
         
     // Bits 5..7 indicate FIFO operation mode
@@ -306,18 +310,18 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
         }
     }
     else { // 16450 mode
-        uart->regs[TL_IIR] &= ((1u << IIR_FOS5) | (1u << IIR_FOS6) | (1u << IIR_FOS7));
+        uart->regs[TL_IIR] &= ~((1u << IIR_FOS5) | (1u << IIR_FOS6) | (1u << IIR_FOS7));
     }
                  
     // Determine if an interrupt is pending
     if (irq) {
-        uart->regs[TL_IIR] &= ~(1u << IIR_IPN);
+        uart->regs[TL_IIR] &= ~(1u << IIR_IPN); // Clear bit
     } else {
-        uart->regs[TL_IIR] |= (1u << IIR_IPN);
+        uart->regs[TL_IIR] |= (1u << IIR_IPN);  // Set bit
     }
     
     // Update the state of the Interrupt Identification Register
-    _set_mem_byte(mem, uart->addr + TL_IIR, uart->regs[TL_IIR], false);
+    _set_mem_byte(mem, uart->addr + TLA_IIR, uart->regs[TL_IIR], false);
 
     // Allow new connections
     if (sock_closed) {

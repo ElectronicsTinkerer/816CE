@@ -106,24 +106,38 @@ enum {
 // No named bits
 
 typedef enum tl16c750_regs_t {
+    // Indicies into the regs[] array
     TL_RBR = 0,
-    TL_THR = 0,
-    TL_IER = 1,
-    TL_IIR = 2,
-    TL_FCR = 2,
-    TL_LCR = 3,
-    TL_MCR = 4,
-    TL_LSR = 5,
-    TL_MSR = 6,
-    TL_SCR = 7,
-    TL_DLL = 8,
-    TL_DLM = 9
+    TL_THR = 1,
+    TL_IER = 2,
+    TL_IIR = 3,
+    TL_FCR = 4,
+    TL_LCR = 5,
+    TL_MCR = 6,
+    TL_LSR = 7,
+    TL_MSR = 8,
+    TL_SCR = 9,
+    TL_DLL = 10,
+    TL_DLM = 11,
+    // Address offsets
+    TLA_RBR = 0,
+    TLA_THR = 0,
+    TLA_IER = 1,
+    TLA_IIR = 2,
+    TLA_FCR = 2,
+    TLA_LCR = 3,
+    TLA_MCR = 4,
+    TLA_LSR = 5,
+    TLA_MSR = 6,
+    TLA_SCR = 7,
+    TLA_DLL = 0,
+    TLA_DLM = 1
 } tl16c750_regs_t;
 
 typedef struct tl16c750_t {
     bool enabled;
     uint32_t addr;    // Base address
-    uint8_t regs[10]; // tl16c750_regs_t is index
+    uint8_t regs[12]; // tl16c750_regs_t is index
     int sock_fd;
     struct sockaddr_in sock_name;
     int data_socket;

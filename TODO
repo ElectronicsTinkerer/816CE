@@ -11,6 +11,8 @@ TODO:
 * Add UART to docs (help & README)
 * Enable setting of UART port #
 * Enable disabling of UART on startup so a port is not always requested to run the sim
+* Pressing F12 while running does not exit
+* Add correct resetting of UART IRQ flags in IIR (16C750)
 
 TODONE:
 * Help menu (multi-level)
