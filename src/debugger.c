@@ -1298,8 +1298,10 @@ int main(int argc, char *argv[])
     hist_init(&inst_hist);
     
     CPU_t cpu;
+    initCPU(&cpu);
     resetCPU(&cpu);
     cpu.setacc = true; // Enable CPU to update access flags
+    cpu.cop_vect_enable = true;
 
     tl16c750_t uart;
     if ((c = init_16c750(&uart, UART_SOCK_PORT))) {
@@ -1595,6 +1597,8 @@ int main(int argc, char *argv[])
         if (uart.enabled) {
             if (step_16c750(&uart, memory)) {
                 cpu.P.IRQ = 1;
+            } else {
+                cpu.P.IRQ = 0;
             }
         }
         

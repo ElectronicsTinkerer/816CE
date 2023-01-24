@@ -62,6 +62,16 @@ struct CPU_t
 
     // Enables this CPU to update access flags on memory addresses
     bool setacc;
+
+    // ******** Special features ********
+    // Set true to use the immediate value of a COP
+    // instruction as an offset from the address placed at
+    // the COP vector. The immediate value is left shifted
+    // one bit (effectively multiplying it by two)
+    // The resutling 16-bit value becomes the jump address
+    // for the COP instruction.
+    // Default value: false (normal CPU behavior)
+    bool cop_vect_enable;
 };
 
 // Possible error codes from CPU public (non-static) functions
@@ -132,6 +142,7 @@ typedef struct memory_t {
 
 CPU_Error_Code_t tostrCPU(CPU_t *, char *);
 CPU_Error_Code_t fromstrCPU(CPU_t *, char *);
+CPU_Error_Code_t initCPU(CPU_t *);
 CPU_Error_Code_t resetCPU(CPU_t *);
 CPU_Error_Code_t stepCPU(CPU_t *, memory_t *);
 

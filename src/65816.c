@@ -16,6 +16,7 @@
 /**
  * Print out the state of a CPU to a string
  * 
+ * @note This does not output any optional feature values!
  * @param *cpu The cpu to print
  * @param *buf The buffer to write the string to. This must be >160 chars long!
  * @param Error code
@@ -43,6 +44,7 @@ CPU_Error_Code_t tostrCPU(CPU_t *cpu, char *buf)
 /**
  * Read in CPU data from a string and store it into a CPU structure
  * 
+ * @note This does not load any optional feature values!
  * @param *cpu The CPU to modify
  * @param *buf The buffer to read
  * @return Error code based on parsing sucess
@@ -83,6 +85,30 @@ CPU_Error_Code_t fromstrCPU(CPU_t *cpu, char *buf)
         return CPU_ERR_STR_PARSE;
     }
     return CPU_ERR_OK;
+}
+
+
+/**
+ * Initializes a CPU to a default "reset" state
+ * with no optional features enabled. This should
+ * be called as soon as a CPU is allocated to
+ * make sure it behaves in a (hopefully) expected
+ * manner.
+ * 
+ * @param cpu The CPU to be initialized
+ */
+CPU_Error_Code_t initCPU(CPU_t *cpu)
+{
+#ifdef CPU_DEBUG_CHECK_NULL
+    if (cpu == NULL)
+    {
+        return CPU_ERR_NULL_CPU;
+    }
+#endif
+
+    cpu->cop_vect_enable = false;
+    
+    return resetCPU(cpu);
 }
 
 

@@ -713,6 +713,10 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_cop(CPU_t *cpu, memory_t *mem)
 {
+    // Only needed with cop_vect_enable optional feature
+    uint8_t immd = _cpu_get_immd_byte(cpu, mem, cpu->setacc);
+
+    // We will push the return address
     _cpu_update_pc(cpu, 2);
 
     if (cpu->P.E)
@@ -736,6 +740,14 @@ void i_cop(CPU_t *cpu, memory_t *mem)
 
     cpu->P.D = 0; // Binary mode (65C02)
     cpu->P.I = 1;
+    
+    // Optional feature: cop_vect_enable
+    if (cpu->cop_vect_enable) {
+        // Jump to the reset vector + COP offset
+        // Does not wrap on pages or banks!
+        // setacc=false since the CPU would not normally access this word
+        cpu->PC = _get_mem_word(mem, cpu->PC + ((immd << 1) & 0xff), false);
+    }
 }
 
 void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
