@@ -8,7 +8,6 @@ TODO:
 * Add UART to docs (help & README)
 * Enable setting of UART port #
 * Enable disabling of UART on startup so a port is not always requested to run the sim
-* Pressing F12 while running does not exit
 * Add correct resetting of UART IRQ flags in IIR (16C750)
 
 TODONE:
@@ -32,4 +31,5 @@ TODONE:
 * Manually changing the PC via commands incorrectly adds previous PC instruction to history. (Fix this)
 * Add macro file or command line quoted command parsing
 * Fix crash on F6 during RUN mode
+* Pressing F12 while running does not exit
 

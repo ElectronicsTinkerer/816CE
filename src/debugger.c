@@ -1672,9 +1672,12 @@ int main(int argc, char *argv[])
         refresh();
         if (!in_run_mode) {
             status_id = STATUS_NONE;
+            alert = false;
         }
-        alert = false;
-        prev_c = c;
+
+        if (c != ERR) {
+            prev_c = c;
+        }
 
         if (!cmd_exit) {
             c = getch();
