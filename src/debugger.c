@@ -79,6 +79,8 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 24, "File does not exist."},
     {"ERROR!", 3, 33, "Unhandled file-related error."},
     {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."},
+    {"INFO",   3, 39, "CPU option cop_vect_enable ENABLED."},
+    {"INFO",   3, 40, "CPU option cop_vect_enable DISABLED."},
     {"ERROR!", 3, 44, "Unable to allocate memory for operation."},
     {"ERROR!", 3, 23, "Unsupported device."},
     {"ERROR!", 3, 24, "Invalid port number."},
@@ -857,6 +859,37 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             return CMD_ERR_EXPECTED_REG;
         }
 
+        // Check for COP option
+        if (strcmp(tok, "cop") == 0) {
+
+            tok = strtok(NULL, " \t\n\r");
+
+            // If no arg given, report the current status
+            // of the COP option
+            if (!tok) {
+                return CMD_ERR_EXPECTED_ARG;
+            }
+
+            if (strcmp(tok, "enable") == 0) {
+                cpu->cop_vect_enable = true;
+                return CMD_ERR_CPU_OPTION_COP_VEC_ENABLED;
+            }
+            else if (strcmp(tok, "disable") == 0) {
+                cpu->cop_vect_enable = true;
+                return CMD_ERR_CPU_OPTION_COP_VEC_DISABLED;
+            }
+            else if (strcmp(tok, "status") == 0) {
+                if (cpu->cop_vect_enable) {
+                    return CMD_ERR_CPU_OPTION_COP_VEC_ENABLED;
+                } else {
+                    return CMD_ERR_CPU_OPTION_COP_VEC_DISABLED;
+                }
+            }
+            return CMD_ERR_UNKNOWN_ARG;
+        }
+
+        // Else, it's a register assignment
+        
         char *hexval = strtok(NULL, " \t\n\r");
 
         if (!hexval) {
@@ -1372,7 +1405,6 @@ int main(int argc, char *argv[])
     initCPU(&cpu);
     resetCPU(&cpu);
     cpu.setacc = true; // Enable CPU to update access flags
-    cpu.cop_vect_enable = true;
 
     tl16c750_t uart;
     init_16c750(&uart);
@@ -1631,7 +1663,10 @@ int main(int argc, char *argv[])
                         cmd_exit = true;
                     }
                     else {
-                        if (cmd_err == CMD_ERR_UART_DISABLED) { // Not an error
+                        if (cmd_err == CMD_ERR_UART_DISABLED ||
+                            cmd_err == CMD_ERR_CPU_OPTION_COP_VEC_ENABLED ||
+                            cmd_err == CMD_ERR_CPU_OPTION_COP_VEC_DISABLED)
+                        { // Not an error
                             command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
                         }
                         

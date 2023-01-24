@@ -1,5 +1,6 @@
 # Based on: https://developer.ibm.com/tutorials/au-lexyacc/
 
+# -g = DEBUG SYMBOLS
 CFLAGS := -Wall -pedantic
 LIBFLAGS := -lncurses -lm
 
