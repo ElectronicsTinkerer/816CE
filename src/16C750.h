@@ -144,6 +144,7 @@ typedef struct tl16c750_t {
     int data_rx_fifo_read;
     int data_rx_fifo_write;
     uint8_t data_rx_buf[UART_FIFO_LEN];
+    bool tx_empty_edge;
     int data_tx_fifo_read;
     int data_tx_fifo_write;
     uint8_t data_tx_buf[UART_FIFO_LEN];

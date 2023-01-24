@@ -10,8 +10,8 @@
  * It is, quite frankly, a mess :(
  */
 
-#include <stdio.h> // DEBUG
-#include <ncurses.h>
+// #include <stdio.h> // DEBUG
+// #include <ncurses.h>
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -27,7 +27,8 @@
 #include "65816-util.h" // memory_t access functions
 #include "16C750.h"
 
-bool trigger_levels[2][4] = {
+// Defined in datasheet
+int trigger_levels[2][4] = {
     {1, 4, 8, 14}, // 16-BYTE RX
     {1, 16, 32, 56} // 64-BYTE RX
 };
@@ -108,6 +109,7 @@ int init_16c750(tl16c750_t *uart, uint16_t port)
 
     uart->data_socket = -1;
     uart->enabled = false;
+    uart->tx_empty_edge = false;
 
     return 0;
 }
@@ -177,6 +179,12 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
 
     // MCR
     uart->regs[TL_MCR] = _get_mem_byte(mem, uart->addr + TLA_MCR, false);
+
+    // Disable TX empty flag if the CPU read the IIR
+    // (can be enabled if TX is written to this cycle)
+    if (_test_and_reset_mem_flags(mem, uart->addr + TLA_IIR, MEM_FLAG_R).R == 1) {
+        uart->tx_empty_edge = false;
+    }
     
     // Handle writing to divisor latches
     if (uart->regs[TL_LCR] & (1u << LCR_DLAB)) {
@@ -195,6 +203,9 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     else {
         // THR
         if (_test_and_reset_mem_flags(mem, uart->addr + TLA_THR, MEM_FLAG_W).W == 1) {
+
+            uart->tx_empty_edge = false; // Write into TX reg resets IRQ for empty tx
+            
             // Loopback
             if (uart->regs[TL_MCR] & (1u << MCR_LOOP)) {
                 // Add value to queue
@@ -210,6 +221,11 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
                         sock_closed = true;
                     }
                 }
+            }
+
+            // If tx buffer is empty, enable signaling of TX empty IRQ
+            if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+                uart->tx_empty_edge = true;
             }
         }
 
@@ -283,7 +299,7 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
             irq = true;
         }
     }
-    else if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+    else if (uart->tx_empty_edge) {
         uart->regs[TL_IIR] &= ~(0x1 << 1);
         uart->regs[TL_IIR] |= 0x1 << 1;
 
@@ -322,7 +338,7 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     
     // Update the state of the Interrupt Identification Register
     _set_mem_byte(mem, uart->addr + TLA_IIR, uart->regs[TL_IIR], false);
-
+    
     // Allow new connections
     if (sock_closed) {
         uart->data_socket = -1;

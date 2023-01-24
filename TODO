@@ -2,7 +2,6 @@ TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
 * Add save (and restore) of full sim state to a file (oh boy...)
-* Add macro file or command line quoted command parsing
 * Figure out how to detect of the socket closed in the UART
 * Fix crash on F6 during RUN mode
 * Clean up UART code
@@ -32,4 +31,5 @@ TODONE:
 * Optimize memory in memory_t so each address location doesn't take 64bits
 * Add a socket listener (AF_UNIX, SOCK_STREAM) to emulate some form of UART (65C51 with and w/o TX flag bug)
 * Manually changing the PC via commands incorrectly adds previous PC instruction to history. (Fix this)
+* Add macro file or command line quoted command parsing
 
