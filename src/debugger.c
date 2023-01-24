@@ -209,7 +209,7 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
 void print_cpu_hist(hist_t *hist)
 {
     size_t i, j, j_1, str_index, row, row_mod, row_prev;
-    char buf[80];
+    char buf[100];
     CPU_t *pcpu, *ccpu;
     bool prev_has_diff, curr_has_diff;
     prev_has_diff = false;
@@ -246,25 +246,25 @@ void print_cpu_hist(hist_t *hist)
             pcpu = &(hist->cpu[j_1]);
             ccpu = &(hist->cpu[j]);
             if (pcpu->C != ccpu->C) {
-                str_index = sprintf(buf + str_index,  " C:%04x->%04x", pcpu->C, ccpu->C);
+                str_index += sprintf(buf + str_index,  " C:%04x->%04x", pcpu->C, ccpu->C);
             }
             if (pcpu->X != ccpu->X) {
-                str_index = sprintf(buf + str_index, " X:%04x->%04x", pcpu->X, ccpu->X);
+                str_index += sprintf(buf + str_index, " X:%04x->%04x", pcpu->X, ccpu->X);
             }
             if (pcpu->Y != ccpu->Y) {
-                str_index = sprintf(buf + str_index, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
+                str_index += sprintf(buf + str_index, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
             }
             if (pcpu->D != ccpu->D) {
-                str_index = sprintf(buf + str_index, " D:%04x->%04x", pcpu->D, ccpu->D);
+                str_index += sprintf(buf + str_index, " D:%04x->%04x", pcpu->D, ccpu->D);
             }
             if (pcpu->DBR != ccpu->DBR) {
-                str_index = sprintf(buf + str_index, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
+                str_index += sprintf(buf + str_index, " DBR:%02x->%02x", pcpu->DBR, ccpu->DBR);
             }
             if (pcpu->PBR != ccpu->PBR) {
-                str_index = sprintf(buf + str_index, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
+                str_index += sprintf(buf + str_index, " PBR:%02x->%02x", pcpu->PBR, ccpu->PBR);
             }
             if (_cpu_get_sr(pcpu) != _cpu_get_sr(ccpu)) {
-                    str_index = sprintf(buf + str_index, " SR:%02x->%02x", _cpu_get_sr(pcpu), _cpu_get_sr(ccpu));
+                str_index += sprintf(buf + str_index, " SR:%02x->%02x", _cpu_get_sr(pcpu), _cpu_get_sr(ccpu));
             }
 
             curr_has_diff = (str_index > 0);
