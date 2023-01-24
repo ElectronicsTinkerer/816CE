@@ -46,6 +46,7 @@ Available commands
  > load cpu filename
  > cpu [reg] xxxx
  > bp aaaaaa
+ > uart [type] aaaaaa (pppp)
  ? ... Help Menu
  ^C to clear command input
 ```
@@ -56,6 +57,8 @@ Some explanation:
 * `(value)` - an optional field
 * `aaaaaa` - an address in hex
 * `reg` - a CPU register in all caps (e.g. PC)
+* `type` - for a `uart` initialization, the type referes to the HW being emulated (see below)
+* `pppp` - A port number in decimal (if 0, then the uart is disabled)
 
 Additionally, the function keys are of use:
 
@@ -75,6 +78,11 @@ F12 - Pressing F12 twice will exit the simulator without saving.
 * Files can be specified to be loaded into memory and/or the CPU via arguments to the simulator or during runtime by using the `load` command.
 * Loaded files are not automatically saved upon termination of the simulator.
 * Memory contents and CPU state can be manually saved through the use of the `save` command
+
+### UART Types
+
+When issuing the `uart` command, the `type` argument can refer to the following uart devices:
+* `c750` - TL16C750
 
 ## TIPS
 

@@ -4,10 +4,6 @@ TODO:
 * Add save (and restore) of full sim state to a file (oh boy...)
 * Figure out how to detect of the socket closed in the UART
 * Clean up UART code
-* Clean up UART interface
-* Add UART to docs (help & README)
-* Enable setting of UART port #
-* Enable disabling of UART on startup so a port is not always requested to run the sim
 * Add correct resetting of UART IRQ flags in IIR (16C750)
 
 TODONE:
@@ -32,4 +28,8 @@ TODONE:
 * Add macro file or command line quoted command parsing
 * Fix crash on F6 during RUN mode
 * Pressing F12 while running does not exit
+* Clean up UART interface
+* Add UART to docs (help & README)
+* Enable setting of UART port #
+* Enable disabling of UART on startup so a port is not always requested to run the sim
 

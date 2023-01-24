@@ -151,7 +151,8 @@ typedef struct tl16c750_t {
 } tl16c750_t;
 
 void reset_16c750(tl16c750_t *);
-int init_16c750(tl16c750_t *, uint16_t);
+void init_16c750(tl16c750_t *);
+int init_port_16c750(tl16c750_t *, uint16_t);
 void stop_16c750(tl16c750_t *);
 bool step_16c750(tl16c750_t *, memory_t *);
 

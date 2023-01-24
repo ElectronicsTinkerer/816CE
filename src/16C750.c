@@ -49,6 +49,11 @@ void reset_16c750(tl16c750_t *uart)
     uart->regs[TL_MCR] = 0;
     uart->regs[TL_LSR] = 0x60;
     uart->regs[TL_MSR] = 0;
+
+    uart->data_rx_fifo_read = 0;
+    uart->data_rx_fifo_write = 0;
+    uart->data_tx_fifo_read = 0;
+    uart->data_tx_fifo_write = 0;
 }
 
 
@@ -56,17 +61,34 @@ void reset_16c750(tl16c750_t *uart)
  * Initialize a UART by performing a reset and setting up a socket listener
  * 
  * @param *uart The UART to set up
- * @param port The port to listen on
- * @return errno Describing the error encountered
  */
-int init_16c750(tl16c750_t *uart, uint16_t port)
+void init_16c750(tl16c750_t *uart)
 {
     reset_16c750(uart);
 
-    uart->data_rx_fifo_read = 0;
-    uart->data_rx_fifo_write = 0;
-    uart->data_tx_fifo_read = 0;
-    uart->data_tx_fifo_write = 0;
+    uart->sock_fd = -1;
+    uart->data_socket = -1;
+}
+
+
+/**
+ * Initialize a UART by performing a reset and setting up a socket listener.
+ * This closes any open ports (file descriptors)
+ * 
+ * @note This should ONLY be called on UART structs which have been
+ *       run through the init function.
+ * @param *uart The UART to set up
+ * @param port The port to listen on
+ * @return errno Describing the error encountered
+ */
+int init_port_16c750(tl16c750_t *uart, uint16_t port)
+{
+    stop_16c750(uart);
+
+    // Don't initialize if port 0
+    if (port == 0) {
+        return 0;
+    }
 
     // Set up socket
     uart->sock_fd = socket(AF_INET, SOCK_STREAM, 0); // 0 = choose protocol automatically
@@ -113,7 +135,7 @@ int init_16c750(tl16c750_t *uart, uint16_t port)
 
     return 0;
 }
-
+    
 
 /*
  * Close network connections
@@ -341,6 +363,7 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     
     // Allow new connections
     if (sock_closed) {
+        close(uart->data_socket);
         uart->data_socket = -1;
     }
 

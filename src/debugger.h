@@ -64,6 +64,7 @@ typedef struct hist_t {
 typedef enum cmd_err_t {
     CMD_ERR_EXIT = -1,
     CMD_ERR_OK = 0, // Start of cmd_err_msgs index
+    CMD_ERR_SPECIAL,
     CMD_ERR_EXPECTED_ARG,
     CMD_ERR_EXPECTED_REG,
     CMD_ERR_EXPECTED_VALUE,
@@ -84,7 +85,9 @@ typedef enum cmd_err_t {
     CMD_ERR_FILE_UNKNOWN_ERROR,
     CMD_ERR_CPU_CORRUPT_FILE,
     CMD_ERR_OUT_OF_MEM,
-    CMD_ERR_UNSUPPORTED_DEVICE
+    CMD_ERR_UNSUPPORTED_DEVICE,
+    CMD_ERR_PORT_NUM_INVALID,
+    CMD_ERR_UART_DISABLED
 } cmd_err_t;
 
 // Error message box type

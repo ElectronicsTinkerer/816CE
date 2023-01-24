@@ -26,7 +26,7 @@
 
 // Messages to print in the status bar at the top of the screen
 // Keep in sync with status_msgs
-static char status_msgs[][64] = {
+static char *status_msgs[] = {
     "Normal",
     "Press F12 again to exit. Any other key to cancel.",
     "CPU Reset",
@@ -34,16 +34,24 @@ static char status_msgs[][64] = {
     "Running"
 };
 
+
+// Global error message buffer. Used in conjunction
+// with the cmd_err_msgs return values.
+// To signal use of this buffer, return
+// cmd_err_t = CMD_ERR_SPECIAL
+char global_err_msg_buf[1024];
+
 // Error messages for command parsing/execution
 // Keep in sync with the cmd_err_t enum in debugger.h
 cmd_err_msg cmd_err_msgs[] = {
     {"",0,0,""}, // OK
+    {"ERROR!", 3, 4, global_err_msg_buf},
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 27, "Expected register name."},
     {"ERROR!", 3, 19, "Expected value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 16, 40, "Available commands\n"
+    {"HELP", 17, 40, "Available commands\n"
      " > exit ... Close simulator\n"
      " > mw[1|2] [mem|asm] (pc|addr)\n"
      " > mw[1|2] aaaaaa\n"
@@ -55,6 +63,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > load cpu filename\n"
      " > cpu [reg] xxxx\n"
      " > bp aaaaaa\n"
+     " > uart [type] aaaaaa (pppp)\n"
      " ? ... Help Menu\n"
      " ^C to clear command input"},
     {"HELP?", 3, 13, "Not help."},
@@ -71,7 +80,9 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 33, "Unhandled file-related error."},
     {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."},
     {"ERROR!", 3, 44, "Unable to allocate memory for operation."},
-    {"ERROR!", 3, 23, "Unsupported device."}
+    {"ERROR!", 3, 23, "Unsupported device."},
+    {"ERROR!", 3, 24, "Invalid port number."},
+    {"INFO",   3, 18, "UART disabled."}
 };
 
 
@@ -313,6 +324,33 @@ void print_cpu_hist(hist_t *hist)
     }
     
 }
+
+
+/**
+ * Check if a string is a decimal string and parse it if so
+ * 
+ * @param *str The string to parse
+ * @param *val A pointer to the variable to store the parsed value in
+ * @return false if the string is not decimal (val will not be modified if so)
+ *         true if the string is decimal and was successfully parsed
+ */
+bool is_dec_do_parse(char *str, uint32_t *val)
+{
+    // Determine if this is actually a hex address
+    char *tmp = str;
+    while (isdigit(*tmp)) {
+        /* scan */
+        ++tmp;
+    }
+
+    // If the entire argument is hex, use it as an address
+    if (*tmp == '\0' || *tmp == '\n') {
+        *val = strtoul(str, NULL, 10);
+        return true;
+    }
+    return false;
+}
+
 
 /**
  * Check if a string is a hex string and parse it if so
@@ -1017,21 +1055,53 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             return CMD_ERR_EXPECTED_VALUE;
         }
 
+        // Get base address for UART device
         uint32_t addr;
 
         if (!is_hex_do_parse(tmp, &addr)) {
             return CMD_ERR_EXPECTED_VALUE;
         }
 
+        // Get port for UART to listen on (for network connections)
+        // Optional parameter
+        tmp = strtok(NULL, " \t\n\r");
+        
+        uint32_t port;
+
+        if (!tmp) {
+            port = UART_SOCK_PORT;
+        } else if (!is_dec_do_parse(tmp, &port)) {
+            return CMD_ERR_EXPECTED_VALUE;
+        } // else is covered by is_dec_do_parse call
+
+        if (port > 0xffff) { // Max port number since ports are 16-bit
+            return CMD_ERR_PORT_NUM_INVALID;
+        }
+
         if (strcmp(tok, "c750") == 0) {
+
             uart->addr = addr;
+
+            int err;
+            if ((err = init_port_16c750(uart, port))) {
+                sprintf(global_err_msg_buf, "%s (port: %d)", strerror(err), port);
+                uart->enabled = false;
+                return CMD_ERR_SPECIAL;
+            }
+
+            // If port is 0, disable UART
+            if (port == 0) {
+                uart->enabled = false;
+                return CMD_ERR_UART_DISABLED;
+            }
+            
             uart->enabled = true;
+            
+            return CMD_ERR_OK;
         }
         else {
             return CMD_ERR_UNSUPPORTED_DEVICE;
         }
-
-        return CMD_ERR_OK;
     }
 
     // Not a named command, maybe it's a memory access?
@@ -1305,10 +1375,8 @@ int main(int argc, char *argv[])
     cpu.cop_vect_enable = true;
 
     tl16c750_t uart;
-    if ((c = init_16c750(&uart, UART_SOCK_PORT))) {
-        printf("ERROR: '%s'\n", strerror(c));
-        return -1;
-    }
+    init_16c750(&uart);
+    uart.enabled = false;
 
     memory_t *memory = calloc(MEMORY_SIZE, sizeof(*memory));
 
@@ -1563,9 +1631,24 @@ int main(int argc, char *argv[])
                         cmd_exit = true;
                     }
                     else {
+                        if (cmd_err == CMD_ERR_UART_DISABLED) { // Not an error
+                            command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                        }
+                        
                         // If there is errors, print an appropiate message
                         cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
-                        msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
+
+                        // Most cases will have the string length pre determined
+                        int win_w = msg->win_w;
+
+                        // For custom "special" error messages, we have to
+                        // figure out the length
+                        if (cmd_err == CMD_ERR_SPECIAL) {
+                            win_w = strlen(msg->msg) + 4; // 2 chars of passing on each side
+                        }
+
+                        // Finally, update the box's content
+                        msg_box(&win_msg, msg->msg, msg->title, msg->win_h, win_w, scrh, scrw);
                     }
                 }
                 else { // Only clear the command input if the command was successful
@@ -1693,7 +1776,9 @@ int main(int argc, char *argv[])
 
     free(memory);
 
-    stop_16c750(&uart);
+    if (uart.enabled) {
+        stop_16c750(&uart);
+    }
 
     printf("Stopped simulator\n");
     
