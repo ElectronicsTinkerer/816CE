@@ -183,7 +183,8 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
                 hist->entry_start += 1;
                 hist->entry_start %= lines;
             } else {
-                --i;
+                // Subtract 1 from i, wrapping if needed
+                i = (i == 0) ? (hist->entry_count - 1) : (i - 1);
             }
         }
     }
