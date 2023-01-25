@@ -38,7 +38,7 @@ static char *status_msgs[] = {
 // Global error message buffer. Used in conjunction
 // with the cmd_err_msgs return values.
 // To signal use of this buffer, return
-// cmd_err_t = CMD_ERR_SPECIAL
+// cmd_err_t = CMD_SPECIAL
 char global_err_msg_buf[1024];
 
 // Error messages for command parsing/execution
@@ -51,7 +51,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 19, "Expected value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 17, 40, "Available commands\n"
+    {"HELP", 18, 43, "Available commands\n"
      " > exit ... Close simulator\n"
      " > mw[1|2] [mem|asm] (pc|addr)\n"
      " > mw[1|2] aaaaaa\n"
@@ -62,6 +62,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > load mem (offset) filename\n"
      " > load cpu filename\n"
      " > cpu [reg] xxxx\n"
+     " > cpu [option] [enable|disable|status]\n"
      " > bp aaaaaa\n"
      " > uart [type] aaaaaa (pppp)\n"
      " ? ... Help Menu\n"
@@ -397,20 +398,20 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
     if (stat(filename, &finfo) != 0) {
         switch (errno) {
         case EACCES:
-            return CMD_ERR_FILE_PERM_DENIED;
+            return CMD_FILE_PERM_DENIED;
             break;
         case ELOOP:
-            return CMD_ERR_FILE_LOOP;
+            return CMD_FILE_LOOP;
             break;
         case ENAMETOOLONG:
-            return CMD_ERR_FILE_NAME_TOO_LONG;
+            return CMD_FILE_NAME_TOO_LONG;
             break;
         case ENOTDIR:
         case ENOENT:
-            return CMD_ERR_FILE_NOT_EXIST;
+            return CMD_FILE_NOT_EXIST;
             break;
         default:
-            return CMD_ERR_FILE_UNKNOWN_ERROR;
+            return CMD_FILE_UNKNOWN_ERROR;
         }
     }
     
@@ -418,18 +419,18 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
             
     // Check file size
     if (size / sizeof(*mem) > 0x1000000) {
-        return CMD_ERR_FILE_TOO_LARGE;
+        return CMD_FILE_TOO_LARGE;
     }
 
     // Make sure the file won't wrap
     if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
-        return CMD_ERR_FILE_WILL_WRAP;
+        return CMD_FILE_WILL_WRAP;
     }
             
     // All good, let's open the file
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
-        return CMD_ERR_FILE_IO_ERROR;
+        return CMD_FILE_IO_ERROR;
     }
             
     uint8_t *tmp;
@@ -443,12 +444,12 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
 
     if (!tmp) {
         fclose(fp);
-        return CMD_ERR_OUT_OF_MEM;
+        return CMD_OUT_OF_MEM;
     }
     
     if (fread(tmp, sizeof(*tmp), size, fp) != size) {
         free(tmp);
-        return CMD_ERR_FILE_IO_ERROR;
+        return CMD_FILE_IO_ERROR;
     }
     fclose(fp);
 
@@ -458,7 +459,7 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
     // Don't want memory leaks
     free(tmp);
     
-    return CMD_ERR_OK;
+    return CMD_OK;
 }
 
 
@@ -478,41 +479,41 @@ cmd_err_t load_file_cpu(char *filename, CPU_t *cpu)
     if (stat(filename, &finfo) != 0) {
         switch (errno) {
         case EACCES:
-            return CMD_ERR_FILE_PERM_DENIED;
+            return CMD_FILE_PERM_DENIED;
             break;
         case ELOOP:
-            return CMD_ERR_FILE_LOOP;
+            return CMD_FILE_LOOP;
             break;
         case ENAMETOOLONG:
-            return CMD_ERR_FILE_NAME_TOO_LONG;
+            return CMD_FILE_NAME_TOO_LONG;
             break;
         case ENOTDIR:
         case ENOENT:
-            return CMD_ERR_FILE_NOT_EXIST;
+            return CMD_FILE_NOT_EXIST;
             break;
         default:
-            return CMD_ERR_FILE_UNKNOWN_ERROR;
+            return CMD_FILE_UNKNOWN_ERROR;
         }
     }
     
     size_t size = finfo.st_size;
 
     if (size > 1024) { // Arbitrary max file size limit (should not need to be increased!)
-        return CMD_ERR_FILE_TOO_LARGE;
+        return CMD_FILE_TOO_LARGE;
     }
 
     FILE *fp = fopen(filename, "r");
     if (!fp) {
-        return CMD_ERR_FILE_IO_ERROR;
+        return CMD_FILE_IO_ERROR;
     }
 
     char buf[size];
     fread(&buf, sizeof(*buf), size, fp);
     if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
-        return CMD_ERR_CPU_CORRUPT_FILE;
+        return CMD_CPU_CORRUPT_FILE;
     }
     fclose(fp);
-    return CMD_ERR_OK;
+    return CMD_OK;
 }
 
 
@@ -608,7 +609,7 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
     tok = strtok(NULL, " \t\n\r");
 
     if (!tok) {
-        return CMD_ERR_EXPECTED_ARG;
+        return CMD_EXPECTED_ARG;
     }
 
     // Secondary level command
@@ -624,18 +625,18 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
         if (is_hex_do_parse(tok, &(watch->addr_s))) {
 
             if (watch->addr_s > 0xffffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                return CMD_VAL_OVERFLOW;
             }
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG; // Syntax error!
+            return CMD_UNKNOWN_ARG; // Syntax error!
         }
     }
 
     tok = strtok(NULL, " \t\n\r");
         
     if (!tok) {
-        return CMD_ERR_OK;
+        return CMD_OK;
     }
         
     // Tertiary level command
@@ -646,10 +647,10 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
         watch->follow_pc = false;
     }
     else {
-        return CMD_ERR_UNKNOWN_ARG; // Error!
+        return CMD_UNKNOWN_ARG; // Error!
     }
 
-    return CMD_ERR_OK; // Success?
+    return CMD_OK; // Success?
 }
 
 
@@ -657,18 +658,20 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
  * Execute a command from the prompt window.
  * This has a very primitive parser.
  * 
+ * @param *status The error code from the command
  * @param *_cmdbuf The buffer containing the command
  * @param cmdbuf_index The length of the command + 1
  * @param *watch1 Watch window 1 structure
  * @param *watch2 Watch window 2 structure
  * @param *cpu The CPU to modify if a command needs to
  * @param *mem The memory to modify if a command needs to
- * @return The error code from the command
+ * @return True if an error occured, false otherwise
  */
-cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, tl16c750_t *uart)
+cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, tl16c750_t *uart)
 {
     if (cmdbuf_index == 0) {
-        return CMD_ERR_OK; // No command
+        *status = CMD_OK; // No command
+        return STAT_OK; // No Error
     }
 
     while (isspace(*_cmdbuf)) {
@@ -678,25 +681,30 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     char *tok = strtok(_cmdbuf, " \t\n\r");
 
     if (!tok) {
-        return CMD_ERR_OK; // No command
+        *status = CMD_OK; // No command
+        return STAT_OK; // No Error
     }
 
     if (*tok == '#') { // Ignore comments
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK; // No Error
     }
     
     if (strcmp(tok, "?") == 0) { // Main level help
-        return CMD_ERR_HELP_MAIN;
+        *status = CMD_HELP_MAIN;
+        return STAT_INFO;
     }
     else if (strcmp(tok, "???") == 0) { // Not help
-        return CMD_ERR_HELP_NOT;
+        *status = CMD_HELP_NOT;
+        return STAT_INFO;
     }
     else if (strcmp(tok, "irq") == 0) { // Force IRQ status change
 
         tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
         // Secondary level command
@@ -707,17 +715,18 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             cpu->P.IRQ = 0;
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG;
+            return CMD_UNKNOWN_ARG;
         }
-        return CMD_ERR_OK;
-
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "nmi") == 0) { // Force NMI status change
 
         tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
         // Secondary level command
@@ -728,10 +737,11 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             cpu->P.NMI = 0;
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG;
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
         }
-        return CMD_ERR_OK;
-
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
         return command_execute_watch(watch1, tok);
@@ -740,20 +750,23 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         return command_execute_watch(watch2, tok);
     }
     else if (strcmp(tok, "exit") == 0) { // Exit
-        return CMD_ERR_EXIT;
+        *status = CMD_EXIT;
+        return STAT_OK;
     }
     else if (strcmp(tok, "save") == 0) { // Save
 
         tok = strtok(NULL, " \t\n\r");
         
         if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
         char *filename = strtok(NULL, " \t\n\r");
 
         if (!filename) {
-            return CMD_ERR_EXPECTED_FILENAME;
+            *status = CMD_EXPECTED_FILENAME;
+            return STAT_ERR;
         }
 
         // Secondary level command
@@ -761,14 +774,16 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
             FILE *fp = fopen(filename, "wb");
             if (!fp) {
-                return CMD_ERR_FILE_IO_ERROR;
+                *status = CMD_FILE_IO_ERROR;
+                return STAT_ERR;
             }
 
             uint8_t *tmp = malloc(sizeof(*tmp) * MEMORY_SIZE);
 
             if (!tmp) {
                 fclose(fp);
-                return CMD_ERR_OUT_OF_MEM;
+                *status = CMD_OUT_OF_MEM;
+                return STAT_ERR;
             }
 
             // Get the memory contents
@@ -776,7 +791,8 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             
             if (fwrite(tmp, sizeof(*tmp), MEMORY_SIZE, fp) != MEMORY_SIZE) {
                 free(tmp);
-                return CMD_ERR_FILE_IO_ERROR;
+                *status = CMD_FILE_IO_ERROR;
+                return STAT_ERR;
             }
             fclose(fp);
 
@@ -786,7 +802,8 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
 
             FILE *fp = fopen(filename, "w");
             if (!fp) {
-                return CMD_ERR_FILE_IO_ERROR;
+                *status = CMD_FILE_IO_ERROR;
+                return STAT_ERR;
             }
             char buf[160];
             tostrCPU(cpu, (char*)&buf);
@@ -794,17 +811,20 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             fclose(fp);
         }
         else {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "load") == 0) {
 
         tok = strtok(NULL, " \t\n\r");
         
         if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
         // Secondary level command
@@ -813,7 +833,8 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             tok = strtok(NULL, " \t\n\r");
         
             if (!tok) {
-                return CMD_ERR_EXPECTED_ARG;
+                *status = CMD_EXPECTED_ARG;
+                return STAT_ERR;
             }
 
             uint32_t base_addr = 0;
@@ -822,17 +843,25 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             if (is_hex_do_parse(tok, &base_addr)) {
 
                 if (base_addr > 0xffffff) {
-                    return CMD_ERR_VAL_OVERFLOW;
+                    *status = CMD_VAL_OVERFLOW;
+                    return STAT_ERR;
                 }
 
                 tok = strtok(NULL, " \t\n\r");
 
                 if (!tok) {
-                    return CMD_ERR_EXPECTED_FILENAME;
+                    *status = CMD_EXPECTED_FILENAME;
+                    return STAT_ERR;
                 }
             }
 
-            return load_file_mem(tok, mem, base_addr);
+            *status = load_file_mem(tok, mem, base_addr);
+
+            if (*status != CMD_OK) {
+                return STAT_ERR;
+            } else {
+                return STAT_OK;
+            }
         }
         else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
 
@@ -840,23 +869,27 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             tok = strtok(NULL, " \t\n\r");
 
             if (!tok) {
-                return CMD_ERR_EXPECTED_FILENAME;
+                *status = CMD_EXPECTED_FILENAME;
+                return STAT_ERR;
             }
 
             return load_file_cpu(tok, cpu);
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG;
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
         }
 
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "cpu") == 0) {
 
         tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
-            return CMD_ERR_EXPECTED_REG;
+            *status = CMD_EXPECTED_REG;
+            return STAT_ERR;
         }
 
         // Check for COP option
@@ -867,25 +900,31 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             // If no arg given, report the current status
             // of the COP option
             if (!tok) {
-                return CMD_ERR_EXPECTED_ARG;
+                *status = CMD_EXPECTED_ARG;
+                return STAT_ERR;
             }
 
             if (strcmp(tok, "enable") == 0) {
                 cpu->cop_vect_enable = true;
-                return CMD_ERR_CPU_OPTION_COP_VEC_ENABLED;
+                *status = CMD_CPU_OPTION_COP_VEC_ENABLED;
+                return STAT_INFO;
             }
             else if (strcmp(tok, "disable") == 0) {
                 cpu->cop_vect_enable = true;
-                return CMD_ERR_CPU_OPTION_COP_VEC_DISABLED;
+                *status = CMD_CPU_OPTION_COP_VEC_DISABLED;
+                return STAT_INFO;
             }
             else if (strcmp(tok, "status") == 0) {
                 if (cpu->cop_vect_enable) {
-                    return CMD_ERR_CPU_OPTION_COP_VEC_ENABLED;
+                    *status = CMD_CPU_OPTION_COP_VEC_ENABLED;
+                    return STAT_INFO;
                 } else {
-                    return CMD_ERR_CPU_OPTION_COP_VEC_DISABLED;
+                    *status = CMD_CPU_OPTION_COP_VEC_DISABLED;
+                    return STAT_INFO;
                 }
             }
-            return CMD_ERR_UNKNOWN_ARG;
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
         }
 
         // Else, it's a register assignment
@@ -893,175 +932,205 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         char *hexval = strtok(NULL, " \t\n\r");
 
         if (!hexval) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         uint32_t val = 0;
         
         // Make sure it's hex
         if (!is_hex_do_parse(hexval, &val)) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         if (val > 0xffffff) {
-            return CMD_ERR_VAL_OVERFLOW;
+            *status = CMD_VAL_OVERFLOW;
+            return STAT_ERR;
         }
 
         if (strcmp(tok, "C") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->C = val;
         }
         else if (strcmp(tok, "X") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->X = val;
         }
         else if (strcmp(tok, "Y") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->Y = val;
         }
         else if (strcmp(tok, "SP") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->SP = val;
         }
         else if (strcmp(tok, "DBR") == 0) {
             if (val > 0xff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->DBR = val;
         }
         else if (strcmp(tok, "PBR") == 0) {
             if (val > 0xff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->PBR = val;
         }
         else if (strcmp(tok, "PC") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->PC = val;
         }
         else if (strcmp(tok, "D") == 0) {
             if (val > 0xffff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->D = val;
         }
         else if (strcmp(tok, "P") == 0) {
             if (val > 0xff) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             _cpu_set_sp(cpu, (uint8_t)val);
         }
         else if (strcmp(tok, "P.N") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.N = val;
         }
         else if (strcmp(tok, "P.V") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.V = val;
         }
         else if (strcmp(tok, "P.M") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.M = val;
         }
         else if (strcmp(tok, "P.X") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.XB = val;
         }
         else if (strcmp(tok, "P.D") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.D = val;
         }
         else if (strcmp(tok, "P.I") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.I = val;
         }
         else if (strcmp(tok, "P.Z") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.Z = val;
         }
         else if (strcmp(tok, "P.C") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.C = val;
         }
         else if (strcmp(tok, "P.E") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.E = val;
         }
         else if (strcmp(tok, "RST") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.RST = val;
         }
         else if (strcmp(tok, "IRQ") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.IRQ = val;
         }
         else if (strcmp(tok, "NMI") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.NMI = val;
         }
         else if (strcmp(tok, "STP") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.STP = val;
         }
         else if (strcmp(tok, "CRASH") == 0) {
             if (val > 0x1) {
-                return CMD_ERR_VAL_OVERFLOW;
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
             }
             cpu->P.CRASH = val;
         }
         else {
-            return CMD_ERR_UNKNOWN_ARG;
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
         }
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "bp") == 0) { // Break point
 
         tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         uint32_t addr;
 
         if (!is_hex_do_parse(tok, &addr)) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         // Toggle breakpoint
@@ -1072,27 +1141,31 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             _reset_mem_flags(mem, addr, MEM_FLAG_B);
         }
 
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK;
     }
     else if (strcmp(tok, "uart") == 0) {
 
         tok = strtok(NULL, " \t\n\r");
 
         if (!tok) {
-            return CMD_ERR_EXPECTED_ARG;
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
         }
 
         char *tmp = strtok(NULL, " \t\n\r");
 
         if (!tmp) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         // Get base address for UART device
         uint32_t addr;
 
         if (!is_hex_do_parse(tmp, &addr)) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         }
 
         // Get port for UART to listen on (for network connections)
@@ -1104,11 +1177,13 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
         if (!tmp) {
             port = UART_SOCK_PORT;
         } else if (!is_dec_do_parse(tmp, &port)) {
-            return CMD_ERR_EXPECTED_VALUE;
+            *status = CMD_EXPECTED_VALUE;
+            return STAT_ERR;
         } // else is covered by is_dec_do_parse call
 
         if (port > 0xffff) { // Max port number since ports are 16-bit
-            return CMD_ERR_PORT_NUM_INVALID;
+            *status = CMD_PORT_NUM_INVALID;
+            return STAT_ERR;
         }
 
         if (strcmp(tok, "c750") == 0) {
@@ -1119,21 +1194,27 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
             if ((err = init_port_16c750(uart, port))) {
                 sprintf(global_err_msg_buf, "%s (port: %d)", strerror(err), port);
                 uart->enabled = false;
-                return CMD_ERR_SPECIAL;
+                
+                *status = CMD_SPECIAL;
+                return STAT_ERR;
             }
 
             // If port is 0, disable UART
             if (port == 0) {
                 uart->enabled = false;
-                return CMD_ERR_UART_DISABLED;
+                
+                *status = CMD_UART_DISABLED;
+                return STAT_INFO;
             }
             
             uart->enabled = true;
             
-            return CMD_ERR_OK;
+            *status = CMD_OK;
+            return STAT_OK;
         }
         else {
-            return CMD_ERR_UNSUPPORTED_DEVICE;
+            *status = CMD_UNSUPPORTED_DEVICE;
+            return STAT_ERR;
         }
     }
 
@@ -1170,13 +1251,16 @@ cmd_err_t command_execute(char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watc
     }
 
     if (!valid_character && found_store_delim) {
-        return CMD_ERR_INVALID_CHAR;
+        *status = CMD_INVALID_CHAR;
+        return STAT_ERR;
     }
     else if (valid_character && found_store_delim) {
-        return CMD_ERR_OK;
+        *status = CMD_OK;
+        return STAT_OK;
     }
 
-    return CMD_ERR_UNKNOWN_CMD; // Not success
+    *status = CMD_UNKNOWN_CMD; // Not success
+    return STAT_ERR;
 }
 
 
@@ -1394,6 +1478,7 @@ int main(int argc, char *argv[])
     char *_cmdbuf_dup = cmdbuf_dup;
     size_t cmdbuf_index = 0;
     cmd_err_t cmd_err;
+    cmd_status_t cmd_stat;
     watch_t watch1, watch2;
     watch_init(&watch1, false, false);
     watch_init(&watch2, true, true); // Disasm & follow PC
@@ -1465,18 +1550,25 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 3: // Execute a command directly
-                if (0 != (cmd_err = command_execute(
-                              argv[i],
-                              strlen(argv[i]),
-                              &watch1, &watch2,
-                              &cpu,
-                              memory,
-                              &uart
-                              ))) {
+                cmd_stat = command_execute(
+                    &cmd_err,
+                    argv[i],
+                    strlen(argv[i]),
+                    &watch1, &watch2,
+                    &cpu,
+                    memory,
+                    &uart
+                    );
+                    
+                if (cmd_stat != STAT_OK) {
 
-                    if (cmd_err == CMD_ERR_EXIT) {
+                    if (cmd_err == CMD_EXIT) {
                         printf("'exit' encountered.\n");
                         exit(EXIT_SUCCESS);
+                    }
+                    else if (cmd_stat == STAT_INFO) {
+                        // Print info messages
+                        printf("Info (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                     }
                     else {
                         // If there is errors, print an appropiate message
@@ -1503,18 +1595,25 @@ int main(int argc, char *argv[])
                     fgets(buf, 2048, fp);
 
                     // Parse command
-                    if (0 != (cmd_err = command_execute(
-                                  buf,
-                                  strlen(buf),
-                                  &watch1, &watch2,
-                                  &cpu,
-                                  memory,
-                                  &uart
-                                  ))) {
+                    cmd_stat = command_execute(
+                        &cmd_err,
+                        buf,
+                        strlen(buf),
+                        &watch1, &watch2,
+                        &cpu,
+                        memory,
+                        &uart
+                        );
+                    
+                    if (cmd_stat != STAT_OK) {
 
-                        if (cmd_err == CMD_ERR_EXIT) {
+                        if (cmd_err == CMD_EXIT) {
                             printf("'exit' encountered.\n");
                             exit(EXIT_SUCCESS);
+                        }
+                        else if (cmd_stat == STAT_INFO) {
+                            // Print info messages
+                            printf("Info (%s, %s) %s\n", argv[i], buf, cmd_err_msgs[cmd_err].msg);
                         }
                         else {
                             // If there is errors, print an appropiate message
@@ -1634,7 +1733,7 @@ int main(int argc, char *argv[])
             command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
             break;
         case '?': {
-            cmd_err_msg *msg = &cmd_err_msgs[CMD_ERR_HELP_MAIN];
+            cmd_err_msg *msg = &cmd_err_msgs[CMD_HELP_MAIN];
             msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
         }
             break;
@@ -1657,38 +1756,46 @@ int main(int argc, char *argv[])
 
                 // Check for errors in the command input and execute it if none
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
-                if (0 != (cmd_err = command_execute(_cmdbuf_dup, cmdbuf_index, &watch1, &watch2, &cpu, memory, &uart))) {
 
-                    if (cmd_err == CMD_ERR_EXIT) {
-                        cmd_exit = true;
-                    }
-                    else {
-                        if (cmd_err == CMD_ERR_UART_DISABLED ||
-                            cmd_err == CMD_ERR_CPU_OPTION_COP_VEC_ENABLED ||
-                            cmd_err == CMD_ERR_CPU_OPTION_COP_VEC_DISABLED)
-                        { // Not an error
-                            command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
-                        }
-                        
-                        // If there is errors, print an appropiate message
-                        cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
-
-                        // Most cases will have the string length pre determined
-                        int win_w = msg->win_w;
-
-                        // For custom "special" error messages, we have to
-                        // figure out the length
-                        if (cmd_err == CMD_ERR_SPECIAL) {
-                            win_w = strlen(msg->msg) + 4; // 2 chars of passing on each side
-                        }
-
-                        // Finally, update the box's content
-                        msg_box(&win_msg, msg->msg, msg->title, msg->win_h, win_w, scrh, scrw);
-                    }
+                cmd_stat = command_execute(
+                    &cmd_err,
+                    _cmdbuf_dup,
+                    cmdbuf_index,
+                    &watch1,
+                    &watch2,
+                    &cpu,
+                    memory,
+                    &uart
+                    );
+                
+                if (cmd_err == CMD_EXIT) {
+                    cmd_exit = true;
                 }
-                else { // Only clear the command input if the command was successful
+                else if (cmd_stat == STAT_OK) {
+                    // Only clear the command input if the command was successful
                     command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
                     update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
+                }
+                else {
+                    // Print a message box with the err status value
+                    if (cmd_stat == STAT_INFO) { // Not an error
+                        command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                    }
+                        
+                    // If there is errors, print an appropiate message
+                    cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
+
+                    // Most cases will have the string length pre determined
+                    int win_w = msg->win_w;
+
+                    // For custom "special" error messages, we have to
+                    // figure out the length
+                    if (cmd_err == CMD_SPECIAL) {
+                        win_w = strlen(msg->msg) + 4; // 2 chars of passing on each side
+                    }
+
+                    // Finally, update the box's content
+                    msg_box(&win_msg, msg->msg, msg->title, msg->win_h, win_w, scrh, scrw);
                 }
             }
 

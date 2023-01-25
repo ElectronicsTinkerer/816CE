@@ -62,34 +62,34 @@ typedef struct hist_t {
 // Command input error codes
 // Keep in sync with the cmd_err_msgs[] array in debugger.c
 typedef enum cmd_err_t {
-    CMD_ERR_EXIT = -1,
-    CMD_ERR_OK = 0, // Start of cmd_err_msgs index
-    CMD_ERR_SPECIAL,
-    CMD_ERR_EXPECTED_ARG,
-    CMD_ERR_EXPECTED_REG,
-    CMD_ERR_EXPECTED_VALUE,
-    CMD_ERR_UNKNOWN_ARG,
-    CMD_ERR_UNKNOWN_CMD,
-    CMD_ERR_HELP_MAIN,
-    CMD_ERR_HELP_NOT,
-    CMD_ERR_INVALID_CHAR,
-    CMD_ERR_VAL_OVERFLOW,
-    CMD_ERR_EXPECTED_FILENAME,
-    CMD_ERR_FILE_IO_ERROR,
-    CMD_ERR_FILE_TOO_LARGE,
-    CMD_ERR_FILE_WILL_WRAP,
-    CMD_ERR_FILE_PERM_DENIED,
-    CMD_ERR_FILE_LOOP,
-    CMD_ERR_FILE_NAME_TOO_LONG,
-    CMD_ERR_FILE_NOT_EXIST,
-    CMD_ERR_FILE_UNKNOWN_ERROR,
-    CMD_ERR_CPU_CORRUPT_FILE,
-    CMD_ERR_CPU_OPTION_COP_VEC_ENABLED,
-    CMD_ERR_CPU_OPTION_COP_VEC_DISABLED,
-    CMD_ERR_OUT_OF_MEM,
-    CMD_ERR_UNSUPPORTED_DEVICE,
-    CMD_ERR_PORT_NUM_INVALID,
-    CMD_ERR_UART_DISABLED
+    CMD_EXIT = -1,
+    CMD_OK = 0, // Start of cmd_err_msgs index
+    CMD_SPECIAL,
+    CMD_EXPECTED_ARG,
+    CMD_EXPECTED_REG,
+    CMD_EXPECTED_VALUE,
+    CMD_UNKNOWN_ARG,
+    CMD_UNKNOWN_CMD,
+    CMD_HELP_MAIN,
+    CMD_HELP_NOT,
+    CMD_INVALID_CHAR,
+    CMD_VAL_OVERFLOW,
+    CMD_EXPECTED_FILENAME,
+    CMD_FILE_IO_ERROR,
+    CMD_FILE_TOO_LARGE,
+    CMD_FILE_WILL_WRAP,
+    CMD_FILE_PERM_DENIED,
+    CMD_FILE_LOOP,
+    CMD_FILE_NAME_TOO_LONG,
+    CMD_FILE_NOT_EXIST,
+    CMD_FILE_UNKNOWN_ERROR,
+    CMD_CPU_CORRUPT_FILE,
+    CMD_CPU_OPTION_COP_VEC_ENABLED,
+    CMD_CPU_OPTION_COP_VEC_DISABLED,
+    CMD_OUT_OF_MEM,
+    CMD_UNSUPPORTED_DEVICE,
+    CMD_PORT_NUM_INVALID,
+    CMD_UART_DISABLED
 } cmd_err_t;
 
 // Error message box type
@@ -100,4 +100,15 @@ typedef struct cmd_err_msg {
     char *msg;
 } cmd_err_msg;
 
+// Status values which represent that state of
+// command parsing
+typedef enum cmd_status_t {
+    STAT_OK,
+    STAT_INFO,
+    STAT_ERR
+} cmd_status_t;
+
+
 #endif
+
+

@@ -45,6 +45,7 @@ Available commands
  > load mem (offset) filename
  > load cpu filename
  > cpu [reg] xxxx
+ > cpu [option] [enable|disable|status]
  > bp aaaaaa
  > uart [type] aaaaaa (pppp)
  ? ... Help Menu
@@ -57,8 +58,9 @@ Some explanation:
 * `(value)` - an optional field
 * `aaaaaa` - an address in hex
 * `reg` - a CPU register in all caps (e.g. PC)
-* `type` - for a `uart` initialization, the type referes to the HW being emulated (see below)
+* `type` - for a `uart` initialization, the type refers to the HW being emulated (see below)
 * `pppp` - A port number in decimal (if 0, then the uart is disabled)
+* `option` - A CPU option to change CPU behavior (see below)
 
 Additionally, the function keys are of use:
 
@@ -83,6 +85,11 @@ F12 - Pressing F12 twice will exit the simulator without saving.
 
 When issuing the `uart` command, the `type` argument can refer to the following uart devices:
 * `c750` - TL16C750
+
+### CPU Options
+
+CPU options are features of the CPU that are not necessarily implemented by a stock CPU but may be handy for use in the simulator. Here are the currently available options:
+* `cop` - If enabled, the immediate byte to the COP instruction will be used as an offset into a table who's base is the value of the COP vector (depends on emulation mode). For example, a COP vector of `$8000` and the instruction `COP $02` would cause the CPU to jump to the value stored at `$8000 + ($02 << 1)` = `$8004`. If memory location `$8004..$8005` contained the value `$c0e0`, then the CPU would jump to `$c0e0`. Otherwise, all COP-related functionality remains the same.
 
 ## TIPS
 
