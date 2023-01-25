@@ -9,7 +9,7 @@ This project aims to provide two usable pieces of software/code to aid in the so
 Everything is written in C and should be compatible with any C compiler which supports C99 or newer. The 65816 core makes use of very few libraries (all from the C standard library headers) and should be portable to any platform that supports `uint32_t` sized variables. On the other hand, the simulator interface requires ncurses and sockets to operate.
 
 * Any file in the `src` directory which starts with `65816` is part of the CPU core.
-* Any other files in the `src` directory are used for the simulation interface. `debugger.c` contains the `main()` function for the simulator.
+* The remaining files in the `src` directory are used for the simulation interface. `debugger.c` contains the `main()` function for the simulator.
 
 ## COMPILING
 
@@ -27,9 +27,13 @@ USAGE:
 Args:
  --cpu filename ............ Preload the CPU with a saved state
  --mem (offset) filename ... Load memory at offset (in hex) with a file
+ --cmd "[command here]" .... Run a command during initialization
+ --cmd_file filename ....... Run commands from a file during initialization
 ```
 
-These arguments can be overridden during program execution by running the `load` command to load memory or CPU save states. Note that multiple memory files can be passed to be loaded in different memory regions based on the offset provided, which defaults to address 0. Multiple CPU save files can also be loaded, however, only the last file provided will be loaded.
+The `mem` and `cpu` arguments can be overridden during program execution by running the `load` command to load memory or CPU save states. Note that multiple memory files can be passed to be loaded in different memory regions based on the offset provided, which defaults to address 0. Multiple CPU save files can also be loaded, however, only the last file provided will be loaded.
+
+Commands in a command file (specified by `cmd_file`) are newline separated, i.e., one command per line. There is a (large) maximum line length which will truncate commands if they are too long.
 
 While the simulator is open, press `?` to access the command help menu.
 

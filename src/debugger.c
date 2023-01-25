@@ -1456,6 +1456,8 @@ void print_help_and_exit()
         "Args:\n"
         " --cpu filename ............ Preload the CPU with a saved state\n"
         " --mem (offset) filename ... Load memory at offset (in hex) with a file\n"
+        " --cmd \"[command here]\" .... Run a command during initialization\n"
+        " --cmd_file filename ....... Run commands from a file during initialization\n"
         "\n"
         );
     exit(EXIT_SUCCESS);
