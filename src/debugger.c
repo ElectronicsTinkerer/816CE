@@ -1721,16 +1721,22 @@ int main(int argc, char *argv[])
             status_id = STATUS_RUN;
             break;
         case KEY_F(6): // Step over
-            cpu.PC += get_opcode(memory, &cpu, NULL);
-            update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
+            if (!in_run_mode) {
+                cpu.PC += get_opcode(memory, &cpu, NULL);
+                update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
+            }
             break;
         case KEY_F(7): // Step
-            stepCPU(&cpu, memory);
-            update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
+            if (!in_run_mode) {
+                stepCPU(&cpu, memory);
+                update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
+            }
             break;
         case KEY_F(9):
             resetCPU(&cpu);
             update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
+            in_run_mode = false;
+            timeout(-1); // Enable keypress waiting
             break;
         case KEY_F(12):
             break; // Handled below
