@@ -253,10 +253,29 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
 
         // RHR
         // Always keep the last char from the RX FIFO available
-        _set_mem_byte(mem, uart->addr + TLA_RBR, uart->data_rx_buf[uart->data_rx_fifo_read], false);
+        if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) == 0) {
+            // Reading the RHR after all characters have been read
+            // in will result in just reading the last char received.
+            // This is accomplished by "subtracting 1" from the index
+            // and performing wrapping on it
+            _set_mem_byte(
+                mem,
+                uart->addr + TLA_RBR,
+                uart->data_rx_buf[(uart->data_rx_fifo_read + UART_FIFO_LEN - 1) % UART_FIFO_LEN],
+                false
+                );
+        } else {
+            _set_mem_byte(
+                mem,
+                uart->addr + TLA_RBR,
+                uart->data_rx_buf[uart->data_rx_fifo_read],
+                false
+                );
+        }
+        
         if (_test_and_reset_mem_flags(mem, uart->addr + TLA_RBR, MEM_FLAG_R).R == 1) {
             
-            // Get a character if available from the buffer and store it to memory
+            // Update read buffer pointer
             if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) {
                 uart->data_rx_fifo_read += 1;
                 uart->data_rx_fifo_read %= UART_FIFO_LEN;
