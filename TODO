@@ -5,6 +5,7 @@ TODO:
 * Figure out how to detect of the socket closed in the UART
 * Clean up UART code
 * Add correct resetting of UART IRQ flags in IIR (16C750)
+* Figure out why the program black screen freezes on startup sometimes
 
 TODONE:
 * Help menu (multi-level)

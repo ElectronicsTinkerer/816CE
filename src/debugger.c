@@ -1291,6 +1291,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
     if (w->disasm_mode) { // Show disassembly
         
         CPU_t cpu_dup = *cpu;
+        uint32_t effective_pc;
     
         if (!w->follow_pc) {
             cpu_dup.PC = (uint16_t)w->addr_s;
@@ -1303,35 +1304,37 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
 
         // Print as many lines as will fit in the window
         i = _cpu_get_effective_pc(&cpu_dup);
-        for (row = 0; row < w->win_height - 2; ++row) {
+        for (row = 1; row < w->win_height - 1; ++row) {
 
             i = _addr_add_val_bank_wrap(i, get_opcode(mem, &cpu_dup, buf));
-
-            wmove(w->win, 1 + row, 1);
+            effective_pc = _cpu_get_effective_pc(&cpu_dup);
+            
+            wmove(w->win, row, 1);
             wclrtoeol(w->win);
 
             // Print break points as '@'
-            if (_test_mem_flags(mem, _cpu_get_effective_pc(&cpu_dup)).B == 1) {
+            if (_test_mem_flags(mem, effective_pc).B == 1) {
                 wattron(w->win, A_BOLD);
-                mvwprintw(w->win, 1 + row, 1, "@");
+                mvwprintw(w->win, row, 1, "@");
                 wattroff(w->win, A_BOLD);
             }
             
             // Print the address
-            wattron(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
-            mvwprintw(w->win, 1 + row, 2, "%06x:", _cpu_get_effective_pc(&cpu_dup));
-            wattroff(w->win, (cpu_dup.PC == pc) ? A_BOLD : A_DIM);
+            wattron(w->win, (effective_pc == pc) ? A_BOLD : A_DIM);
+            mvwprintw(w->win, row, 2, "%06x:", effective_pc);
+            wattroff(w->win, (effective_pc == pc) ? A_BOLD : A_DIM);
 
             // Print the instruction
-            mvwprintw(w->win, 1 + row, 10, "%s", buf);
+            mvwprintw(w->win, row, 10, "%s", buf);
 
             // Print the bytes
             if (cols > 8) {
-                wmove(w->win, 1+row, 24);
-                while (cpu_dup.PC < i) {
-                    wprintw(w->win, " %02x", _get_mem_byte(mem, cpu_dup.PC, false));
+                wmove(w->win, row, 24);
+                while (effective_pc < i) {
+                    wprintw(w->win, " %02x", _get_mem_byte(mem, effective_pc, false));
 
                     cpu_dup.PC = _addr_add_val_bank_wrap(cpu_dup.PC, 1);
+                    effective_pc = _cpu_get_effective_pc(&cpu_dup);
                 }
             }
             else {
