@@ -184,7 +184,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     }
 
     // Fetch, decode, execute instruction
-    switch (_get_mem_byte(mem, cpu->PC, cpu->setacc))
+    switch (_get_mem_byte(mem, _cpu_get_effective_pc(cpu), cpu->setacc))
     {
     case 0x00: i_brk(cpu, mem); break;
     case 0x01: i_ora(cpu, mem, 2, 6, CPU_ADDR_DPINDX, _addrCPU_getDirectPageIndexedIndirectX(cpu, mem, cpu->setacc)); break;
