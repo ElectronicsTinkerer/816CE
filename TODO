@@ -2,7 +2,7 @@ TODO:
 * Verify 65816 core
 * Check 65816 disassembler output
 * Add save (and restore) of full sim state to a file (oh boy...)
-* Figure out how to detect of the socket closed in the UART
+* Figure out how to detect of the socket closed in the UART (almost there...)
 * Clean up UART code
 * Add correct resetting of UART IRQ flags in IIR (16C750)
 * Figure out why the program black screen freezes on startup sometimes

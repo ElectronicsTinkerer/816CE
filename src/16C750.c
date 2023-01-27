@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <errno.h>
 #include <string.h> // memset
 #include <stdbool.h>
@@ -67,6 +68,7 @@ void init_16c750(tl16c750_t *uart)
     reset_16c750(uart);
 
     uart->sock_fd = -1;
+    uart->sock_timeout = 1000; // in ms
     uart->data_socket = -1;
 }
 
@@ -129,6 +131,20 @@ int init_port_16c750(tl16c750_t *uart, uint16_t port)
         return errno;
     }
 
+    // Set maximum unack timeout for the TCP connection
+    ret = setsockopt(
+        uart->sock_fd,
+        IPPROTO_TCP,
+        TCP_USER_TIMEOUT,
+        &(uart->sock_timeout),
+        sizeof(uart->sock_timeout) // ???? optLen
+        );
+
+    
+    if (ret < 0) {
+        return errno;
+    }
+    
     uart->data_socket = -1;
     uart->enabled = false;
     uart->tx_empty_edge = false;
@@ -184,11 +200,19 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     }
     
     // Check the socket for characters
-    char buf;
-    if (uart->data_socket >= 0 && read(uart->data_socket, &buf, 1) > 0) {
-        uart->data_rx_buf[uart->data_rx_fifo_write] = buf;
-        uart->data_rx_fifo_write += 1;
-        uart->data_rx_fifo_write %= UART_FIFO_LEN;
+    // But be sure to not overflow the RX buffer
+    if (uart->data_socket >= 0 && abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) < UART_FIFO_LEN - 1) {
+        char buf;
+        int read_len = read(uart->data_socket, &buf, 1);
+
+        if (read_len > 0) {
+            uart->data_rx_buf[uart->data_rx_fifo_write] = buf;
+            uart->data_rx_fifo_write += 1;
+            uart->data_rx_fifo_write %= UART_FIFO_LEN;
+        }
+        else if (read_len == -1 && errno != EAGAIN && errno != EWOULDBLOCK) { // Error
+            sock_closed = true;
+        }
     }
         
     // SCR is scratch reg, ignore its contents
@@ -238,8 +262,9 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
             else {
                 // SEND CHAR OVER SOCKET?
                 uint8_t val = _get_mem_byte(mem, uart->addr + TLA_THR, false);
-                if (uart->data_socket >= 0) {
-                    if (write(uart->data_socket, &val, 1) == -1) {
+                if (uart->data_socket >= 0 && !sock_closed) {
+                    if (send(uart->data_socket, &val, 1, MSG_NOSIGNAL) == -1) {
+                        // If the pipe was closed, errno should be EPIPE
                         sock_closed = true;
                     }
                 }
@@ -379,7 +404,16 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     
     // Update the state of the Interrupt Identification Register
     _set_mem_byte(mem, uart->addr + TLA_IIR, uart->regs[TL_IIR], false);
+
+    // MSR
+    if (uart->data_socket != -1) {
+        uart->regs[TL_MSR] |= 1u << MSR_DCD; // DELTA DCD not implemented! TODO
+    } else {
+        uart->regs[TL_MSR] &= ~(1u << MSR_DCD);
+    }
     
+    _set_mem_byte(mem, uart->addr + TLA_MSR, uart->regs[TL_MSR], false);
+
     // Allow new connections
     if (sock_closed) {
         close(uart->data_socket);

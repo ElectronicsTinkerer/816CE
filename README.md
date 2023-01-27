@@ -90,6 +90,10 @@ F12 - Pressing F12 twice will exit the simulator without saving.
 When issuing the `uart` command, the `type` argument can refer to the following uart devices:
 * `c750` - TL16C750
 
+UART devices listen on a TCP socket to implement a serial port-like behavior. For example, if the command `uart c750 4840 6500` is executed and succeeds, the UART will be listening on port 6500 for TCP connections. The UART will also update the DCD (Data Carrier Detect) flag to show connection status. (Currently, writing to the UART is required to detect if the port has been disconnected.) The TCP port can be connected to via netcat (e.g. `stty -icanon && nc localhost 6500` - with the `stty` being necessary to make sure text is not line buffered.)
+
+Additionally, only one instance of a UART is currently supported. If the `uart` command is executed after a previous `uart` command, the previous TCP sockets are closed and a new socket listener is created. The UART is also connected to the CPU's IRQ line so if interrupts are enabled on the UART and an interrupt condition occurs, the CPU will be signaled.
+
 ### CPU Options
 
 CPU options are features of the CPU that are not necessarily implemented by a stock CPU but may be handy for use in the simulator. Here are the currently available options:

@@ -139,6 +139,7 @@ typedef struct tl16c750_t {
     uint32_t addr;    // Base address
     uint8_t regs[12]; // tl16c750_regs_t is index
     int sock_fd;
+    unsigned int sock_timeout;
     struct sockaddr_in sock_name;
     int data_socket;
     int data_rx_fifo_read;
