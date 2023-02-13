@@ -1920,8 +1920,6 @@ int main(int argc, char *argv[])
             c = getch();
         }
     }
-    
-    printf("Quitting...\n");
 
     delwin(watch1.win);
     delwin(watch2.win);
