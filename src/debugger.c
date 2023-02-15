@@ -570,7 +570,7 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
 
     wattron(win, A_BOLD);
 
-    if (c == KEY_BACKSPACE || c == KEY_CTRL_H) {
+    if (c == KEY_BACKSPACE || c == KEY_CTRL_H || c == KEY_DELETE) {
         if (*cmdbuf_index > 0) {
             mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, ' '); // Erase cursor
             cmdbuf[*cmdbuf_index] = '\0';
@@ -715,7 +715,8 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
             cpu->P.IRQ = 0;
         }
         else {
-            return CMD_UNKNOWN_ARG;
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
         }
         *status = CMD_OK;
         return STAT_OK;
@@ -1698,7 +1699,7 @@ int main(int argc, char *argv[])
     // Event loop
     prev_c = c = EOF;
     // F12 F12 = exit
-    while (!cmd_exit && !(c == KEY_F(12) && prev_c == KEY_F(12))) {
+    while (!cmd_exit && !(c == KEY_F(12) && prev_c == KEY_F(12)) && !(c == 'q' && prev_c == KEY_ESCAPE)) {
 
         // Handle key press
         switch (c) {
@@ -1919,7 +1920,7 @@ int main(int argc, char *argv[])
             c = getch();
         }
     }
-    
+
     delwin(watch1.win);
     delwin(watch2.win);
     delwin(win_cpu);

@@ -16,6 +16,7 @@
 #define KEY_CTRL_H 8
 #define KEY_CR 10
 #define KEY_ESCAPE 27
+#define KEY_DELETE 127
 
 #define MAX_CMD_LEN 40
 
