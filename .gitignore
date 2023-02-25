@@ -17,4 +17,9 @@ extra
 *.cmd
 *.bin
 
+# Editor
+.emacs.desktop
+.emacs.desktop.lock
+\#*
+
 
