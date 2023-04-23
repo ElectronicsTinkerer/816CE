@@ -479,16 +479,22 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, bool 
                 next_byte_loc++;
             }
         }
+
+        fclose(fp);
+
+        // Copy data into the memory
+        _init_mem_arr(mem, tmp, base_addr, next_byte_loc);
     }else {
         if (fread(tmp, sizeof(*tmp), size, fp) != size) {
             free(tmp);
             return CMD_FILE_IO_ERROR;
         }
-    }
-    fclose(fp);
 
-    // Copy data into the memory
-    _init_mem_arr(mem, tmp, base_addr, size);
+        fclose(fp);
+
+        // Copy data into the memory
+        _init_mem_arr(mem, tmp, base_addr, size);
+    }
 
     // Don't want memory leaks
     free(tmp);
