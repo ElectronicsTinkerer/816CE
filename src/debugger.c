@@ -1606,7 +1606,7 @@ int main(int argc, char *argv[])
             case 5:
                 // Takes and loads a mos-formatted executable
                 if (!is_hex_do_parse(argv[i], &base_addr)) {
-                    if ((cmd_err = load_file_cpu(argv[i], memory, base_addr, true)) > 0) {
+                    if ((cmd_err = load_file_cpu(argv[i], memory, base_addr)) > 0) {
                         printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                         exit(EXIT_FAILURE);
                     }
