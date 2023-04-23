@@ -387,9 +387,10 @@ bool is_hex_do_parse(char *str, uint32_t *val)
  * @param *filename The path of the file to load
  * @param *mem The memory to store the data into
  * @param base_addr The base address to load the file at
+ * @param bool addressed True if the file is in the llvm-mos "addressed" binary mode
  * @return A status code indicating errors if any occur
  */
-cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
+cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, bool addressed)
 {
     // Get the size of the file
     struct stat finfo;
@@ -414,9 +415,9 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
             return CMD_FILE_UNKNOWN_ERROR;
         }
     }
-    
+
     size_t size = finfo.st_size;
-            
+
     // Check file size
     if (size / sizeof(*mem) > 0x1000000) {
         return CMD_FILE_TOO_LARGE;
@@ -426,13 +427,13 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
     if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
         return CMD_FILE_WILL_WRAP;
     }
-            
+
     // All good, let's open the file
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
         return CMD_FILE_IO_ERROR;
     }
-            
+
     uint8_t *tmp;
 
     size = size / sizeof(*tmp);
@@ -446,10 +447,43 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr)
         fclose(fp);
         return CMD_OUT_OF_MEM;
     }
-    
-    if (fread(tmp, sizeof(*tmp), size, fp) != size) {
-        free(tmp);
-        return CMD_FILE_IO_ERROR;
+
+    if (addressed) {
+        size_t next_byte_loc = 0;
+
+        // This doesn't check if you're writing past the end of the simulator's memory
+        while (true) {
+            int at_low = fgetc(fp);
+            if (at_low == EOF) {
+                break;
+            }
+            int at_high = fgetc(fp);
+            int at = at_high * 0x100 + at_low;
+
+            int length_low = fgetc(fp);
+            int length_high = fgetc(fp);
+            int length = length_high * 0x100 + length_low;
+
+            while (next_byte_loc < at) {
+                tmp[next_byte_loc] = 0x00;
+                next_byte_loc++;
+            }
+
+            while (length > 0) {
+                // If fgetc hits the end of the file here, I don't know what would happen
+                // Likely, it would return EOF, which is normally -1, and then cast that to a
+                //  char, so 255, and write that to the buffer.
+                tmp[next_byte_loc] = fgetc(fp);
+
+                length--;
+                next_byte_loc++;
+            }
+        }
+    }else {
+        if (fread(tmp, sizeof(*tmp), size, fp) != size) {
+            free(tmp);
+            return CMD_FILE_IO_ERROR;
+        }
     }
     fclose(fp);
 
@@ -509,6 +543,7 @@ cmd_err_t load_file_cpu(char *filename, CPU_t *cpu)
 
     char buf[size];
     fread(&buf, sizeof(*buf), size, fp);
+
     if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
         return CMD_CPU_CORRUPT_FILE;
     }
@@ -856,7 +891,7 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
                 }
             }
 
-            *status = load_file_mem(tok, mem, base_addr);
+            *status = load_file_mem(tok, mem, base_addr, false);
 
             if (*status != CMD_OK) {
                 return STAT_ERR;
@@ -1479,7 +1514,7 @@ void print_help_and_exit()
 
 
 int main(int argc, char *argv[])
-{	
+{
     int c, prev_c;          // User key press (c = current, prev_c = previous)
     int scrw, scrh;         // Width and height of screen
     status_t status_id = STATUS_NONE;
@@ -1501,7 +1536,7 @@ int main(int argc, char *argv[])
 
     hist_t inst_hist;
     hist_init(&inst_hist);
-    
+
     CPU_t cpu;
     initCPU(&cpu);
     resetCPU(&cpu);
@@ -1533,6 +1568,9 @@ int main(int argc, char *argv[])
                 else if (strcmp(argv[i], "--mem") == 0) {
                     cli_pstate = 2;
                 }
+                else if (strcmp(argv[i], "--exe") == 0) {
+                    cli_pstate = 5;
+                }
                 else if (strcmp(argv[i], "--cmd") == 0) {
                     cli_pstate = 3;
                 }
@@ -1558,7 +1596,17 @@ int main(int argc, char *argv[])
                 // If the argument is hex, use it as an address
                 // Otherwise just load the file
                 if (!is_hex_do_parse(argv[i], &base_addr)) {
-                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr)) > 0) {
+                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr, false)) > 0) {
+                        printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
+                        exit(EXIT_FAILURE);
+                    }
+                    cli_pstate = 0;
+                }
+                break;
+            case 5:
+                // Takes and loads a mos-formatted executable
+                if (!is_hex_do_parse(argv[i], &base_addr)) {
+                    if ((cmd_err = load_file_cpu(argv[i], memory, base_addr, true)) > 0) {
                         printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                         exit(EXIT_FAILURE);
                     }
@@ -1575,7 +1623,7 @@ int main(int argc, char *argv[])
                     memory,
                     &uart
                     );
-                    
+
                 if (cmd_stat != STAT_OK) {
 
                     if (cmd_err == CMD_EXIT) {
@@ -1595,7 +1643,7 @@ int main(int argc, char *argv[])
                 cli_pstate = 0;
                 break;
             case 4: { // Execute each line in a file as a command
-                
+
                 FILE *fp = fopen(argv[i], "r");
 
                 if (!fp) {
@@ -1606,7 +1654,7 @@ int main(int argc, char *argv[])
                 char buf[2048]; // I hope that's long enough!
 
                 while (!feof(fp)) {
-                    
+
                     // Get command
                     fgets(buf, 2048, fp);
 
@@ -1620,7 +1668,7 @@ int main(int argc, char *argv[])
                         memory,
                         &uart
                         );
-                    
+
                     if (cmd_stat != STAT_OK) {
 
                         if (cmd_err == CMD_EXIT) {
@@ -1640,7 +1688,7 @@ int main(int argc, char *argv[])
                 }
 
                 fclose(fp);
-                
+
                 cli_pstate = 0;
             }
                 break;
@@ -1654,7 +1702,7 @@ int main(int argc, char *argv[])
             // printf("i=%ld, argv[%ld]='%s', cli_pstate=%d\n",
                     // i, i, argv[i], cli_pstate);
         }
-    
+
         if (cli_pstate != 0) {
             printf("Mising argument to --");
             switch (cli_pstate) {
@@ -1669,6 +1717,9 @@ int main(int argc, char *argv[])
                 break;
             case 4: // CMD file execute
                 printf("cmd_file\n");
+                break;
+            case 5: // CMD file execute
+                printf("exe\n");
                 break;
             default:
                 printf("Unhandled cli_pstate in missing arg handler\n");
@@ -1698,7 +1749,7 @@ int main(int argc, char *argv[])
     inst_hist.win_height = scrh - 11 - 3;
     inst_hist.win_width = scrw/2;
     inst_hist.win = newwin(inst_hist.win_height, inst_hist.win_width, 11, scrw/2);
-    
+
     refresh();  // Necessary for window borders
 
     update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
@@ -1789,7 +1840,7 @@ int main(int argc, char *argv[])
                     memory,
                     &uart
                     );
-                
+
                 if (cmd_err == CMD_EXIT) {
                     cmd_exit = true;
                 }
@@ -1803,7 +1854,7 @@ int main(int argc, char *argv[])
                     if (cmd_stat == STAT_INFO) { // Not an error
                         command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
                     }
-                        
+
                     // If there is errors, print an appropiate message
                     cmd_err_msg *msg = &cmd_err_msgs[cmd_err];
 
@@ -1823,7 +1874,7 @@ int main(int argc, char *argv[])
 
             break;
         }
-        
+
         // RUN mode
         if (in_run_mode) {
             stepCPU(&cpu, memory);
@@ -1849,7 +1900,7 @@ int main(int argc, char *argv[])
                 cpu.P.IRQ = 0;
             }
         }
-        
+
         // Handle exiting
         if (c == KEY_F(12)) {
             status_id = STATUS_F12;
@@ -1915,7 +1966,7 @@ int main(int argc, char *argv[])
                 wrefresh(watch2.win);
             }
         }
-        
+
         refresh();
         if (!in_run_mode) {
             status_id = STATUS_NONE;
@@ -1936,7 +1987,7 @@ int main(int argc, char *argv[])
     delwin(win_cpu);
     delwin(win_cmd);
     delwin(inst_hist.win);
-    endwin();			// Clean up curses mode
+    endwin();           // Clean up curses mode
 
     free(memory);
 
