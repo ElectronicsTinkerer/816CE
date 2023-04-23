@@ -1505,6 +1505,7 @@ void print_help_and_exit()
         "Args:\n"
         " --cpu filename ............ Preload the CPU with a saved state\n"
         " --mem (offset) filename ... Load memory at offset (in hex) with a file\n"
+        " --exe filename ............ Load a binary file formatted for the LLVM MOS simulator into memory\n"
         " --cmd \"[command here]\" .... Run a command during initialization\n"
         " --cmd_file filename ....... Run commands from a file during initialization\n"
         "\n"
@@ -1604,14 +1605,12 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 5:
-                // Takes and loads a mos-formatted executable
-                if (!is_hex_do_parse(argv[i], &base_addr)) {
-                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr, true)) > 0) {
-                        printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
-                        exit(EXIT_FAILURE);
-                    }
-                    cli_pstate = 0;
+                // Takes and loads an executable formatted for the llvm-mos simulator
+                if ((cmd_err = load_file_mem(argv[i], memory, base_addr, true)) > 0) {
+                    printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
+                    exit(EXIT_FAILURE);
                 }
+                cli_pstate = 0;
                 break;
             case 3: // Execute a command directly
                 cmd_stat = command_execute(
@@ -1718,7 +1717,7 @@ int main(int argc, char *argv[])
             case 4: // CMD file execute
                 printf("cmd_file\n");
                 break;
-            case 5: // CMD file execute
+            case 5: // MEM load, but in the LLVM-MOS simulator format
                 printf("exe\n");
                 break;
             default:
