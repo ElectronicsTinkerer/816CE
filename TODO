@@ -7,10 +7,10 @@ TODO:
 * Add correct resetting of UART IRQ flags in IIR (16C750)
 * Figure out why the program black screen freezes on startup sometimes
 * Instruction history has blank space at top if all are NOPs/BRKs (i.e. nothing's changing)
-* Add ^Z backgrounding support
 * Add command history
 * Fix bug where `mw2 mem c000` causes a blank window to appear
 * Update cli parser to use option-parser from SLIME
+* Look into nl()/nonl() in ncurses
 
 TODONE:
 * Help menu (multi-level)
@@ -39,4 +39,5 @@ TODONE:
 * Enable setting of UART port #
 * Enable disabling of UART on startup so a port is not always requested to run the sim
 * Rename "Step Over" (F6) to "Skip instruction"
+* Add ^Z backgrounding support
 

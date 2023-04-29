@@ -13,7 +13,9 @@
 #define UART_SOCK_PORT 6501
 
 #define KEY_CTRL_C 3
+#define KEY_CTRL_G 7
 #define KEY_CTRL_H 8
+#define KEY_CTRL_X 24
 #define KEY_CR 10
 #define KEY_ESCAPE 27
 #define KEY_DELETE 127
@@ -38,6 +40,8 @@ typedef enum memory_fmt_t {
 typedef enum status_t {
     STATUS_NONE,
     STATUS_F12,
+    STATUS_ESCQ,
+    STATUS_XC,
     STATUS_RESET,
     STATUS_CRASH,
     STATUS_RUN
