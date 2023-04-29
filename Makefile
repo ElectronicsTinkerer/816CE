@@ -1,7 +1,7 @@
 # Based on: https://developer.ibm.com/tutorials/au-lexyacc/
 
 # -g = DEBUG SYMBOLS
-CFLAGS := -Wall -pedantic -g -std=c99
+CFLAGS := -Wall -pedantic -g
 LIBFLAGS := -lncurses -lm
 
 BUILD_DIR := build

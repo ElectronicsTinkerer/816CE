@@ -29,6 +29,11 @@
 #define REPLACE_INST true
 #define PUSH_INST false
 
+typedef enum memory_fmt_t {
+    MF_BASIC_BIN_BLOCK,
+    MF_LLVM_MOS_SIM
+} memory_fmt_t;
+
 // Keep in sync with status_msgs
 typedef enum status_t {
     STATUS_NONE,
@@ -84,6 +89,7 @@ typedef enum cmd_err_t {
     CMD_FILE_NAME_TOO_LONG,
     CMD_FILE_NOT_EXIST,
     CMD_FILE_UNKNOWN_ERROR,
+    CMD_FILE_CORRUPT,
     CMD_CPU_CORRUPT_FILE,
     CMD_CPU_OPTION_COP_VEC_ENABLED,
     CMD_CPU_OPTION_COP_VEC_DISABLED,
