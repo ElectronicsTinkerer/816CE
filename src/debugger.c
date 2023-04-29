@@ -59,7 +59,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > nmi [set|clear]\n"
      " > aaaaaa: xx yy zz\n"
      " > save [mem|cpu] filename\n"
-     " > load mem (offset) filename\n"
+     " > load mem (mos) (offset) filename\n"
      " > load cpu filename\n"
      " > cpu [reg] xxxx\n"
      " > cpu [option] [enable|disable|status]\n"
@@ -925,6 +925,13 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
                 return STAT_ERR;
             }
 
+            memory_fmt_t mf = MF_BASIC_BIN_BLOCK;
+            
+            if (strcmp(tok, "mos") == 0) {
+                tok = strtok(NULL, " \t\n\r");
+                mf = MF_LLVM_MOS_SIM;
+            }
+
             uint32_t base_addr = 0;
 
             // If a load offset is given, parse it
@@ -943,7 +950,7 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
                 }
             }
 
-            *status = load_file_mem(tok, mem, base_addr, false);
+            *status = load_file_mem(tok, mem, base_addr, mf);
 
             if (*status != CMD_OK) {
                 return STAT_ERR;
