@@ -1212,7 +1212,10 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
         *status = CMD_OK;
         return STAT_OK;
     }
-    else if (strcmp(tok, "bp") == 0) { // Break point
+    else if (strcmp(tok, "b") == 0 ||
+             strcmp(tok, "br") == 0 ||
+             strcmp(tok, "bre") == 0 ||
+             strcmp(tok, "break") == 0) { // Break point
 
         tok = strtok(NULL, " \t\n\r");
 
@@ -1571,11 +1574,11 @@ void print_help_and_exit()
         " $ 816ce (--cpu filename) (--mem (offset) filename)\n"
         "\n"
         "Args:\n"
-        " --cpu filename ............ Preload the CPU with a saved state\n"
-        " --mem (offset) filename ... Load memory at offset (in hex) with a file\n"
-        " --mem-mos filename ............ Load a binary file formatted for the LLVM MOS simulator into memory\n"
-        " --cmd \"[command here]\" .... Run a command during initialization\n"
-        " --cmd_file filename ....... Run commands from a file during initialization\n"
+        " --cpu-file filename ...... Preload the CPU with a saved state\n"
+        " --mem (offset) filename .. Load memory at offset (in hex) with a file\n"
+        " --mem-mos filename ....... Load a binary file formatted for the LLVM MOS simulator into memory\n"
+        " --cmd \"[command here]\" . Run a command during initialization\n"
+        " --cmd-file filename ...... Run commands from a file during initialization\n"
         "\n"
         );
     exit(EXIT_SUCCESS);
@@ -1631,7 +1634,7 @@ int main(int argc, char *argv[])
         for (size_t i = 1; i < argc; ++i) {
             switch (cli_pstate) {
             case 0:
-                if (strcmp(argv[i], "--cpu") == 0) {
+                if (strcmp(argv[i], "--cpu-file") == 0) {
                     cli_pstate = 1;
                 }
                 else if (strcmp(argv[i], "--mem") == 0) {
@@ -1643,7 +1646,7 @@ int main(int argc, char *argv[])
                 else if (strcmp(argv[i], "--cmd") == 0) {
                     cli_pstate = 3;
                 }
-                else if (strcmp(argv[i], "--cmd_file") == 0) {
+                else if (strcmp(argv[i], "--cmd-file") == 0) {
                     cli_pstate = 4;
                 }
                 else if (strcmp(argv[i], "--help") == 0) {

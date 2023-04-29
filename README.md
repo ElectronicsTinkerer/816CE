@@ -25,10 +25,11 @@ USAGE:
  $ 816ce (--cpu filename) (--mem (offset) filename)
 
 Args:
- --cpu filename ............ Preload the CPU with a saved state
+ --cpu-file filename ....... Preload the CPU with a saved state
  --mem (offset) filename ... Load memory at offset (in hex) with a file
+ --mem-mos filename ........ Load a binary file formatted for the LLVM MOS simulator into memory
  --cmd "[command here]" .... Run a command during initialization
- --cmd_file filename ....... Run commands from a file during initialization
+ --cmd-file filename ....... Run commands from a file during initialization
 ```
 
 The `mem` and `cpu` arguments can be overridden during program execution by running the `load` command to load memory or CPU save states. Note that multiple memory files can be passed to be loaded in different memory regions based on the offset provided, which defaults to address 0. Multiple CPU save files can also be loaded, however, only the last file provided will be loaded.
@@ -46,11 +47,11 @@ Available commands
  > nmi [set|clear]
  > aaaaaa: xx yy zz
  > save [mem|cpu] filename
- > load mem (offset) filename
+ > load mem (mos) (offset) filename
  > load cpu filename
  > cpu [reg] xxxx
  > cpu [option] [enable|disable|status]
- > bp aaaaaa
+ > br aaaaaa
  > uart [type] aaaaaa (pppp)
  ? ... Help Menu
  ^C to clear command input
