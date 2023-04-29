@@ -40,7 +40,7 @@ While the simulator is open, press `?` to access the command help menu.
 
 ```
 Available commands
- > exit
+ > exit|quit
  > mw[1|2] [mem|asm] (pc|addr)
  > mw[1|2] aaaaaa
  > irq [set|clear]
