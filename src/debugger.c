@@ -52,7 +52,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
     {"HELP", 18, 43, "Available commands\n"
-     " > exit ... Close simulator\n"
+     " > exit|quit ... Close simulator\n"
      " > mw[1|2] [mem|asm] (pc|addr)\n"
      " > mw[1|2] aaaaaa\n"
      " > irq [set|clear]\n"
@@ -844,7 +844,8 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
     else if (strcmp(tok, "mw2") == 0) { // Memory Watch 2
         return command_execute_watch(watch2, tok);
     }
-    else if (strcmp(tok, "exit") == 0) { // Exit
+    else if (strcmp(tok, "exit") == 0 ||
+             strcmp(tok, "quit") == 0) { // Exit
         *status = CMD_EXIT;
         return STAT_OK;
     }
@@ -1904,9 +1905,12 @@ int main(int argc, char *argv[])
             // If the user pressed "Enter" (CR), execute the command
             else if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
 
-                // Check for errors in the command input and execute it if none
+                // Why duplicate the input string?
+                // This is needed since command_execute mutates
+                // the input command string and it may fail.
                 strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
 
+                // Check for errors in the command input and execute it if none
                 cmd_stat = command_execute(
                     &cmd_err,
                     _cmdbuf_dup,
