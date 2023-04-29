@@ -74,7 +74,7 @@ F2  - Toggle IRQ on CPU
 F3  - Toggle NMI on CPU
 F4  - Halt CPU
 F5  - Run until Halt pressed, CPU CRASH, CPU executes STP, or a breakpoint is hit
-F6  - Step over instruction at current PC
+F6  - Skip instruction at current PC
 F7  - Step by one instruction
 F9  - Reset CPU
 F12 - Pressing F12 twice will exit the simulator without saving.

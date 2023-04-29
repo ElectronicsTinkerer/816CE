@@ -10,7 +10,6 @@ TODO:
 * Add ^Z backgrounding support
 * Add command history
 * Fix bug where `mw2 mem c000` causes a blank window to appear
-* Rename "Step Over" (F6) to "Skip instruction"
 * Update cli parser to use option-parser from SLIME
 
 TODONE:
@@ -39,4 +38,5 @@ TODONE:
 * Add UART to docs (help & README)
 * Enable setting of UART port #
 * Enable disabling of UART on startup so a port is not always requested to run the sim
+* Rename "Step Over" (F6) to "Skip instruction"
 

@@ -1859,7 +1859,7 @@ int main(int argc, char *argv[])
             timeout(0); // Disable waiting for keypresses
             status_id = STATUS_RUN;
             break;
-        case KEY_F(6): // Step over
+        case KEY_F(6): // Skip instruction
             if (!in_run_mode) {
                 cpu.PC += get_opcode(memory, &cpu, NULL);
                 update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
