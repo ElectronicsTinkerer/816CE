@@ -8,6 +8,7 @@ TODO:
 * Figure out why the program black screen freezes on startup sometimes
 * Instruction history has blank space at top if all are NOPs/BRKs (i.e. nothing's changing)
 * Add ^Z backgrounding support
+* Add command history
 
 TODONE:
 * Help menu (multi-level)
