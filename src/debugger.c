@@ -1439,6 +1439,8 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
     }
     else {     // Just show memory contents
         // Print the column numbers across the top
+        wmove(w->win, 1, 1);
+        wclrtoeol(w->win);
         wmove(w->win, 1, 9);
         wattron(w->win, A_DIM);
         for (i = 0, col = 0; col < cols; ++col, ++i) {
@@ -1447,8 +1449,15 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
         }
         wattroff(w->win, A_DIM);
 
+        // Since cols will always be a multiple of 8, we
+        // can subtract 1 and use it's complement as a mask
+        // for making sure that we start on an address that
+        // is a multiple of the number of columns (this keeps
+        // the column address numbers that we just printed
+        // aligned with the correct locations)
+        i = (w->follow_pc ? pc : w->addr_s) & ~(cols-1);
+
         // Then print the actual memory contents
-        i = w->follow_pc ? pc : w->addr_s;
         for (row = 1; row < w->win_height - 2; ++row) {
             wattron(w->win, A_DIM);
             mvwprintw(w->win, 1 + row, 2, "%06x:", i);
