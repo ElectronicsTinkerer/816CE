@@ -764,6 +764,13 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
     while (isspace(*_cmdbuf)) {
         ++_cmdbuf; // Remove whitespace
     }
+
+    // Make string lowercase
+    char *buf_ptr = _cmdbuf;
+    while (*buf_ptr) {
+        *buf_ptr = tolower(*buf_ptr);
+        ++buf_ptr;
+    }
     
     char *tok = strtok(_cmdbuf, " \t\n\r");
 
@@ -1044,161 +1051,161 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
             return STAT_ERR;
         }
 
-        if (strcmp(tok, "C") == 0) {
+        if (strcmp(tok, "c") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->C = val;
         }
-        else if (strcmp(tok, "X") == 0) {
+        else if (strcmp(tok, "x") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->X = val;
         }
-        else if (strcmp(tok, "Y") == 0) {
+        else if (strcmp(tok, "y") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->Y = val;
         }
-        else if (strcmp(tok, "SP") == 0) {
+        else if (strcmp(tok, "sp") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->SP = val;
         }
-        else if (strcmp(tok, "DBR") == 0) {
+        else if (strcmp(tok, "dbr") == 0) {
             if (val > 0xff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->DBR = val;
         }
-        else if (strcmp(tok, "PBR") == 0) {
+        else if (strcmp(tok, "pbr") == 0) {
             if (val > 0xff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->PBR = val;
         }
-        else if (strcmp(tok, "PC") == 0) {
+        else if (strcmp(tok, "pc") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->PC = val;
         }
-        else if (strcmp(tok, "D") == 0) {
+        else if (strcmp(tok, "d") == 0) {
             if (val > 0xffff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->D = val;
         }
-        else if (strcmp(tok, "P") == 0) {
+        else if (strcmp(tok, "p") == 0) {
             if (val > 0xff) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             _cpu_set_sp(cpu, (uint8_t)val);
         }
-        else if (strcmp(tok, "P.N") == 0) {
+        else if (strcmp(tok, "p.n") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.N = val;
         }
-        else if (strcmp(tok, "P.V") == 0) {
+        else if (strcmp(tok, "p.v") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.V = val;
         }
-        else if (strcmp(tok, "P.M") == 0) {
+        else if (strcmp(tok, "p.m") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.M = val;
         }
-        else if (strcmp(tok, "P.X") == 0) {
+        else if (strcmp(tok, "p.x") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.XB = val;
         }
-        else if (strcmp(tok, "P.D") == 0) {
+        else if (strcmp(tok, "p.d") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.D = val;
         }
-        else if (strcmp(tok, "P.I") == 0) {
+        else if (strcmp(tok, "p.i") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.I = val;
         }
-        else if (strcmp(tok, "P.Z") == 0) {
+        else if (strcmp(tok, "p.z") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.Z = val;
         }
-        else if (strcmp(tok, "P.C") == 0) {
+        else if (strcmp(tok, "p.c") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.C = val;
         }
-        else if (strcmp(tok, "P.E") == 0) {
+        else if (strcmp(tok, "p.e") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.E = val;
         }
-        else if (strcmp(tok, "RST") == 0) {
+        else if (strcmp(tok, "rst") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.RST = val;
         }
-        else if (strcmp(tok, "IRQ") == 0) {
+        else if (strcmp(tok, "irq") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.IRQ = val;
         }
-        else if (strcmp(tok, "NMI") == 0) {
+        else if (strcmp(tok, "nmi") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.NMI = val;
         }
-        else if (strcmp(tok, "STP") == 0) {
+        else if (strcmp(tok, "stp") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
             }
             cpu->P.STP = val;
         }
-        else if (strcmp(tok, "CRASH") == 0) {
+        else if (strcmp(tok, "crash") == 0) {
             if (val > 0x1) {
                 *status = CMD_VAL_OVERFLOW;
                 return STAT_ERR;
