@@ -1345,6 +1345,8 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
     }
     else {     // Just show memory contents
         // Print the column numbers across the top
+        wmove(w->win, 1, 1);
+        wclrtoeol(w->win);
         wmove(w->win, 1, 9);
         wattron(w->win, A_DIM);
         for (i = 0, col = 0; col < cols; ++col, ++i) {
