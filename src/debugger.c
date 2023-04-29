@@ -6,15 +6,21 @@
 // For sys/stat operations
 #define _FILE_OFFSET_BITS 64
 
+// Needed for sigaction
+// TODO: Figure out a "correct" number for this
+#define _POSIX_C_SOURCE 200000L
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <math.h>
 #include <ctype.h>
 #include <ncurses.h>
 
 #include <sys/stat.h> // For getting file sizes
+#include <signal.h> // For ^Z support
 #include <errno.h>
 
 #include "disassembler.h"
@@ -24,11 +30,16 @@
 #include "debugger.h"
 
 
+// Not a fan of globals but here we are...
+volatile bool break_hit = false;
+
 // Messages to print in the status bar at the top of the screen
 // Keep in sync with status_msgs
 static char *status_msgs[] = {
     "Normal",
-    "Press F12 again to exit. Any other key to cancel.",
+    "Press F12 again to exit. Any other key will cancel.",
+    "Press q to exit. Any other key will cancel.",
+    "Press ^C to exit. Any other key will cancel.",
     "CPU Reset",
     "CPU Crashed - internal error",
     "Running"
@@ -66,7 +77,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > bp aaaaaa\n"
      " > uart [type] aaaaaa (pppp)\n"
      " ? ... Help Menu\n"
-     " ^C to clear command input"},
+     " ^G to clear command input"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
@@ -1593,6 +1604,41 @@ void print_help_and_exit()
 }
 
 
+void handle_suspend(int signal)
+{
+    struct sigaction sigact;
+    memset(&sigact, 0, sizeof(sigact));
+    sigact.sa_handler = SIG_DFL;
+    sigemptyset(&sigact.sa_mask);
+    sigaction(SIGTSTP, &sigact, NULL);
+
+    // Stop curses then send the suspend signal to ourself
+    endwin();
+    fprintf(stderr, "\nSimulator be returned to with 'fg'\n");
+    raise(SIGTSTP);
+}
+
+
+void handle_continue(int signal)
+{
+    struct sigaction sigact;
+    memset(&sigact, 0, sizeof(sigact));
+    sigact.sa_handler = handle_suspend;
+    sigemptyset(&sigact.sa_mask);
+    sigaction(SIGTSTP, &sigact, NULL);
+
+    // Start back up curses mode
+    initscr();
+    refresh();
+}
+
+
+void handle_break(int signal)
+{
+    break_hit = true;
+}
+
+
 int main(int argc, char *argv[])
 {
     int c, prev_c;          // User key press (c = current, prev_c = previous)
@@ -1610,6 +1656,7 @@ int main(int argc, char *argv[])
     size_t cmdbuf_index = 0;
     cmd_err_t cmd_err;
     cmd_status_t cmd_stat;
+    struct sigaction sigact;
     watch_t watch1, watch2;
     watch_init(&watch1, false, false);
     watch_init(&watch2, true, true); // Disasm & follow PC
@@ -1807,9 +1854,20 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Trap SIGINT and SIGTSTP
+    memset(&sigact, 0, sizeof(struct sigaction));
+    sigact.sa_handler = handle_break;
+    sigaction(SIGINT, &sigact, NULL);
+
+    sigact.sa_handler = handle_suspend;
+    sigaction(SIGTSTP, &sigact, NULL);
+
+    sigact.sa_handler = handle_continue;
+    sigaction(SIGCONT, &sigact, NULL);
+    
     initscr();              // Start curses mode
     getmaxyx(stdscr, scrh, scrw); // Get screen dimensions
-    raw();                  // Disable line buffering
+    cbreak();               // Disable line buffering but pass through signals (ex. ^C/^Z)
     keypad(stdscr, TRUE);   // Enable handling of function and other special keys
     noecho();               // Disable echoing of user-typed characters
     leaveok(stdscr, TRUE);  // Don't care where the cursor is left on screen
@@ -1837,11 +1895,17 @@ int main(int argc, char *argv[])
 
     // Event loop
     prev_c = c = EOF;
+    break_hit = false;
     // F12 F12 = exit
-    while (!cmd_exit && !(c == KEY_F(12) && prev_c == KEY_F(12)) && !(c == 'q' && prev_c == KEY_ESCAPE)) {
+    while (!cmd_exit &&
+           !(c == KEY_F(12) && prev_c == KEY_F(12)) /* F-keys exit */ &&
+           !(c == 'q' && prev_c == KEY_ESCAPE) /* Vim-style exit */ &&
+           !(c == KEY_CTRL_C && prev_c == KEY_CTRL_X) /* Emacs-style exit */) {
 
         // Handle key press
         switch (c) {
+        case KEY_CTRL_C:
+        case KEY_CTRL_X:
         case ERR: // During run mode, ERR is returned from getch if no key is available
             break;
         case KEY_F(2): // IRQ
@@ -1880,7 +1944,7 @@ int main(int argc, char *argv[])
             break;
         case KEY_F(12):
             break; // Handled below
-        case KEY_CTRL_C:
+        case KEY_CTRL_G:
             command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
             break;
         case '?': {
@@ -1987,6 +2051,14 @@ int main(int argc, char *argv[])
             status_id = STATUS_F12;
             alert = true;
         }
+        else if (c == KEY_ESCAPE) {
+            status_id = STATUS_ESCQ;
+            alert = true;
+        }
+        else if (c == KEY_CTRL_X) {
+            status_id = STATUS_XC;
+            alert = true;
+        }
         else if (cpu.P.CRASH) {
             status_id = STATUS_CRASH;
             alert = true;
@@ -2058,7 +2130,11 @@ int main(int argc, char *argv[])
             prev_c = c;
         }
 
-        if (!cmd_exit) {
+        if (break_hit) {
+            c = KEY_CTRL_C;
+            break_hit = false;
+        }
+        else if (!cmd_exit) {
             c = getch();
         }
     }

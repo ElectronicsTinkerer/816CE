@@ -34,7 +34,7 @@ Args:
 
 The `mem` and `cpu` arguments can be overridden during program execution by running the `load` command to load memory or CPU save states. Note that multiple memory files can be passed to be loaded in different memory regions based on the offset provided, which defaults to address 0. Multiple CPU save files can also be loaded, however, only the last file provided will be loaded.
 
-Commands in a command file (specified by `cmd_file`) are newline separated, i.e., one command per line. There is a (large) maximum line length which will truncate commands if they are too long.
+Commands in a command file (specified by `cmd-file`) are newline separated, i.e., one command per line. There is a (large) maximum line length which will truncate commands if they are too long.
 
 While the simulator is open, press `?` to access the command help menu.
 
@@ -54,7 +54,7 @@ Available commands
  > br aaaaaa
  > uart [type] aaaaaa (pppp)
  ? ... Help Menu
- ^C to clear command input
+ ^G to clear command input
 ```
 
 Some explanation:
@@ -78,6 +78,8 @@ F6  - Skip instruction at current PC
 F7  - Step by one instruction
 F9  - Reset CPU
 F12 - Pressing F12 twice will exit the simulator without saving.
+^X^C  - Close simulator without saving.
+ESC-Q - Close simulator without closing
 ```
 
 ### File loading & saving
