@@ -72,13 +72,14 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 30, "Overflow in numeric value."},
     {"ERROR!", 3, 22, "Expected filename."},
     {"ERROR!", 3, 24, "Unable to open file."},
-    {"ERROR!", 3, 19, "File too large."},
+    {"ERROR!", 3, 20, "File too large."},
     {"ERROR!", 3, 41, "File will wrap due to offset address."},
     {"ERROR!", 3, 27, "File permission denied."},
     {"ERROR!", 3, 29, "Too many symbolic links."},
     {"ERROR!", 3, 22, "Filename too long."},
     {"ERROR!", 3, 24, "File does not exist."},
     {"ERROR!", 3, 33, "Unhandled file-related error."},
+    {"ERROR!", 3, 19, "Corrupt file."},
     {"ERROR!", 4, 40, "Corrupt data format during CPU load.\nCPU may be in an unexpected state."},
     {"INFO",   3, 39, "CPU option cop_vect_enable ENABLED."},
     {"INFO",   3, 40, "CPU option cop_vect_enable DISABLED."},
@@ -387,10 +388,10 @@ bool is_hex_do_parse(char *str, uint32_t *val)
  * @param *filename The path of the file to load
  * @param *mem The memory to store the data into
  * @param base_addr The base address to load the file at
- * @param bool addressed True if the file is in the llvm-mos "addressed" binary mode
+ * @param memory_format Sets the formatting of the data file to read
  * @return A status code indicating errors if any occur
  */
-cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, bool addressed)
+cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, memory_fmt_t memory_format)
 {
     // Get the size of the file
     struct stat finfo;
@@ -418,87 +419,132 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, bool 
 
     size_t size = finfo.st_size;
 
-    // Check file size
-    if (size / sizeof(*mem) > 0x1000000) {
-        return CMD_FILE_TOO_LARGE;
-    }
-
-    // Make sure the file won't wrap
-    if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
-        return CMD_FILE_WILL_WRAP;
-    }
-
     // All good, let's open the file
     FILE *fp = fopen(filename, "rb");
     if (!fp) {
         return CMD_FILE_IO_ERROR;
     }
 
-    uint8_t *tmp;
-
-    size = size / sizeof(*tmp);
-
-    // We need a temporary buffer since there
-    // is a wrapper needed to access the CPU's
-    // memory structure
-    tmp = malloc(sizeof(*tmp) * size);
-
-    if (!tmp) {
-        fclose(fp);
-        return CMD_OUT_OF_MEM;
-    }
-
-    if (addressed) {
-        size_t next_byte_loc = 0;
-
-        // This doesn't check if you're writing past the end of the simulator's memory
-        while (true) {
-            int at_low = fgetc(fp);
-            if (at_low == EOF) {
-                break;
-            }
-            int at_high = fgetc(fp);
-            int at = at_high * 0x100 + at_low;
-
-            int length_low = fgetc(fp);
-            int length_high = fgetc(fp);
-            int length = length_high * 0x100 + length_low;
-
-            while (next_byte_loc < at) {
-                tmp[next_byte_loc] = 0x00;
-                next_byte_loc++;
-            }
-
-            while (length > 0) {
-                // If fgetc hits the end of the file here, I don't know what would happen
-                // Likely, it would return EOF, which is normally -1, and then cast that to a
-                //  char, so 255, and write that to the buffer.
-                tmp[next_byte_loc] = fgetc(fp);
-
-                length--;
-                next_byte_loc++;
-            }
+    uint8_t *tmp = NULL;
+    
+    switch (memory_format) {
+    default:
+    case MF_BASIC_BIN_BLOCK: {
+        // Check file size
+        if (size / sizeof(*mem) > 0x1000000) {
+            return CMD_FILE_TOO_LARGE;
         }
 
-        fclose(fp);
+        // Make sure the file won't wrap
+        if ((size / sizeof(*mem)) + base_addr > 0x1000000) {
+            return CMD_FILE_WILL_WRAP;
+        }
 
-        // Copy data into the memory
-        _init_mem_arr(mem, tmp, base_addr, next_byte_loc);
-    }else {
+        size = size / sizeof(*tmp);
+
+        // We need a temporary buffer since there
+        // is a wrapper needed to access the CPU's
+        // memory structure
+        tmp = malloc(sizeof(*tmp) * size);
+
+        if (!tmp) {
+            fclose(fp);
+            return CMD_OUT_OF_MEM;
+        }
+
         if (fread(tmp, sizeof(*tmp), size, fp) != size) {
             free(tmp);
+            fclose(fp);
             return CMD_FILE_IO_ERROR;
         }
-
-        fclose(fp);
 
         // Copy data into the memory
         _init_mem_arr(mem, tmp, base_addr, size);
     }
+        break;
 
-    // Don't want memory leaks
-    free(tmp);
-    
+    case MF_LLVM_MOS_SIM: {
+        size_t next_byte_loc = 0;
+        size_t max_len = 0;
+        int tmp_value = 0;
+
+        while (true) {
+            int base_addr_low, base_addr_high, len_low, len_high;
+            int base_addr, len;
+            if ((base_addr_low = fgetc(fp)) == EOF) {
+                // Done with file
+                break;
+            }
+            if ((base_addr_high = fgetc(fp)) == EOF) {
+                fclose(fp);
+                return CMD_FILE_CORRUPT;
+            }
+            base_addr = (base_addr_high << 8) | base_addr_low;
+
+            if ((len_low = fgetc(fp)) == EOF) {
+                fclose(fp);
+                return CMD_FILE_CORRUPT;
+            }
+            if ((len_high = fgetc(fp)) == EOF) {
+                fclose(fp);
+                return CMD_FILE_CORRUPT;
+            }
+            len = (len_high << 8) | len_low;
+
+            if (len == 0) {
+                continue;
+            }
+
+            printf("\nSection base: %x Section length: %x", base_addr, len);
+            
+            if (base_addr + len > 0x1000000) {
+                fclose(fp);
+                return CMD_FILE_WILL_WRAP;
+            }
+            
+            if (max_len < len) {
+                // Force memory buffer reallocation
+                if (tmp) {
+                    free(tmp);
+                    tmp = NULL;
+                }
+                max_len = len;
+            }
+
+            if (!tmp) {
+                tmp = malloc(sizeof(*tmp) * max_len);
+                if (!tmp) {
+                    fclose(fp);
+                    return CMD_OUT_OF_MEM;
+                }
+            }
+
+            next_byte_loc = 0;
+            while (next_byte_loc < len) {
+                tmp_value = fgetc(fp);
+                if (tmp_value == EOF) {
+                    free(tmp);
+                    fclose(fp);
+                    return CMD_FILE_CORRUPT;
+                }
+                tmp[next_byte_loc] = tmp_value;
+
+                next_byte_loc++;
+            }
+
+            // Copy data into the memory
+            _init_mem_arr(mem, tmp, base_addr, len);
+        }
+    }
+        break;
+    }
+
+    fclose(fp);
+
+    if (tmp) {
+        free(tmp);
+    }
+
     return CMD_OK;
 }
 
@@ -1511,7 +1557,7 @@ void print_help_and_exit()
         "Args:\n"
         " --cpu filename ............ Preload the CPU with a saved state\n"
         " --mem (offset) filename ... Load memory at offset (in hex) with a file\n"
-        " --exe filename ............ Load a binary file formatted for the LLVM MOS simulator into memory\n"
+        " --mem-mos filename ............ Load a binary file formatted for the LLVM MOS simulator into memory\n"
         " --cmd \"[command here]\" .... Run a command during initialization\n"
         " --cmd_file filename ....... Run commands from a file during initialization\n"
         "\n"
@@ -1575,7 +1621,7 @@ int main(int argc, char *argv[])
                 else if (strcmp(argv[i], "--mem") == 0) {
                     cli_pstate = 2;
                 }
-                else if (strcmp(argv[i], "--exe") == 0) {
+                else if (strcmp(argv[i], "--mem-mos") == 0) {
                     cli_pstate = 5;
                 }
                 else if (strcmp(argv[i], "--cmd") == 0) {
@@ -1603,7 +1649,7 @@ int main(int argc, char *argv[])
                 // If the argument is hex, use it as an address
                 // Otherwise just load the file
                 if (!is_hex_do_parse(argv[i], &base_addr)) {
-                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr, false)) > 0) {
+                    if ((cmd_err = load_file_mem(argv[i], memory, base_addr, MF_BASIC_BIN_BLOCK)) > 0) {
                         printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                         exit(EXIT_FAILURE);
                     }
@@ -1612,7 +1658,7 @@ int main(int argc, char *argv[])
                 break;
             case 5:
                 // Takes and loads an executable formatted for the llvm-mos simulator
-                if ((cmd_err = load_file_mem(argv[i], memory, base_addr, true)) > 0) {
+                if ((cmd_err = load_file_mem(argv[i], memory, base_addr, MF_LLVM_MOS_SIM)) > 0) {
                     printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                     exit(EXIT_FAILURE);
                 }
