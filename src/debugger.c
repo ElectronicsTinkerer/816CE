@@ -1916,6 +1916,16 @@ int main(int argc, char *argv[])
         case KEY_CTRL_X:
         case ERR: // During run mode, ERR is returned from getch if no key is available
             break;
+        case KEY_F(1): { // Toggle Breakpoint
+            uint32_t addr = _cpu_get_effective_pc(&cpu);
+            if (_test_mem_flags(memory, addr).B == 0) {
+                _set_mem_flags(memory, addr, MEM_FLAG_B);
+            }
+            else {
+                _reset_mem_flags(memory, addr, MEM_FLAG_B);
+            }
+        }
+            break;
         case KEY_F(2): // IRQ
             cpu.P.IRQ = !cpu.P.IRQ;
             break;
