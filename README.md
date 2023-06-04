@@ -70,6 +70,7 @@ Some explanation:
 Additionally, the function keys are of use:
 
 ```
+F1  - Toggle breakpoint at current CPU PC
 F2  - Toggle IRQ on CPU
 F3  - Toggle NMI on CPU
 F4  - Halt CPU
@@ -95,7 +96,7 @@ When issuing the `uart` command, the `type` argument can refer to the following 
 
 UART devices listen on a TCP socket to implement a serial port-like behavior. For example, if the command `uart c750 4840 6500` is executed and succeeds, the UART will be listening on port 6500 for TCP connections. The UART will also update the DCD (Data Carrier Detect) flag to show connection status. (Currently, writing to the UART is required to detect if the port has been disconnected.) The TCP port can be connected to via netcat (e.g. `stty -icanon && nc localhost 6500` - with the `stty` being necessary to make sure text is not line buffered.)
 
-Additionally, only one instance of a UART is currently supported. If the `uart` command is executed after a previous `uart` command, the previous TCP sockets are closed and a new socket listener is created. The UART is also connected to the CPU's IRQ line so if interrupts are enabled on the UART and an interrupt condition occurs, the CPU will be signaled.
+Additionally, only one instance of a UART is currently supported. If the `uart` command is executed after a previous `uart` command, the previous TCP sockets are closed and a new socket listener is created. The UART is also connected to the CPU's IRQ line so if interrupts are enabled on the UART and an interrupt condition occurs, the CPU will be signaled. Since the UART now controlls the IRQ line, the F2 IRQ toggle has no effect.
 
 ### CPU Options
 
