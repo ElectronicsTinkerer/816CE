@@ -12,6 +12,6 @@ https://www.pagetable.com/?p=410
 # Page and Bank wrapping
 http://www.6502.org/tutorials/65c816opcodes.html
 
-# BCD Flags and undocumented bahavior (ADC/SBC)
+# BCD Flags and undocumented behavior (ADC/SBC)
 http://www.6502.org/tutorials/decimal_mode.html
 
