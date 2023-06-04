@@ -461,15 +461,11 @@ static int _get_opcode(memory_t *mem, CPU_t *cpu, char *buf, uint32_t addr_offs)
         }
         // Correct value for immediate
         else if (op->addr_mode == CPU_ADDR_IMMD) {
-            if (op->reg == REG_A && !(cpu->P.E || (!cpu->P.E && cpu->P.M))) { // 16-bit
+            if ((op->reg == REG_A && !(cpu->P.E || (!cpu->P.E && cpu->P.M))) ||
+                (op->reg == REG_X && !(cpu->P.E || (!cpu->P.E && cpu->P.XB)))) { // 16-bit
                 val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
                 size = 3;
-                fmt = " $%04x";
-            }
-            else if (op->reg == REG_X && !(cpu->P.E || (!cpu->P.E && cpu->P.XB))) { // 16-bit
-                val = _get_mem_word_bank_wrap(mem, _addr_add_val_bank_wrap(addr, 1), false);
-                size = 3;
-                fmt = " $%04x";
+                fmt = " #$%04x";
             }
         }
 
