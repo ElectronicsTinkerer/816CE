@@ -18,6 +18,7 @@
 #include <math.h>
 #include <ctype.h>
 #include <ncurses.h>
+#include <limits.h>
 
 #include <sys/stat.h> // For getting file sizes
 #include <signal.h> // For ^Z support
@@ -1223,6 +1224,13 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
                 return STAT_ERR;
             }
             cpu->P.CRASH = val;
+        }
+        else if (strcmp(tok, "cycles") == 0) {
+            if (val > 0x80000000) {
+                *status = CMD_VAL_OVERFLOW;
+                return STAT_ERR;
+            }
+            cpu->cycles = val;
         }
         else {
             *status = CMD_UNKNOWN_ARG;
