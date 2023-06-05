@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "65816-util.h"
+#include "../cpu/65816-util.h"
 #include "disassembler.h"
 
 // Keep in sync with the instruction_t enum
