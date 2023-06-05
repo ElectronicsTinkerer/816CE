@@ -299,7 +299,7 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
-        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
@@ -1533,7 +1533,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         }
         else // 16-bit
         {
-            post_data = pre_data << 1;
+            post_data = pre_data >> 1;
             cpu->C = post_data;
         }
         break;
@@ -1544,7 +1544,7 @@ void i_lsr(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
-        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
@@ -2031,7 +2031,7 @@ void i_rol(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
-        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
@@ -2111,7 +2111,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
-        cpu->C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x80) ? 1 : 0;
         cpu->P.N = (cpu->C & 0x80) ? 1 : 0;
         cpu->P.Z = (cpu->C & 0xff) ? 0 : 1;
     }
