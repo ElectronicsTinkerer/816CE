@@ -6,7 +6,7 @@
 #ifndef _DISASSEMBLER_H
 #define _DISASSEMBLER_H
 
-#include "65816.h"
+#include "../cpu/65816.h"
 
 // Keep in sync with the instruction_mne array
 typedef enum instruction_t {

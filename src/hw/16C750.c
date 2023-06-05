@@ -24,8 +24,8 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "65816.h" // memory_t
-#include "65816-util.h" // memory_t access functions
+#include "../cpu/65816.h" // memory_t
+#include "../cpu/65816-util.h" // memory_t access functions
 #include "16C750.h"
 
 // Defined in datasheet

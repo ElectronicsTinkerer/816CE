@@ -25,9 +25,9 @@
 #include <errno.h>
 
 #include "disassembler.h"
-#include "65816.h"
-#include "65816-util.h"
-#include "16C750.h"
+#include "../cpu/65816.h"
+#include "../cpu/65816-util.h"
+#include "../hw/16C750.h"
 #include "debugger.h"
 
 
