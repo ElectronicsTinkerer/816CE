@@ -11,6 +11,8 @@ TODO:
 * Fix bug where `mw2 mem c000` causes a blank window to appear
 * Update cli parser to use option-parser from SLIME
 * Look into nl()/nonl() in ncurses
+* Move cpu core into its own folder
+* Allow loading a symbol list file for breakpoints
 
 TODONE:
 * Help menu (multi-level)

@@ -1223,9 +1223,6 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else
         {
             cpu->C = _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
-            if (mode == CPU_ADDR_IMMD) {
-                size += 1; // One extra byte in operand
-            }
         }
         break;
 
