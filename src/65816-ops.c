@@ -225,6 +225,9 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.N = (cpu->C & 0x8000) ? 1 : 0;
             cpu->P.Z = cpu->C ? 0 : 1;
             cpu->cycles += 1;
+            if (mode == CPU_ADDR_IMMD) {
+                size += 1; // One extra byte in operand
+            }
         }
     }
     cpu->cycles += cycles;
@@ -1035,6 +1038,9 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else // 16-bit
         {
             cpu->C = cpu->C ^ _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
+            if (mode == CPU_ADDR_IMMD) {
+                size += 1; // One extra byte in operand
+            }
         }
     }
 
@@ -1217,6 +1223,9 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else
         {
             cpu->C = _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
+            if (mode == CPU_ADDR_IMMD) {
+                size += 1; // One extra byte in operand
+            }
         }
         break;
 
@@ -1695,6 +1704,9 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else // 16-bit
         {
             cpu->C = cpu->C | _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
+            if (mode == CPU_ADDR_IMMD) {
+                size += 1; // One extra byte in operand
+            }
         }
     }
 
