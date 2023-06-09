@@ -11,8 +11,9 @@ TODO:
 * Fix bug where `mw2 mem c000` causes a blank window to appear
 * Update cli parser to use option-parser from SLIME
 * Look into nl()/nonl() in ncurses
-* Move cpu core into its own folder
 * Allow loading a symbol list file for breakpoints
+* Allow multiple symbols at same address
+* Clean up build system
 
 TODONE:
 * Help menu (multi-level)
@@ -42,4 +43,5 @@ TODONE:
 * Enable disabling of UART on startup so a port is not always requested to run the sim
 * Rename "Step Over" (F6) to "Skip instruction"
 * Add ^Z backgrounding support
+* Move cpu core into its own folder
 

@@ -22,4 +22,6 @@ extra
 .emacs.desktop.lock
 \#*
 
+# Debugger debugging
+.gdb_history
 

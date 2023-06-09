@@ -26,7 +26,7 @@
 
 #define CMD_HIST_ENTRIES 20
 
-#define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 1000
+#define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 93647 // A big number
 
 #define REPLACE_INST true
 #define PUSH_INST false
