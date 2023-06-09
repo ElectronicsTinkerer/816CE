@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include "disassembler.h"
+#include "symbols.h"
 #include "../cpu/65816.h"
 #include "../cpu/65816-util.h"
 #include "../hw/16C750.h"
@@ -63,7 +64,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 19, "Expected value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 18, 43, "Available commands\n"
+    {"HELP", 19, 43, "Available commands\n"
      " > exit|quit ... Close simulator\n"
      " > mw[1|2] [mem|asm] (pc|addr)\n"
      " > mw[1|2] aaaaaa\n"
@@ -73,6 +74,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > save [mem|cpu] filename\n"
      " > load mem (mos) (offset) filename\n"
      " > load cpu filename\n"
+     " > sym filename\n"
      " > cpu [reg] xxxx\n"
      " > cpu [option] [enable|disable|status]\n"
      " > bp aaaaaa\n"
@@ -764,9 +766,11 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
  * @param *watch2 Watch window 2 structure
  * @param *cpu The CPU to modify if a command needs to
  * @param *mem The memory to modify if a command needs to
+ * @param *symbol_table The global symbol table
+ * @param *uart 16C750 UART device
  * @return True if an error occured, false otherwise
  */
-cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, tl16c750_t *uart)
+cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, symbol_table_t *symbol_table, tl16c750_t *uart)
 {
     if (cmdbuf_index == 0) {
         *status = CMD_OK; // No command
@@ -997,6 +1001,51 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
 
         *status = CMD_OK;
         return STAT_OK;
+    }
+    else if (strcmp(tok, "sym") == 0) {
+
+        tok = strtok(NULL, " \t\n\r");
+        
+        if (!tok) {
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
+        }
+
+        int linenum = 0;
+        st_status_t st_stat = st_load_file(symbol_table, tok, &linenum);
+        switch (st_stat) {
+        case ST_OK:
+            *status = CMD_OK;
+            return STAT_OK;
+            
+        case ST_ERR_NO_MEM:
+            *status = CMD_OUT_OF_MEM;
+            return STAT_ERR;
+
+        case ST_ERR_MISSING_IDENT:
+            sprintf(global_err_msg_buf, "Symbol loader: missing identifier on line %d", linenum);
+            *status = CMD_SPECIAL;
+            return STAT_ERR;
+            
+        case ST_ERR_MISSING_DELIM:
+            sprintf(global_err_msg_buf, "Symbol loader: missing delimiter on line %d", linenum);
+            *status = CMD_SPECIAL;
+            return STAT_ERR;
+            
+        case ST_ERR_MISSING_VALUE:
+            sprintf(global_err_msg_buf, "Symbol loader: missing value on line %d", linenum);
+            *status = CMD_SPECIAL;
+            return STAT_ERR;
+            
+        case ST_ERR_UNEXPECTED_CHAR:
+            sprintf(global_err_msg_buf, "Symbol loader: unexpected char on line %d", linenum);
+            *status = CMD_SPECIAL;
+            return STAT_ERR;
+
+        case ST_ERR_NO_FILE:
+            *status = CMD_FILE_UNKNOWN_ERROR;
+            return STAT_ERR;
+        }
     }
     else if (strcmp(tok, "cpu") == 0) {
 
@@ -1395,12 +1444,14 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
  * @param *w The watch to use
  * @param *mem The CPU's memory to view
  * @param *cpu, The CPU to use
+ * @param *symbol_table Which stores symbols corresponding to addresses
  */
-void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
+void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symbol_table)
 {
     size_t cols, col, row;
     uint32_t i, pc;
     char buf[32];
+    symbol_t *sym;
     
     pc = _cpu_get_effective_pc(cpu);
 
@@ -1437,6 +1488,18 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
             wmove(w->win, row, 1);
             wclrtoeol(w->win);
 
+            // If there's a symbol at this address, display it
+            if ((sym = st_resolve_by_addr(symbol_table, effective_pc))) {
+                wattron(w->win, A_DIM);
+                mvwprintw(w->win, row, 10, "%s:", sym->ident);
+                wattroff(w->win, A_DIM);
+                ++row;
+                // Prevent ghosting
+                wmove(w->win, row, 1);
+                wclrtoeol(w->win);
+            }
+
+
             // Print break points as '@'
             if (_test_mem_flags(mem, effective_pc).B == 1) {
                 wattron(w->win, A_BOLD);
@@ -1450,11 +1513,11 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
             wattroff(w->win, (effective_pc == pc) ? A_BOLD : A_DIM);
 
             // Print the instruction
-            mvwprintw(w->win, row, 10, "%s", buf);
+            mvwprintw(w->win, row, 10, "    %s", buf);
 
             // Print the bytes
             if (cols > 8) {
-                wmove(w->win, row, 24);
+                wmove(w->win, row, 28);
                 while (effective_pc < i) {
                     wprintw(w->win, " %02x", _get_mem_byte(mem, effective_pc, false));
 
@@ -1473,9 +1536,9 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu)
         wclrtoeol(w->win);
         wmove(w->win, 1, 9);
         wattron(w->win, A_DIM);
-        for (i = 0, col = 0; col < cols; ++col, ++i) {
+        for (col = 0; col < cols; ++col) {
             wprintw(w->win, " ");
-            wprintw(w->win, "%02x", i);
+            wprintw(w->win, "%02lx", col);
         }
         wattroff(w->win, A_DIM);
 
@@ -1665,6 +1728,12 @@ int main(int argc, char *argv[])
     cmd_err_t cmd_err;
     cmd_status_t cmd_stat;
     struct sigaction sigact;
+    symbol_table_t *symbol_table = NULL;
+    if (st_init(&symbol_table)) {
+        printf("Unable to initialize symbol table!\n");
+        exit(EXIT_FAILURE);
+    }
+    
     watch_t watch1, watch2;
     watch_init(&watch1, false, false);
     watch_init(&watch2, true, true); // Disasm & follow PC
@@ -1754,6 +1823,7 @@ int main(int argc, char *argv[])
                     &watch1, &watch2,
                     &cpu,
                     memory,
+                    symbol_table,
                     &uart
                     );
 
@@ -1799,6 +1869,7 @@ int main(int argc, char *argv[])
                         &watch1, &watch2,
                         &cpu,
                         memory,
+                        symbol_table,
                         &uart
                         );
 
@@ -2001,6 +2072,7 @@ int main(int argc, char *argv[])
                     &watch2,
                     &cpu,
                     memory,
+                    symbol_table,
                     &uart
                     );
 
@@ -2094,8 +2166,8 @@ int main(int argc, char *argv[])
 
             print_header(scrw, status_id, alert);
             print_cpu_regs(win_cpu, &cpu, 1, 2);
-            mem_watch_print(&watch1, memory, &cpu);
-            mem_watch_print(&watch2, memory, &cpu);
+            mem_watch_print(&watch1, memory, &cpu, symbol_table);
+            mem_watch_print(&watch2, memory, &cpu, symbol_table);
             print_cpu_hist(&inst_hist);
 
             mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
@@ -2169,6 +2241,8 @@ int main(int argc, char *argv[])
     if (uart.enabled) {
         stop_16c750(&uart);
     }
+
+    st_destroy(&symbol_table);
 
     printf("Stopped simulator\n");
     
