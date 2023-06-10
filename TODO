@@ -12,6 +12,7 @@ TODO:
 * Update cli parser to use option-parser from SLIME
 * Look into nl()/nonl() in ncurses
 * Allow multiple symbols at same address
+* Disassembler to use symbol table for operands
 * Clean up build system
 
 TODONE:
