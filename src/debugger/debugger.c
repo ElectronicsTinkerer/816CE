@@ -1365,7 +1365,7 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
 
         // Get base address for UART device
         uint32_t addr;
-        if (!is_addr_do_parse(tok, &addr, symbol_table)) {
+        if (!is_addr_do_parse(tmp, &addr, symbol_table)) {
             *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
