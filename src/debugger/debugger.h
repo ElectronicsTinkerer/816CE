@@ -26,7 +26,7 @@
 
 #define CMD_HIST_ENTRIES 20
 
-#define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 93647 // A big number
+#define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 9463 // A big number
 
 #define REPLACE_INST true
 #define PUSH_INST false
@@ -78,6 +78,7 @@ typedef enum cmd_err_t {
     CMD_EXPECTED_ARG,
     CMD_EXPECTED_REG,
     CMD_EXPECTED_VALUE,
+    CMD_UNKNOWN_SYM_OR_VALUE,
     CMD_UNKNOWN_ARG,
     CMD_UNKNOWN_CMD,
     CMD_HELP_MAIN,
