@@ -122,11 +122,11 @@ void print_header(int width, status_t status_id, bool alert)
     mvwprintw(stdscr, 0, 0, " 65816 Debugger | ");
 
     if (alert) {
-        attron(A_BLINK);
+        attroff(A_REVERSE);
     }
     wprintw(stdscr, "%s", status_msgs[status_id]);
     if (alert) {
-        attroff(A_BLINK);
+        attron(A_REVERSE);
     }
 
     attroff(A_REVERSE);
@@ -659,9 +659,9 @@ void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
     *cmdbuf_index = 0;
 
     // Redraw cursor
-    wattron(win, A_BOLD);
+    wattron(win, A_BOLD | A_BLINK);
     mvwaddch(win, 1, CMD_DISP_X_OFFS, '_');
-    wattroff(win, A_BOLD);
+    wattroff(win, A_BOLD | A_BLINK);
 
     wattron(win, A_DIM);
     wprintw(win, " ? to view command list");
@@ -707,9 +707,10 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
         ++*cmdbuf_index;
     }
 
+    wattron(win, A_BLINK);
     mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, '_');
 
-    wattroff(win, A_BOLD);
+    wattroff(win, A_BOLD | A_BLINK);
 
     // Print basic help
     if (*cmdbuf_index == 0) {
