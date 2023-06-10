@@ -807,6 +807,8 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
 
     // Make string lowercase
     char *buf_ptr = _cmdbuf;
+    char cmdbuf_dup[MAX_CMD_LEN];
+    strncpy(cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
     while (*buf_ptr) {
         *buf_ptr = tolower(*buf_ptr);
         ++buf_ptr;
@@ -1420,7 +1422,7 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
     // Not a named command, maybe it's a memory access?
     static uint32_t addr = 0; // Retain the previous value
     uint32_t val;
-    char *next = _cmdbuf;
+    char *next = cmdbuf_dup;
     char *tok_start;
     char ntmp;
     bool found_store_delim = false;
