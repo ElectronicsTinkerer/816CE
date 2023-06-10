@@ -62,6 +62,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 34, "Expected argument for command."},
     {"ERROR!", 3, 27, "Expected register name."},
     {"ERROR!", 3, 19, "Expected value."},
+    {"ERROR!", 3, 36, "Unknown symbol or invalid value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
     {"HELP", 19, 43, "Available commands\n"
@@ -397,6 +398,28 @@ bool is_hex_do_parse(char *str, uint32_t *val)
 
 
 /**
+ * Parse a string and return its corresponding numeric value
+ * 
+ * @param *str The string to parse
+ * @param *val A pointer to the variable to store the parsed value in
+ * @return false if the string is not a valid address (val will not be modified if so)
+ *         true if the string is a valid address and was successfully parsed
+ */
+bool is_addr_do_parse(char *str, uint32_t *val, symbol_table_t *st)
+{
+    symbol_t *st_sym;
+
+    if ((st_sym = st_resolve_by_ident(st, str))) {
+        *val = st_sym->addr;
+    }
+    else if (!is_hex_do_parse(str, val)) {
+        return false;
+    }
+    return true;
+}
+
+
+/**
  * Load a file into memory
  * 
  * @param *filename The path of the file to load
@@ -703,9 +726,10 @@ bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
  * 
  * @param *watch The watch structure to control
  * @param tok The input command buffer
+ * @param *symbol_table The symbol table to use for resolving addresses by name
  * @return The error code from execution of the command
  */
-cmd_err_t command_execute_watch(watch_t *watch, char* tok)
+cmd_err_t command_execute_watch(watch_t *watch, char* tok, symbol_table_t *symbol_table)
 {
     tok = strtok(NULL, " \t\n\r");
 
@@ -723,14 +747,14 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok)
     }
     else {
         // Check if user is setting watch start address
-        if (is_hex_do_parse(tok, &(watch->addr_s))) {
+        if (is_addr_do_parse(tok, &(watch->addr_s), symbol_table)) {
 
             if (watch->addr_s > 0xffffff) {
                 return CMD_VAL_OVERFLOW;
             }
         }
         else {
-            return CMD_UNKNOWN_ARG; // Syntax error!
+            return CMD_UNKNOWN_SYM_OR_VALUE; // Syntax error!
         }
     }
 
@@ -855,10 +879,12 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
         return STAT_OK;
     }
     else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
-        return command_execute_watch(watch1, tok);
+        *status = command_execute_watch(watch1, tok, symbol_table);
+        return (*status == CMD_OK) ? STAT_OK : STAT_ERR;
     }
     else if (strcmp(tok, "mw2") == 0) { // Memory Watch 2
-        return command_execute_watch(watch2, tok);
+        *status = command_execute_watch(watch2, tok, symbol_table);
+        return (*status == CMD_OK) ? STAT_OK : STAT_ERR;
     }
     else if (strcmp(tok, "exit") == 0 ||
              strcmp(tok, "quit") == 0) { // Exit
@@ -959,7 +985,7 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
             uint32_t base_addr = 0;
 
             // If a load offset is given, parse it
-            if (is_hex_do_parse(tok, &base_addr)) {
+            if (is_addr_do_parse(tok, &base_addr, symbol_table)) {
 
                 if (base_addr > 0xffffff) {
                     *status = CMD_VAL_OVERFLOW;
@@ -1093,20 +1119,21 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
 
         // Else, it's a register assignment
         
-        char *hexval = strtok(NULL, " \t\n\r");
+        char *addrtok = strtok(NULL, " \t\n\r");
 
-        if (!hexval) {
+        if (!addrtok) {
             *status = CMD_EXPECTED_VALUE;
             return STAT_ERR;
         }
 
         uint32_t val = 0;
         
-        // Make sure it's hex
-        if (!is_hex_do_parse(hexval, &val)) {
-            *status = CMD_EXPECTED_VALUE;
+        // Make sure it's a valid value
+        if (!is_addr_do_parse(addrtok, &val, symbol_table)) {
+            *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
+
 
         if (val > 0xffffff) {
             *status = CMD_VAL_OVERFLOW;
@@ -1301,9 +1328,8 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
         }
 
         uint32_t addr;
-
-        if (!is_hex_do_parse(tok, &addr)) {
-            *status = CMD_EXPECTED_VALUE;
+        if (!is_addr_do_parse(tok, &addr, symbol_table)) {
+            *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
 
@@ -1336,9 +1362,8 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
 
         // Get base address for UART device
         uint32_t addr;
-
-        if (!is_hex_do_parse(tmp, &addr)) {
-            *status = CMD_EXPECTED_VALUE;
+        if (!is_addr_do_parse(tok, &addr, symbol_table)) {
+            *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
 
@@ -1396,39 +1421,61 @@ cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index,
     static uint32_t addr = 0; // Retain the previous value
     uint32_t val;
     char *next = _cmdbuf;
+    char *tok_start;
+    char ntmp;
     bool found_store_delim = false;
-    bool valid_character = true;
+    size_t delim_index = strlen(tok);
 
     // Remove null char from strtok()
-    _cmdbuf[strlen(tok)] = ' ';
-    
-    while ((next != NULL) && (*next != '\0') && valid_character) {
+    _cmdbuf[delim_index] = ' ';
 
-        if (isspace(*next)) {
+    // Found delim
+    while (*next != '\0') {
+        while (isspace(*next)) {
             ++next; // Eat whitespace
         }
-        else if (*next == ':') {
-            found_store_delim = true;
+
+        // Get base address
+        tok_start = next;
+        while ((*next != '\0') && !isspace(*next) && (*next != ':')) {
             ++next;
         }
-        else {
-            val = strtoul(next, &next, 16);
-            if (!found_store_delim) {
-                addr = val;
+
+        if (!found_store_delim) {
+            // If we have only found an address but not a value
+            if (*next == '\0') {
+                break;
             }
-            else {
-                _set_mem_byte(mem, addr, val, true); // DO tell I/O devices that a value has been written here!
-                ++addr;
+            if (*next == ':' && tok_start == next) {
+                found_store_delim = true;
+                ++next;
+                continue;
             }
         }
-        valid_character = isxdigit(*next) || isspace(*next) || (*next == ':') || (*next == '\0');
+
+        if (tok_start == next) {
+            break;
+        }
+
+        ntmp = *next;
+        *next = '\0';
+
+        if (!is_addr_do_parse(tok_start, &val, symbol_table)) {
+            *status = CMD_UNKNOWN_SYM_OR_VALUE;
+            return STAT_ERR;
+        }
+
+        if (!found_store_delim) {
+            addr = val;
+        }
+        else {
+            _set_mem_byte(mem, addr, val, true); // DO tell I/O devices that a value has been written here!
+            ++addr;
+        }
+        *next = ntmp;
     }
 
-    if (!valid_character && found_store_delim) {
-        *status = CMD_INVALID_CHAR;
-        return STAT_ERR;
-    }
-    else if (valid_character && found_store_delim) {
+    if (found_store_delim) {
         *status = CMD_OK;
         return STAT_OK;
     }
@@ -1661,13 +1708,13 @@ void print_help_and_exit()
     printf(
         "65816 Simulator (C) Ray Clemens 2022-2023\n"
         "USAGE:\n"
-        " $ 816ce (--cpu filename) (--mem (offset) filename)\n"
+        " $ 816ce [OPTIONS]\n"
         "\n"
-        "Args:\n"
+        "Options:\n"
         " --cpu-file filename ...... Preload the CPU with a saved state\n"
-        " --mem (offset) filename .. Load memory at offset (in hex) with a file\n"
+        " --mem [offset] filename .. Load memory at offset (in hex) with a file\n"
         " --mem-mos filename ....... Load a binary file formatted for the LLVM MOS simulator into memory\n"
-        " --cmd \"[command here]\" . Run a command during initialization\n"
+        " --cmd \"command here\" ..... Run a command during initialization\n"
         " --cmd-file filename ...... Run commands from a file during initialization\n"
         "\n"
         );
@@ -1799,7 +1846,7 @@ int main(int argc, char *argv[])
             case 2: // MEM load
                 // If the argument is hex, use it as an address
                 // Otherwise just load the file
-                if (!is_hex_do_parse(argv[i], &base_addr)) {
+                if (!is_addr_do_parse(argv[i], &base_addr, symbol_table)) {
                     if ((cmd_err = load_file_mem(argv[i], memory, base_addr, MF_BASIC_BIN_BLOCK)) > 0) {
                         printf("Error! (%s) %s\n", argv[i], cmd_err_msgs[cmd_err].msg);
                         exit(EXIT_FAILURE);

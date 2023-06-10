@@ -219,13 +219,20 @@ st_status_t st_load_file(symbol_table_t *st, char *filepath, int *linenum)
                     sym->ident[index] = '\0';
                     sym->addr = addr;
         
+                    bool entered = false;
                     if (!sym_ht_contains_key(st->by_addr, addr)) {
                         sym_ht_put(st->by_addr, addr, sym);
+                        entered = true;
                     }
-                    if (!sym_ht_contains_skey(st->by_addr, ident)) {
-                        sym_ht_sput(st->by_ident, ident, sym);
+                    if (!sym_ht_contains_skey(st->by_ident, sym->ident)) {
+                        sym_ht_sput(st->by_ident, sym->ident, sym);
+                        entered = true;
                     }
-                    // TODO: Fix memory leak here if not entered into either table!
+
+                    if (!entered) {
+                        free(sym->ident);
+                        free(sym);
+                    }
 
                     *linenum += 1;
                     index = 0;
@@ -263,13 +270,20 @@ st_status_t st_load_file(symbol_table_t *st, char *filepath, int *linenum)
                     sym->ident[index] = '\0';
                     sym->addr = addr;
 
+                    bool entered = false;
                     if (!sym_ht_contains_key(st->by_addr, addr)) {
                         sym_ht_put(st->by_addr, addr, sym);
+                        entered = true;
                     }
-                    if (!sym_ht_contains_skey(st->by_addr, ident)) {
-                        sym_ht_sput(st->by_ident, ident, sym);
+                    if (!sym_ht_contains_skey(st->by_ident, sym->ident)) {
+                        sym_ht_sput(st->by_ident, sym->ident, sym);
+                        entered = true;
                     }
-                    // TODO: Fix memory leak here if not entered into either table!
+
+                    if (!entered) {
+                        free(sym->ident);
+                        free(sym);
+                    }
 
                     *linenum += 1;
                     index = 0;
