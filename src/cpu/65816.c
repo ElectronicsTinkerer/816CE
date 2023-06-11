@@ -332,7 +332,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x8f: i_sta(cpu, mem, 4, 5, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem, cpu->setacc)); break;
     case 0x90: i_bcc(cpu, mem); break;
     case 0x91: i_sta(cpu, mem, 2, 6, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndirectIndexedY(cpu, mem, cpu->setacc)); break;
-    case 0x92: i_sta(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndexedY(cpu, mem, cpu->setacc)); break;
+    case 0x92: i_sta(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem, cpu->setacc)); break;
     case 0x93: i_sta(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x94: i_sty(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
     case 0x95: i_sta(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
