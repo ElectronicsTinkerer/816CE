@@ -943,11 +943,11 @@ uint32_t _addrCPU_getStackRelative(CPU_t *cpu, memory_t *mem, bool setacc)
 }
 
 /**
- * Returns the effective stack relative address of the current instruction
+ * Returns the effective stack relative y-indexed address of the current instruction
  * @param cpu The cpu to use for the operation
  * @param mem The memory which will provide the operand address
  * @param setacc True to set the "accessed flag" on used memory data
- * @return The SR address of the current instruction
+ * @return The SRINDY address of the current instruction
  */
 uint32_t _addrCPU_getStackRelativeIndirectIndexedY(CPU_t *cpu, memory_t *mem, bool setacc)
 {
@@ -955,6 +955,7 @@ uint32_t _addrCPU_getStackRelativeIndirectIndexedY(CPU_t *cpu, memory_t *mem, bo
     uint32_t address = _cpu_get_immd_byte(cpu, mem, setacc);
     address = _addr_add_val_bank_wrap(cpu->SP, address); // Calculate pointer offset
     address = _get_mem_word_bank_wrap(mem, address, setacc); // Get pointer
+    address |= _cpu_get_dbr(cpu);
     address += cpu->Y;
     return  address & 0xffffff;
 }
