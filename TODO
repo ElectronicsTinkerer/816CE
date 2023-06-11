@@ -14,6 +14,7 @@ TODO:
 * Allow multiple symbols at same address
 * Disassembler to use symbol table for operands
 * Clean up build system
+* Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
 
 TODONE:
 * Help menu (multi-level)
