@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "../src/cpu/65816.h"
 #include "../src/cpu/65816-util.h"
@@ -38,8 +39,9 @@ int main(int argc, char *argv[])
     char *str = NULL;
 
     size_t len = 0;
-    long test_num = 0;
+    long test_num = 0, success_count = 0;
     size_t id_idx = 0, fd_idx = 0;
+    bool failed = false;
 
     memory_t *mem = calloc(16777216, sizeof(*mem));
 
@@ -47,15 +49,16 @@ int main(int argc, char *argv[])
     
     while (1) {
         if (getline(&test_name, &len, fp) == -1) {
-            printf("End of file. Tests run: %ld\n", test_num);
+            printf("End of file. Tests passed: %ld/%ld\n", success_count, test_num);
             break;
         }
+
+        failed = false;
 
         getline(&str, &len, fp);
         id_idx = 0;
         while (str[0] == 'i') {
             sscanf(str, "i: %x : %hhx\n", &(input_data[id_idx].addr), &(input_data[id_idx].data));
-            // free(str);
             _set_mem_byte(mem, input_data[id_idx].addr, input_data[id_idx].data, false);
             ++id_idx;
             getline(&str, &len, fp);
@@ -63,8 +66,6 @@ int main(int argc, char *argv[])
         fd_idx = 0;
         while (str[0] == 'f') {
             sscanf(str, "f: %x : %hhx\n", &(output_data[fd_idx].addr), &(output_data[fd_idx].data));
-            // free(str);
-            _set_mem_byte(mem, output_data[fd_idx].addr, output_data[fd_idx].data, false);
             ++fd_idx;
             getline(&str, &len, fp);
         }
@@ -81,27 +82,33 @@ int main(int argc, char *argv[])
         stepCPU(&cpu_run, mem);
 
         if (memcmp(&cpu_run, &cpu_final, sizeof(cpu_run)) != 0) {
+            failed = true;
+        }
+        else {
+            ++success_count;
+        }
+
+        // Reset memory
+        while (fd_idx-- > 0) {
+            // Check for memory modifications
+            if (output_data[fd_idx].data != _get_mem_byte(mem, output_data[fd_idx].addr, false)) {
+                failed = true;
+            }
+
+            _set_mem_byte(mem, output_data[fd_idx].addr, output_data[fd_idx].data, false);
+        }
+        while (id_idx-- > 0) {
+            _set_mem_byte(mem, input_data[id_idx].addr, input_data[id_idx].data, false);
+        }
+
+        if (failed) {
             printf("Test failed! (%ld) : %s", test_num+1, test_name);
             tostrCPU(&cpu_run, cpu_state_run);
             tostrCPU(&cpu_final, cpu_state_final);
             printf("RUN CPU: '%s'\n", cpu_state_run);
-            printf("FIN CPU: '%s'\n", cpu_state_final);
+            printf("EXP CPU: '%s'\n", cpu_state_final);
         }
-
-        // free(cpu_istr);
-        // free(cpu_fstr);
-
-        // Reset memory
-        while (id_idx-- > 0) {
-            _set_mem_byte(mem, input_data[id_idx].addr, input_data[id_idx].data, false);
-        }
-        while (fd_idx-- > 0) {
-            _set_mem_byte(mem, output_data[fd_idx].addr, output_data[fd_idx].data, false);
-        }
-
-        // for (long i = 0; i < 1000000000; i++) {
-        // }
-
+        
         test_num += 1;
 
         if (test_num & 0xffff == 0) {
