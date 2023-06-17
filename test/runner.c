@@ -33,14 +33,13 @@ int main(int argc, char *argv[])
     } input_data[100], output_data[100];
     char *cpu_istr = NULL;
     char *cpu_fstr = NULL;
-    CPU_t cpu_run, cpu_final;
-    char cpu_state_run[1000];
-    char cpu_state_final[1000];
+    CPU_t cpu_initial, cpu_run, cpu_final;
+    char cpu_state[1000];
     char *str = NULL;
 
     size_t len = 0;
     long test_num = 0, success_count = 0;
-    size_t id_idx = 0, fd_idx = 0;
+    size_t id_idx = 0, fd_idx = 0, i;
     bool failed = false;
 
     memory_t *mem = calloc(16777216, sizeof(*mem));
@@ -75,9 +74,10 @@ int main(int argc, char *argv[])
         getline(&cpu_fstr, &len, fp);
 
         // set up CPU
-        memset(&cpu_run, 0, sizeof(cpu_run));
+        memset(&cpu_initial, 0, sizeof(cpu_initial));
         memset(&cpu_final, 0, sizeof(cpu_final));
-        fromstrCPU(&cpu_run, cpu_istr);
+        fromstrCPU(&cpu_initial, cpu_istr);
+        memcpy(&cpu_run, &cpu_initial, sizeof(cpu_run));
         fromstrCPU(&cpu_final, cpu_fstr);
         stepCPU(&cpu_run, mem);
 
@@ -87,6 +87,23 @@ int main(int argc, char *argv[])
         else {
             ++success_count;
         }
+
+        if (failed) {
+            printf("Test failed! (%ld) : %s", test_num+1, test_name);
+            for (i = 0; i < id_idx; ++i) {
+                printf("i:%x:%x\n", input_data[i].addr, input_data[i].data);
+            }
+            for (i = 0; i < fd_idx; ++i) {
+                printf("f:%x:%x\n", output_data[i].addr, output_data[i].data);
+            }
+            tostrCPU(&cpu_initial, cpu_state);
+            printf("INITIAL  CPU: '%s'\n", cpu_state);
+            tostrCPU(&cpu_run, cpu_state);
+            printf("ACTUAL   CPU: '%s'\n", cpu_state);
+            tostrCPU(&cpu_final, cpu_state);
+            printf("EXPECTED CPU: '%s'\n", cpu_state);
+        }
+        
 
         // Reset memory
         while (fd_idx-- > 0) {
@@ -101,14 +118,6 @@ int main(int argc, char *argv[])
             _set_mem_byte(mem, input_data[id_idx].addr, input_data[id_idx].data, false);
         }
 
-        if (failed) {
-            printf("Test failed! (%ld) : %s", test_num+1, test_name);
-            tostrCPU(&cpu_run, cpu_state_run);
-            tostrCPU(&cpu_final, cpu_state_final);
-            printf("RUN CPU: '%s'\n", cpu_state_run);
-            printf("EXP CPU: '%s'\n", cpu_state_final);
-        }
-        
         test_num += 1;
 
         if (test_num & 0xffff == 0) {
