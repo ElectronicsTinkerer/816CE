@@ -111,7 +111,8 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     if (mode == CPU_ADDR_ABSX)
     {
         // Check if index crosses a page boundary
-        if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+        if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -119,7 +120,8 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
     {
         // Check if index crosses a page boundary
-        if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+        if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -187,7 +189,8 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -195,7 +198,8 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -421,11 +425,14 @@ void i_bit(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->cycles += 1;
         }
 
-        // If page boundary is crossed, add a cycle
-        if (mode == CPU_ADDR_ABSX &&
-            (_cpu_get_immd_word(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
+        if (mode == CPU_ADDR_ABSX)
         {
-            cpu->cycles += 1;
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
         }
     }
     else if (mode == CPU_ADDR_IMMD)
@@ -687,7 +694,8 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00)||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -695,7 +703,8 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00)||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -922,6 +931,15 @@ void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.Z = val ? 0 : 1;
             cpu->cycles += 2;
         }
+        if (mode == CPU_ADDR_ABSX)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
+        }
     }
 
     _cpu_update_pc(cpu, size);
@@ -1005,7 +1023,8 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00)||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -1013,7 +1032,8 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00)||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -1122,6 +1142,16 @@ void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.Z = val ? 0 : 1;
             cpu->cycles += 2;
         }
+        if (mode == CPU_ADDR_ABSX)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
+        }
+
     }
   
     _cpu_update_pc(cpu, size);
@@ -1227,13 +1257,6 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
 
     case CPU_ADDR_INDDPY:
-        // If page boundary is crossed, add a cycle
-        // getDirectPage() since this is the base address before Y is added
-        if ((_addrCPU_getDirectPage(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
-        {
-            cpu->cycles += 1;
-        }
-        /* Fallthrough! */
     case CPU_ADDR_DPIND:
     case CPU_ADDR_DPINDL:
     case CPU_ADDR_DPINDX:
@@ -1247,23 +1270,8 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSL:
     case CPU_ADDR_ABSLX:
     case CPU_ADDR_SRINDY:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
-        {
-            cpu->C = (cpu->C & 0xff00) | _get_mem_byte(mem, addr, cpu->setacc);
-        }
-        else
-        {
-            cpu->C = _get_mem_word(mem, addr, cpu->setacc);
-        }
-        break;
-
     case CPU_ADDR_ABSX:
     case CPU_ADDR_ABSY:
-        // If page boundary is crossed, add a cycle
-        if ((_cpu_get_immd_word(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
-        {
-            cpu->cycles += 1;
-        }
         if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             cpu->C = (cpu->C & 0xff00) | _get_mem_byte(mem, addr, cpu->setacc);
@@ -1271,6 +1279,25 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else
         {
             cpu->C = _get_mem_word(mem, addr, cpu->setacc);
+        }
+        
+        if (mode == CPU_ADDR_ABSX)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
+        }
+        else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
         }
         break;
     default:
@@ -1350,8 +1377,9 @@ void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             }
         }
 
-        // If page boundary is crossed, add a cycle
-        if (mode == CPU_ADDR_ABSY && (_cpu_get_immd_word(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
+        // Check if index crosses a page boundary
+        if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -1442,9 +1470,9 @@ void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             }
         }
 
-        // If page boundary is crossed, add a cycle
-        if (mode == CPU_ADDR_ABSX &&
-            (_cpu_get_immd_word(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
+        // Check if index crosses a page boundary
+        if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -1667,7 +1695,8 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -1675,7 +1704,8 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
             }
@@ -2278,7 +2308,8 @@ void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     if (mode == CPU_ADDR_ABSX)
     {
         // Check if index crosses a page boundary
-        if ((addr & 0xff00) != ((addr - cpu->X) & 0xff00))
+        if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -2286,7 +2317,8 @@ void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
     {
         // Check if index crosses a page boundary
-        if ((addr & 0xff00) != ((addr - cpu->Y) & 0xff00))
+        if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -2380,15 +2412,7 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             _set_mem_word_bank_wrap(mem, addr, cpu->C, cpu->setacc);
         }
         break;
-
     case CPU_ADDR_INDDPY:
-        // If page boundary is crossed, add a cycle
-        // getDirectPage() since this is the base address before Y is added
-        if ((_addrCPU_getDirectPage(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
-        {
-            cpu->cycles += 1;
-        }
-        /* Fallthrough! */
     case CPU_ADDR_DPIND:
     case CPU_ADDR_DPINDL:
     case CPU_ADDR_DPINDX:
@@ -2402,23 +2426,8 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     case CPU_ADDR_ABSL:
     case CPU_ADDR_ABSLX:
     case CPU_ADDR_SRINDY:
-        if (cpu->P.E || (!cpu->P.E && cpu->P.M))
-        {
-            _set_mem_byte(mem, addr, (uint8_t)cpu->C, cpu->setacc);
-        }
-        else
-        {
-            _set_mem_word(mem, addr, cpu->C, cpu->setacc);
-        }
-        break;
-
     case CPU_ADDR_ABSX:
     case CPU_ADDR_ABSY:
-        // If page boundary is crossed, add a cycle
-        if ((_cpu_get_immd_word(cpu, mem, cpu->setacc) & 0xff00) != (addr & 0xff00))
-        {
-            cpu->cycles += 1;
-        }
         if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             _set_mem_byte(mem, addr, (uint8_t)cpu->C, cpu->setacc);
@@ -2426,6 +2435,25 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else
         {
             _set_mem_word(mem, addr, cpu->C, cpu->setacc);
+        }
+
+        if (mode == CPU_ADDR_ABSX)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
+        }
+        else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
         }
         break;
     default:
@@ -2523,6 +2551,16 @@ void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             _set_mem_byte(mem, addr + 1, 0, cpu->setacc); // No bank wrapping
             cpu->cycles += 1;
         }
+        if (mode == CPU_ADDR_ABSX)
+        {
+            // Check if index crosses a page boundary
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
+                (!cpu->P.E && !cpu->P.XB))
+            {
+                cpu->cycles += 1;
+            }
+        }
+
     }
 
     cpu->cycles += cycles;
@@ -2942,3 +2980,4 @@ void i_xce(CPU_t *cpu)
     _cpu_update_pc(cpu, 1);
     cpu->cycles += 2;
 }
+
