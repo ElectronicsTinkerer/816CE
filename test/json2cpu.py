@@ -4,9 +4,10 @@ import json
 import sys
 
 if __name__ == "__main__":
-    with open("output.scpu", "w") as scpufp:
-        for i in sys.argv[1:]:
-            print("FILE:", i);
+    o = sys.argv[1]
+    with open(o, "w") as scpufp:
+        for i in sys.argv[2:]:
+            print("FILE:", i, "->", o)
             with open(i, "r") as jsonfp:
 
                 data = json.loads(jsonfp.read())
