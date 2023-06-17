@@ -24,9 +24,14 @@ run_test() {
     ./a.out "$TEST_FILE" > "$RSLT_FILE"
 }
 
-for i in {0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f}{0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f}; do
-    run_test "$i" &
-done
+if [ $# -eq 0 ]; then
+    for i in {0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f}{0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f}; do
+        run_test "$i" &
+    done
+else
+    run_test "$1" &
+fi
+
 
 wait
 
