@@ -143,8 +143,10 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr, cpu->setacc));
@@ -158,20 +160,24 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.Z = cpu->C ? 0 : 1;
             cpu->cycles += 1;
         }
-
+    
         // If DL != 0, add a cycle
         if (cpu->D & 0xff)
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-             mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
-             mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
-             mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_DPINDX ||
-             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
-             mode == CPU_ADDR_SRINDY)
-    {
+        break;
+    case CPU_ADDR_DPIND:
+    case CPU_ADDR_DPINDL:
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+    case CPU_ADDR_ABSY:
+    case CPU_ADDR_ABSL:
+    case CPU_ADDR_ABSLX:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPY:
+    case CPU_ADDR_INDDPLY:
+    case CPU_ADDR_SRINDY:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr, cpu->setacc));
@@ -185,7 +191,7 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.Z = cpu->C ? 0 : 1;
             cpu->cycles += 1;
         }
-
+    
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
@@ -214,9 +220,9 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-    }
-    else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
-    {
+        break;
+    case CPU_ADDR_IMMD:
+    case CPU_ADDR_SR:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) & _get_mem_byte(mem, addr, cpu->setacc));
@@ -233,6 +239,9 @@ void i_and(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 size += 1; // One extra byte in operand
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     cpu->cycles += cycles;
     _cpu_update_pc(cpu, size);
@@ -635,16 +644,19 @@ void i_clv(CPU_t *cpu)
 
 void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
-        mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
+    case CPU_ADDR_IMMD:
+    case CPU_ADDR_SR:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t res = (cpu->C & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
             cpu->P.N = (res & 0x80) ? 1 : 0;
             cpu->P.Z = res ? 0 : 1;
             cpu->P.C = ((cpu->C & 0xff) < res) ? 0 : 1;
-            
+                
         }
         else // 16-bit
         {
@@ -659,28 +671,32 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 size += 1; // One extra byte in operand
             }
         }
-
+    
         // If DL != 0, add a cycle
         if ((mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX) &&
             (cpu->D & 0xff) != 0)
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSL ||
-             mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_ABSX ||
-             mode == CPU_ADDR_ABSY || mode == CPU_ADDR_DPIND ||
-             mode == CPU_ADDR_DPINDL || mode == CPU_ADDR_INDDPY ||
-             mode == CPU_ADDR_DPINDX || mode == CPU_ADDR_INDDPLY ||
-             mode == CPU_ADDR_SRINDY)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSL:
+    case CPU_ADDR_ABSLX:
+    case CPU_ADDR_ABSX:
+    case CPU_ADDR_ABSY:
+    case CPU_ADDR_DPIND:
+    case CPU_ADDR_DPINDL:
+    case CPU_ADDR_INDDPY:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPLY:
+    case CPU_ADDR_SRINDY:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t res = (cpu->C & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
             cpu->P.N = (res & 0x80) ? 1 : 0;
             cpu->P.Z = res ? 0 : 1;
             cpu->P.C = ((cpu->C & 0xff) < res) ? 0 : 1;
-            
+                
         }
         else // 16-bit
         {
@@ -690,7 +706,7 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.C = (cpu->C < res) ? 0 : 1;
             cpu->cycles += 1;
         }
-
+    
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
@@ -709,7 +725,7 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-
+    
         // If DL != 0, add a cycle
         if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
              mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
@@ -718,6 +734,9 @@ void i_cmp(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     _cpu_update_pc(cpu, size);
     cpu->cycles += cycles;
@@ -764,8 +783,10 @@ void i_cop(CPU_t *cpu, memory_t *mem)
 
 void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_IMMD)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_IMMD:
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
             uint8_t res = (cpu->X & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
@@ -792,9 +813,8 @@ void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS)
-    {
+        break;
+    case CPU_ADDR_ABS:
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
             uint8_t res = (cpu->X & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
@@ -811,6 +831,9 @@ void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.C = (cpu->X < res) ? 0 : 1;
             cpu->cycles += 1;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     _cpu_update_pc(cpu, size);
     cpu->cycles += cycles;
@@ -818,8 +841,10 @@ void i_cpx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_cpy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_IMMD)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_IMMD:
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
             uint8_t res = (cpu->Y & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
@@ -845,9 +870,8 @@ void i_cpy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS)
-    {
+        break;
+    case CPU_ADDR_ABS:
         if (cpu->P.E || (!cpu->P.E && cpu->P.XB)) // 8-bit
         {
             uint8_t res = (cpu->Y & 0xff) - _get_mem_byte(mem, addr, cpu->setacc);
@@ -863,6 +887,9 @@ void i_cpy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
             cpu->P.C = (cpu->Y < res) ? 0 : 1;
             cpu->cycles += 1;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     _cpu_update_pc(cpu, size);
     cpu->cycles += cycles;
@@ -889,8 +916,10 @@ void i_dea(CPU_t *cpu)
 
 void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             uint8_t val = _get_mem_byte(mem, addr, cpu->setacc) - 1;
@@ -913,9 +942,9 @@ void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M))
         {
             uint8_t val = _get_mem_byte(mem, addr, cpu->setacc) - 1;
@@ -940,6 +969,9 @@ void i_dec(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     _cpu_update_pc(cpu, size);
@@ -986,8 +1018,10 @@ void i_dey(CPU_t *cpu)
 
 void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr, cpu->setacc));
@@ -1002,14 +1036,18 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-             mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
-             mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
-             mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_DPINDX ||
-             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
-             mode == CPU_ADDR_SRINDY)
-    {
+        break;
+    case CPU_ADDR_DPIND:
+    case CPU_ADDR_DPINDL:
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+    case CPU_ADDR_ABSY:
+    case CPU_ADDR_ABSL:
+    case CPU_ADDR_ABSLX:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPY:
+    case CPU_ADDR_INDDPLY:
+    case CPU_ADDR_SRINDY:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr, cpu->setacc));
@@ -1047,9 +1085,9 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-    }
-    else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
-    {
+        break;
+    case CPU_ADDR_IMMD:
+    case CPU_ADDR_SR:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) ^ _get_mem_byte(mem, addr, cpu->setacc));
@@ -1061,6 +1099,9 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 size += 1; // One extra byte in operand
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
@@ -1099,8 +1140,10 @@ void i_ina(CPU_t *cpu)
 
 void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t val = _get_mem_byte(mem, addr, cpu->setacc) + 1;
@@ -1123,9 +1166,9 @@ void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             uint8_t val = _get_mem_byte(mem, addr, cpu->setacc) + 1;
@@ -1150,7 +1193,9 @@ void i_inc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-
+        break;
+    default:
+        _cpu_crash(cpu);
     }
   
     _cpu_update_pc(cpu, size);
@@ -1322,8 +1367,10 @@ void i_lda(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPY)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPY:
         if (cpu->P.E)
         {
             cpu->X = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1350,9 +1397,9 @@ void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSY)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSY:
         if (cpu->P.E)
         {
             cpu->X = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1382,9 +1429,8 @@ void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_IMMD)
-    {
+        break;
+    case CPU_ADDR_IMMD:
         if (cpu->P.E)
         {
             cpu->X = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1408,6 +1454,9 @@ void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     cpu->cycles += cycles;
     _cpu_update_pc(cpu, size);
@@ -1415,8 +1464,10 @@ void i_ldx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E)
         {
             cpu->Y = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1443,9 +1494,9 @@ void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
         if (cpu->P.E)
         {
             cpu->Y = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1475,9 +1526,8 @@ void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_IMMD)
-    {
+        break;
+    case CPU_ADDR_IMMD:
         if (cpu->P.E)
         {
             cpu->Y = _get_mem_byte(mem, addr, cpu->setacc);
@@ -1501,6 +1551,9 @@ void i_ldy(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
     cpu->cycles += cycles;
     _cpu_update_pc(cpu, size);
@@ -1658,8 +1711,10 @@ void i_nop(CPU_t *cpu)
 
 void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr, cpu->setacc));
@@ -1674,14 +1729,18 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-             mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX ||
-             mode == CPU_ADDR_ABSY || mode == CPU_ADDR_ABSL ||
-             mode == CPU_ADDR_ABSLX || mode == CPU_ADDR_DPINDX ||
-             mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_INDDPLY ||
-             mode == CPU_ADDR_SRINDY)
-    {
+        break;
+    case CPU_ADDR_DPIND:
+    case CPU_ADDR_DPINDL:
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+    case CPU_ADDR_ABSY:
+    case CPU_ADDR_ABSL:
+    case CPU_ADDR_ABSLX:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPY:
+    case CPU_ADDR_INDDPLY:
+    case CPU_ADDR_SRINDY:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr, cpu->setacc));
@@ -1719,9 +1778,9 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-    }
-    else if (mode == CPU_ADDR_IMMD || mode == CPU_ADDR_SR)
-    {
+        break;
+    case CPU_ADDR_IMMD:
+    case CPU_ADDR_SR:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
             cpu->C = (cpu->C & 0xff00) | ((cpu->C & 0xff) | _get_mem_byte(mem, addr, cpu->setacc));
@@ -1733,6 +1792,9 @@ void i_ora(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 size += 1; // One extra byte in operand
             }
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
@@ -2483,8 +2545,10 @@ void i_sta(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_stx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPY)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPY:
         _set_mem_byte(mem, addr, cpu->X & 0xff, cpu->setacc);
         if (!cpu->P.E && !cpu->P.XB) // 16-bit
         {
@@ -2495,15 +2559,17 @@ void i_stx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS)
-    {
+        break;
+    case CPU_ADDR_ABS:
         _set_mem_byte(mem, addr, cpu->X & 0xff, cpu->setacc);
         if (!cpu->P.E && !cpu->P.XB) // 16-bit
         {
             _set_mem_byte(mem, addr + 1, (cpu->X >> 8) & 0xff, cpu->setacc); // No bank wrapping
             cpu->cycles += 1;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     cpu->cycles += cycles;
@@ -2512,8 +2578,10 @@ void i_stx(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_sty(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         _set_mem_byte(mem, addr, cpu->Y & 0xff, cpu->setacc);
         if (!cpu->P.E && !cpu->P.XB) // 16-bit
         {
@@ -2524,15 +2592,17 @@ void i_sty(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS)
-    {
+        break;
+    case CPU_ADDR_ABS:
         _set_mem_byte(mem, addr, cpu->Y & 0xff, cpu->setacc);
         if (!cpu->P.E && !cpu->P.XB) // 16-bit
         {
             _set_mem_byte(mem, addr + 1, (cpu->Y >> 8) & 0xff, cpu->setacc); // No bank wrapping
             cpu->cycles += 1;
         }
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     cpu->cycles += cycles;
@@ -2541,8 +2611,10 @@ void i_sty(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
-    if (mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX)
+    switch (mode)
     {
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
         _set_mem_byte(mem, addr, 0, cpu->setacc);
         if (!cpu->P.M) // 16-bit
         {
@@ -2553,9 +2625,9 @@ void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         {
             cpu->cycles += 1;
         }
-    }
-    else if (mode == CPU_ADDR_ABS || mode == CPU_ADDR_ABSX)
-    {
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
         _set_mem_byte(mem, addr, 0, cpu->setacc);
         if (!cpu->P.M) // 16-bit
         {
@@ -2571,7 +2643,9 @@ void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
                 cpu->cycles += 1;
             }
         }
-
+        break;
+    default:
+        _cpu_crash(cpu);
     }
 
     cpu->cycles += cycles;
