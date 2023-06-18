@@ -1933,7 +1933,7 @@ void i_pla(CPU_t *cpu, memory_t *mem)
 {
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit A
     {
-        cpu->C = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE, cpu->setacc);
+        cpu->C = (cpu->C & 0xff00) | _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE, cpu->setacc);
         cpu->cycles += 4;
         cpu->P.Z = ((cpu->C & 0xff) == 0);
         cpu->P.N = ((cpu->C & 0x80) == 0x80);
