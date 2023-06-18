@@ -304,7 +304,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x73: i_adc(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x74: i_stz(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
     case 0x75: i_adc(cpu, mem, 2, 4, CPU_ADDR_DPINDX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
-    case 0x76: i_ror(cpu, mem, 3, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
+    case 0x76: i_ror(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
     case 0x77: i_adc(cpu, mem, 2, 6, CPU_ADDR_INDDPLY, _addrCPU_getDirectPageIndirectLongIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x78: i_sei(cpu); break;
     case 0x79: i_adc(cpu, mem, 3, 4, CPU_ADDR_ABSY, _addrCPU_getAbsoluteIndexedY(cpu, mem, cpu->setacc)); break;
