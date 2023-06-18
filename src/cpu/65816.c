@@ -267,7 +267,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x4e: i_lsr(cpu, mem, 3, 6, CPU_ADDR_ABS, _addrCPU_getAbsolute(cpu, mem, cpu->setacc)); break;
     case 0x4f: i_eor(cpu, mem, 4, 5, CPU_ADDR_ABSL, _addrCPU_getLong(cpu, mem, cpu->setacc)); break;
     case 0x50: i_bvc(cpu, mem); break;
-    case 0x51: i_eor(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndexedY(cpu, mem, cpu->setacc)); break;
+    case 0x51: i_eor(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndirectIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x52: i_eor(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem, cpu->setacc)); break;
     case 0x53: i_eor(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x54: i_mvn(cpu, mem); break;
