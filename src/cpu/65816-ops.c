@@ -2174,6 +2174,13 @@ void i_rti(CPU_t *cpu, memory_t *mem)
     else
     {
         _cpu_set_sr(cpu, val);
+
+        if (cpu->P.XB) // Short X = zero top byte
+        {
+            cpu->X &= 0xff;
+            cpu->Y &= 0xff;
+        }
+        
         uint32_t data = _stackCPU_pop24(cpu, mem, cpu->setacc);
         cpu->PBR = (data & 0xff0000) >> 16;
         cpu->PC = data & 0xffff;
