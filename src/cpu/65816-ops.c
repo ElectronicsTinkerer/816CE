@@ -1017,7 +1017,6 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else // 16-bit
         {
             cpu->C = cpu->C ^ _get_mem_word(mem, addr, cpu->setacc);
-            cpu->cycles += 1;
         }
 
         if (mode == CPU_ADDR_ABSX)
