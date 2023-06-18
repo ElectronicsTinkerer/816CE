@@ -1039,14 +1039,19 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         break;
     case CPU_ADDR_DPIND:
     case CPU_ADDR_DPINDL:
+    case CPU_ADDR_DPINDX:
+    case CPU_ADDR_INDDPY:
+    case CPU_ADDR_INDDPLY:
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }        
     case CPU_ADDR_ABS:
     case CPU_ADDR_ABSX:
     case CPU_ADDR_ABSY:
     case CPU_ADDR_ABSL:
     case CPU_ADDR_ABSLX:
-    case CPU_ADDR_DPINDX:
-    case CPU_ADDR_INDDPY:
-    case CPU_ADDR_INDDPLY:
     case CPU_ADDR_SRINDY:
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
@@ -1060,7 +1065,7 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (mode == CPU_ADDR_ABSX)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00)||
+            if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
                 (!cpu->P.E && !cpu->P.XB))
             {
                 cpu->cycles += 1;
@@ -1069,18 +1074,8 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         else if (mode == CPU_ADDR_ABSY || mode == CPU_ADDR_INDDPY)
         {
             // Check if index crosses a page boundary
-            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00)||
+            if ((addr & 0xffff00) != ((addr - cpu->Y) & 0xffff00) ||
                 (!cpu->P.E && !cpu->P.XB))
-            {
-                cpu->cycles += 1;
-            }
-        }
-        if (mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-            mode == CPU_ADDR_DPINDX || mode == CPU_ADDR_INDDPY ||
-            mode == CPU_ADDR_INDDPLY)
-        {
-            // If DL != 0, add a cycle
-            if (cpu->D & 0xff)
             {
                 cpu->cycles += 1;
             }
