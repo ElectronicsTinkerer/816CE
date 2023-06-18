@@ -1915,15 +1915,20 @@ void i_pld(CPU_t *cpu, memory_t *mem)
 
 void i_plp(CPU_t *cpu, memory_t *mem)
 {
-    uint8_t sr = _cpu_get_sr(cpu);
     uint8_t val = _stackCPU_popByte(cpu, mem, CPU_ESTACK_ENABLE, cpu->setacc);
     if (cpu->P.E)
     {
-        _cpu_set_sr(cpu, (sr & 0x20) | (val & 0xdf)); // Bit 5 is unaffected by operation in emulation mode
+        _cpu_set_sr(cpu, 0x30 | val); // M and XB are forced to 1 <= http://6502.org/tutorials/65c816opcodes.html#6.8.3
     }
     else
     {
         _cpu_set_sr(cpu, val);
+
+        // Set X/Y to 8-bit
+        if (cpu->P.XB) {
+            cpu->X &= 0xff;
+            cpu->Y &= 0xff;
+        }
     }
     cpu->cycles += 4;
 
