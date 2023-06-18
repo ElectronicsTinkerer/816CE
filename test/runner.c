@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
     long test_num = 0, success_count = 0;
     size_t id_idx = 0, fd_idx = 0, i;
     bool failed = false;
+    uint8_t byte_val;
 
     memory_t *mem = calloc(16777216, sizeof(*mem));
 
@@ -92,7 +93,7 @@ int main(int argc, char *argv[])
         i = fd_idx;
         while (i-- > 0) {
             // Check for memory modifications
-            if (output_data[fd_idx].data != _get_mem_byte(mem, output_data[fd_idx].addr, false)) {
+            if (output_data[i].data != _get_mem_byte(mem, output_data[i].addr, false)) {
                 failed = true;
             }
         }
@@ -100,10 +101,15 @@ int main(int argc, char *argv[])
         if (failed) {
             printf("Test failed! (%ld) : %s", test_num+1, test_name);
             for (i = 0; i < id_idx; ++i) {
-                printf("i:%x:%x\n", input_data[i].addr, input_data[i].data);
+                printf("i:%06x:%02x\n", input_data[i].addr, input_data[i].data);
             }
             for (i = 0; i < fd_idx; ++i) {
-                printf("f:%x:%x\n", output_data[i].addr, output_data[i].data);
+                printf("f:%06x:%02x", output_data[i].addr, output_data[i].data);
+                byte_val = _get_mem_byte(mem, output_data[i].addr, false);
+                if (output_data[i].data    != byte_val) {
+                    printf(" (actual: %02x)", byte_val);
+                }
+                printf("\n");
             }
             tostrCPU(&cpu_initial, cpu_state);
             printf("INITIAL  CPU: '%s'\n", cpu_state);
