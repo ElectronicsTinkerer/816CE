@@ -13,7 +13,6 @@ fi
 
 
 run_test() {
-    echo "$1"
     TEST_FILE="$TEST_DIR/$1.scpu"
     RSLT_FILE="$RSLT_DIR/$1.out"
 
