@@ -2649,26 +2649,17 @@ void i_stz(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
 void i_tax(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.XB || cpu->P.E)
     {
         cpu->X = cpu->C & 0xff;
         cpu->P.Z = ((cpu->X & 0xff) == 0);
         cpu->P.N = ((cpu->X & 0x80) == 0x80);
     }
-    else
+    else // 16-bit X
     {
-        if (cpu->P.XB)
-        {
-            cpu->X = cpu->C & 0xff;
-            cpu->P.Z = ((cpu->X & 0xff) == 0);
-            cpu->P.N = ((cpu->X & 0x80) == 0x80);
-        }
-        else // 16-bit X
-        {
-            cpu->X = cpu->C;
-            cpu->P.Z = (cpu->X == 0);
-            cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
-        }
+        cpu->X = cpu->C;
+        cpu->P.Z = (cpu->X == 0);
+        cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
     }
 
     _cpu_update_pc(cpu, 1);
@@ -2677,26 +2668,17 @@ void i_tax(CPU_t *cpu)
 
 void i_tay(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.XB || cpu->P.E)
     {
         cpu->Y = cpu->C & 0xff;
         cpu->P.Z = ((cpu->Y & 0xff) == 0);
         cpu->P.N = ((cpu->Y & 0x80) == 0x80);
     }
-    else
+    else // 16-bit X
     {
-        if (cpu->P.XB)
-        {
-            cpu->Y = cpu->C & 0xff;
-            cpu->P.Z = ((cpu->Y & 0xff) == 0);
-            cpu->P.N = ((cpu->X & 0x80) == 0x80);
-        }
-        else // 16-bit X
-        {
-            cpu->Y = cpu->C;
-            cpu->P.Z = (cpu->Y == 0);
-            cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
-        }
+        cpu->Y = cpu->C;
+        cpu->P.Z = (cpu->Y == 0);
+        cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
     }
 
     _cpu_update_pc(cpu, 1);
@@ -2844,7 +2826,7 @@ void i_tsc(CPU_t *cpu)
 
 void i_tsx(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.XB || cpu->P.E)
     {
         cpu->X = cpu->SP & 0xff;
         cpu->P.Z = ((cpu->X & 0xff) == 0);
@@ -2852,18 +2834,9 @@ void i_tsx(CPU_t *cpu)
     }
     else
     {
-        if (cpu->P.XB)
-        {
-            cpu->X = cpu->SP & 0xff;
-            cpu->P.Z = ((cpu->X & 0xff) == 0);
-            cpu->P.N = ((cpu->X & 0x80) == 0x80);
-        }
-        else
-        {
-            cpu->X = cpu->SP & 0xffff;
-            cpu->P.Z = (cpu->X == 0);
-            cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
-        }
+        cpu->X = cpu->SP & 0xffff;
+        cpu->P.Z = (cpu->X == 0);
+        cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
     }
 
     _cpu_update_pc(cpu, 1);
@@ -2872,32 +2845,23 @@ void i_tsx(CPU_t *cpu)
 
 void i_txa(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.M || cpu->P.E) // 8-bit A and 8/16-bit X
     {
-        cpu->C = cpu->X & 0xff;
+        cpu->C = (cpu->X & 0xff) | (cpu->C & 0xff00);
         cpu->P.Z = ((cpu->C & 0xff) == 0);
         cpu->P.N = ((cpu->C & 0x80) == 0x80);
     }
-    else
+    else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
     {
-        if (cpu->P.M) // 8-bit A and 8/16-bit X
-        {
-            cpu->C = (cpu->X & 0xff) | (cpu->C & 0xff00);
-            cpu->P.Z = ((cpu->C & 0xff) == 0);
-            cpu->P.N = ((cpu->C & 0x80) == 0x80);
-        }
-        else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
-        {
-            cpu->C = cpu->X & 0xff;
-            cpu->P.Z = ((cpu->C & 0xff) == 0);
-            cpu->P.N = ((cpu->C & 0x80) == 0x80);
-        }
-        else // 16-bit A and X
-        {
-            cpu->C = cpu->X;
-            cpu->P.Z = (cpu->C == 0);
-            cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
-        }
+        cpu->C = cpu->X & 0xff;
+        cpu->P.Z = (cpu->C == 0);
+        cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+    }
+    else // 16-bit A and X
+    {
+        cpu->C = cpu->X;
+        cpu->P.Z = (cpu->C == 0);
+        cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
     }
 
     _cpu_update_pc(cpu, 1);
@@ -2927,59 +2891,42 @@ void i_txs(CPU_t *cpu)
 
 void i_txy(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.XB || cpu->P.E)
     {
         cpu->Y = cpu->X & 0xff;
         cpu->P.Z = ((cpu->Y & 0xff) == 0);
         cpu->P.N = ((cpu->Y & 0x80) == 0x80);
     }
-    else
+    else // 16-bit
     {
-        if (cpu->P.XB)
-        {
-            cpu->Y = cpu->X & 0xff;
-            cpu->P.Z = ((cpu->Y & 0xff) == 0);
-            cpu->P.N = ((cpu->Y & 0x80) == 0x80);
-        }
-        else // 16-bit
-        {
-            cpu->Y = cpu->X;
-            cpu->P.Z = (cpu->Y == 0);
-            cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
-        }
+        cpu->Y = cpu->X;
+        cpu->P.Z = (cpu->Y == 0);
+        cpu->P.N = ((cpu->Y & 0x8000) == 0x8000);
     }
+
     _cpu_update_pc(cpu, 1);
     cpu->cycles += 2;
 }
 
 void i_tya(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.M || cpu->P.E) // 8-bit A and 8/16-bit X
     {
-        cpu->C = cpu->Y & 0xff;
+        cpu->C = (cpu->Y & 0xff) | (cpu->C & 0xff00);
         cpu->P.Z = ((cpu->C & 0xff) == 0);
         cpu->P.N = ((cpu->C & 0x80) == 0x80);
     }
-    else
+    else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
     {
-        if (cpu->P.M) // 8-bit A and 8/16-bit X
-        {
-            cpu->C = (cpu->Y & 0xff) | (cpu->C & 0xff00);
-            cpu->P.Z = ((cpu->C & 0xff) == 0);
-            cpu->P.N = ((cpu->C & 0x80) == 0x80);
-        }
-        else if (cpu->P.XB && !cpu->P.M) // 8-bit X, 16-bit A
-        {
-            cpu->C = cpu->Y & 0xff;
-            cpu->P.Z = ((cpu->C & 0xff) == 0);
-            cpu->P.N = ((cpu->C & 0x80) == 0x80);
-        }
-        else // 16-bit A and X
-        {
-            cpu->C = cpu->Y;
-            cpu->P.Z = (cpu->C == 0);
-            cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
-        }
+        cpu->C = cpu->Y & 0xff;
+        cpu->P.Z = (cpu->C == 0);
+        cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
+    }
+    else // 16-bit A and X
+    {
+        cpu->C = cpu->Y;
+        cpu->P.Z = (cpu->C == 0);
+        cpu->P.N = ((cpu->C & 0x8000) == 0x8000);
     }
 
     _cpu_update_pc(cpu, 1);
@@ -2988,27 +2935,19 @@ void i_tya(CPU_t *cpu)
 
 void i_tyx(CPU_t *cpu)
 {
-    if (cpu->P.E)
+    if (cpu->P.XB || cpu->P.E)
     {
         cpu->X = cpu->Y & 0xff;
         cpu->P.Z = ((cpu->X & 0xff) == 0);
         cpu->P.N = ((cpu->X & 0x80) == 0x80);
     }
-    else
+    else // 16-bit
     {
-        if (cpu->P.XB)
-        {
-            cpu->X = cpu->Y & 0xff;
-            cpu->P.Z = ((cpu->X & 0xff) == 0);
-            cpu->P.N = ((cpu->X & 0x80) == 0x80);
-        }
-        else // 16-bit
-        {
-            cpu->X = cpu->Y;
-            cpu->P.Z = (cpu->X == 0);
-            cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
-        }
+        cpu->X = cpu->Y;
+        cpu->P.Z = (cpu->X == 0);
+        cpu->P.N = ((cpu->X & 0x8000) == 0x8000);
     }
+
     _cpu_update_pc(cpu, 1);
     cpu->cycles += 2;
 }
