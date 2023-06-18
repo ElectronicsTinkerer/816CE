@@ -112,7 +112,7 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     {
         // Check if index crosses a page boundary
         if ((addr & 0xffff00) != ((addr - cpu->X) & 0xffff00) ||
-                (!cpu->P.E && !cpu->P.XB))
+            (!cpu->P.E && !cpu->P.XB))
         {
             cpu->cycles += 1;
         }
@@ -129,9 +129,9 @@ void i_adc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     // If DL != 0, add a cycle
     if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-            mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
-            mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
-            mode == CPU_ADDR_INDDPLY) &&
+         mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+         mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
+         mode == CPU_ADDR_INDDPLY) &&
         (cpu->D & 0xff) != 0)
     {
         cpu->cycles += 1;
@@ -253,61 +253,61 @@ void i_asl(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
     uint16_t pre_data = 0;
     switch (mode)
     {
-        case CPU_ADDR_DP:
-        case CPU_ADDR_DPX:
-            pre_data = _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
+    case CPU_ADDR_DP:
+    case CPU_ADDR_DPX:
+        pre_data = _get_mem_word_bank_wrap(mem, addr, cpu->setacc);
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
-            {
-                post_data = ((pre_data << 1) & 0xff);
-                _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
-            }
-            else // 16-bit
-            {
-                post_data = pre_data << 1;
-                _set_mem_word_bank_wrap(mem, addr, post_data, cpu->setacc);
-                cpu->cycles += 2;
-            }
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff);
+            _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
+        }
+        else // 16-bit
+        {
+            post_data = pre_data << 1;
+            _set_mem_word_bank_wrap(mem, addr, post_data, cpu->setacc);
+            cpu->cycles += 2;
+        }
 
-            // If DL != 0, add a cycle
-            if (cpu->D & 0xff)
-            {
-                cpu->cycles += 1;
-            }
-            break;
-        case CPU_ADDR_ABS:
-        case CPU_ADDR_ABSX:
-            pre_data = _get_mem_word(mem, addr, cpu->setacc);
+        // If DL != 0, add a cycle
+        if (cpu->D & 0xff)
+        {
+            cpu->cycles += 1;
+        }
+        break;
+    case CPU_ADDR_ABS:
+    case CPU_ADDR_ABSX:
+        pre_data = _get_mem_word(mem, addr, cpu->setacc);
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
-            {
-                post_data = ((pre_data << 1) & 0xff);
-                _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
-            }
-            else // 16-bit
-            {
-                post_data = pre_data << 1;
-                _set_mem_word(mem, addr, post_data, cpu->setacc);
-                cpu->cycles += 2;
-            }
-            break;
-        case CPU_ADDR_IMPD:
-            pre_data = cpu->C;
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff);
+            _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
+        }
+        else // 16-bit
+        {
+            post_data = pre_data << 1;
+            _set_mem_word(mem, addr, post_data, cpu->setacc);
+            cpu->cycles += 2;
+        }
+        break;
+    case CPU_ADDR_IMPD:
+        pre_data = cpu->C;
 
-            if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
-            {
-                post_data = ((pre_data << 1) & 0xff);
-                cpu->C = (cpu->C & 0xff00) | post_data;
-            }
-            else // 16-bit
-            {
-                post_data = pre_data << 1;
-                cpu->C = post_data;
-            }
-            break;
-        default:
-            _cpu_crash(cpu);
-            break;
+        if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
+        {
+            post_data = ((pre_data << 1) & 0xff);
+            cpu->C = (cpu->C & 0xff00) | post_data;
+        }
+        else // 16-bit
+        {
+            post_data = pre_data << 1;
+            cpu->C = post_data;
+        }
+        break;
+    default:
+        _cpu_crash(cpu);
+        break;
     }
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
@@ -2399,9 +2399,9 @@ void i_sbc(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     // If DL != 0, add a cycle
     if ((mode == CPU_ADDR_DPIND || mode == CPU_ADDR_DPINDL ||
-            mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
-            mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
-            mode == CPU_ADDR_INDDPLY) &&
+         mode == CPU_ADDR_INDDPY || mode == CPU_ADDR_DPINDX ||
+         mode == CPU_ADDR_DP || mode == CPU_ADDR_DPX ||
+         mode == CPU_ADDR_INDDPLY) &&
         (cpu->D & 0xff) != 0)
     {
         cpu->cycles += 1;
