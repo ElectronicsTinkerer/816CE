@@ -1219,11 +1219,11 @@ void i_jsr(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint
     cpu->cycles += cycles;
 }
 
-void i_jsl(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+void i_jsl(CPU_t *cpu, memory_t *mem, uint8_t cycles, uint32_t addr)
 {
     uint32_t ret_addr = _addr_add_val_bank_wrap(_cpu_get_effective_pc(cpu), 3);
     _stackCPU_push24(cpu, mem, ret_addr, cpu->setacc);
-    cpu->PBR = _get_mem_byte(mem, (addr >> 16) & 0xff, cpu->setacc);
+    cpu->PBR = (addr >> 16) & 0xff;
     cpu->PC = addr & 0xffff;
     cpu->cycles += cycles;
 }
