@@ -886,7 +886,7 @@ uint32_t _addrCPU_getRelative8(CPU_t *cpu, memory_t *mem, bool setacc)
  */
 uint32_t _addrCPU_getRelative16(CPU_t *cpu, memory_t *mem, bool setacc)
 {
-    uint32_t offset = _cpu_get_immd_byte(cpu, mem, setacc);
+    uint32_t offset = _cpu_get_immd_word(cpu, mem, setacc);
     if (offset & 0x8000)
     {
         offset |= 0xffff0000; // Sign extension
