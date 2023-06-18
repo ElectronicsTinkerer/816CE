@@ -2148,7 +2148,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
-            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            post_data = ((pre_data >> 1) & 0x7f) | (cpu->P.C << 7);
             _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
         }
         else // 16-bit
@@ -2170,7 +2170,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
-            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            post_data = ((pre_data >> 1) & 0x7f) | (cpu->P.C << 7);
             _set_mem_byte(mem, addr, (uint8_t)post_data, cpu->setacc);
         }
         else // 16-bit
@@ -2185,7 +2185,7 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
         if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
         {
-            post_data = ((pre_data >> 1) & 0xff) | (cpu->P.C << 7);
+            post_data = ((pre_data >> 1) & 0x7f) | (cpu->P.C << 7);
             cpu->C = (cpu->C & 0xff00) | post_data;
         }
         else // 16-bit
@@ -2201,13 +2201,13 @@ void i_ror(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
 
     if (cpu->P.E || (!cpu->P.E && cpu->P.M)) // 8-bit
     {
-        cpu->P.C = (pre_data & 0x80) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x01) ? 1 : 0;
         cpu->P.N = (post_data & 0x80) ? 1 : 0;
         cpu->P.Z = (post_data & 0xff) ? 0 : 1;
     }
     else // 16-bit
     {
-        cpu->P.C = (pre_data & 0x8000) ? 1 : 0;
+        cpu->P.C = (pre_data & 0x0001) ? 1 : 0;
         cpu->P.N = (post_data & 0x8000) ? 1 : 0;
         cpu->P.Z = post_data ? 0 : 1;
     }
