@@ -206,7 +206,7 @@ CPU_Error_Code_t stepCPU(CPU_t *cpu, memory_t *mem)
     case 0x11: i_ora(cpu, mem, 2, 5, CPU_ADDR_INDDPY, _addrCPU_getDirectPageIndirectIndexedY(cpu, mem, cpu->setacc)); break;
     case 0x12: i_ora(cpu, mem, 2, 5, CPU_ADDR_DPIND, _addrCPU_getDirectPageIndirect(cpu, mem, cpu->setacc)); break;
     case 0x13: i_ora(cpu, mem, 2, 7, CPU_ADDR_SRINDY, _addrCPU_getStackRelativeIndirectIndexedY(cpu, mem, cpu->setacc)); break;
-    case 0x14: i_tsb(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem, cpu->setacc)); break;
+    case 0x14: i_trb(cpu, mem, 2, 5, CPU_ADDR_DP, _addrCPU_getDirectPage(cpu, mem, cpu->setacc)); break;
     case 0x15: i_ora(cpu, mem, 2, 4, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
     case 0x16: i_asl(cpu, mem, 2, 6, CPU_ADDR_DPX, _addrCPU_getDirectPageIndexedX(cpu, mem, cpu->setacc)); break;
     case 0x17: i_ora(cpu, mem, 2, 6, CPU_ADDR_INDDPLY, _addrCPU_getDirectPageIndirectLongIndexedY(cpu, mem, cpu->setacc)); break;
