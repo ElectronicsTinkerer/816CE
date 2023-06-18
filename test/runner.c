@@ -88,6 +88,15 @@ int main(int argc, char *argv[])
             ++success_count;
         }
 
+        // Check memory
+        i = fd_idx;
+        while (i-- > 0) {
+            // Check for memory modifications
+            if (output_data[fd_idx].data != _get_mem_byte(mem, output_data[fd_idx].addr, false)) {
+                failed = true;
+            }
+        }
+
         if (failed) {
             printf("Test failed! (%ld) : %s", test_num+1, test_name);
             for (i = 0; i < id_idx; ++i) {
@@ -103,15 +112,9 @@ int main(int argc, char *argv[])
             tostrCPU(&cpu_final, cpu_state);
             printf("EXPECTED CPU: '%s'\n", cpu_state);
         }
-        
 
         // Reset memory
         while (fd_idx-- > 0) {
-            // Check for memory modifications
-            if (output_data[fd_idx].data != _get_mem_byte(mem, output_data[fd_idx].addr, false)) {
-                failed = true;
-            }
-
             _set_mem_byte(mem, output_data[fd_idx].addr, output_data[fd_idx].data, false);
         }
         while (id_idx-- > 0) {
