@@ -690,7 +690,7 @@ uint32_t _addrCPU_getDirectPageIndirect(CPU_t *cpu, memory_t *mem, bool setacc)
     }
     else
     {
-        address = _addr_add_val_page_wrap(cpu->D, address);
+        address = _addr_add_val_bank_wrap(cpu->D, address);
         address = _get_mem_word_bank_wrap(mem, address, setacc); // 16-bit pointer
     }
     address |= _cpu_get_dbr(cpu);
