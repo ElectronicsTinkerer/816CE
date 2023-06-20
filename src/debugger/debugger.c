@@ -285,6 +285,9 @@ void print_cpu_hist(hist_t *hist)
             if (pcpu->Y != ccpu->Y) {
                 str_index += sprintf(buf + str_index, " Y:%04x->%04x", pcpu->Y, ccpu->Y);
             }
+            if (pcpu->SP != ccpu->SP) {
+                str_index += sprintf(buf + str_index, " SP:%04x->%04x", pcpu->SP, ccpu->SP);
+            }
             if (pcpu->D != ccpu->D) {
                 str_index += sprintf(buf + str_index, " D:%04x->%04x", pcpu->D, ccpu->D);
             }
