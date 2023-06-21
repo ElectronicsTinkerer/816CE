@@ -791,8 +791,8 @@ uint32_t _addrCPU_getDirectPageIndexedY(CPU_t *cpu, memory_t *mem, bool setacc)
     }
     else
     {
-        _addr_add_val_bank_wrap(address, cpu->D);
-        _addr_add_val_bank_wrap(address, cpu->Y);
+        address = _addr_add_val_bank_wrap(address, cpu->D);
+        address = _addr_add_val_bank_wrap(address, cpu->Y);
     }
 
     return address;
