@@ -55,6 +55,7 @@ Available commands
  > uart [type] aaaaaa (pppp)
  ? ... Help Menu
  ^G to clear command input
+ ^P|^N to scroll through history
 ```
 
 Some explanation:
