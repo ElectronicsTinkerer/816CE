@@ -19,6 +19,7 @@ results
 *.scpu
 *.cmd
 *.bin
+.sim_history
 
 # Editor
 .emacs.desktop

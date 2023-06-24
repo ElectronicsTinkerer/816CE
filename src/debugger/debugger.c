@@ -661,6 +661,7 @@ void command_clear(cmd_t *cmd_data)
         cmd_data->cmdbuf[i] = '\0';
     }
     cmd_data->cmdbuf_index = 0;
+    cmd_data->stack_index = 0;
 
     // Redraw cursor
     wattron(cmd_data->win, A_BOLD | A_BLINK);
@@ -728,6 +729,7 @@ bool command_entry(cmd_t *cmd_data, int c)
                 cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
                 cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
                 mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
+                wclrtoeol(cmd_data->win);
             }
 
             if (cmd_data->stack_index == 0) {
@@ -747,6 +749,7 @@ bool command_entry(cmd_t *cmd_data, int c)
             cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
             cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
             mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
+            wclrtoeol(cmd_data->win);
         }
         else {
             beep();
@@ -1884,9 +1887,29 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Command line parsing
     printf("Loading simulator...\n");
 
+    // See if there's a history file available.
+    // If so, then load it into the history stack
+    FILE *ifp = fopen(CMD_HIST_FILE, "r");
+    if (!ifp) {
+        printf("No history to load.\n");
+    }
+    else {
+        char buf[MAX_CMD_LEN + 1];
+        char *_buf;
+        int len;
+        while (fgets(buf, MAX_CMD_LEN + 1, ifp)) {
+            len = strcspn(buf, "\n\r");
+            buf[len] = '\0'; // Remove newline
+            _buf = malloc(sizeof(*_buf) * (len + 1));
+            strcpy(_buf, buf);
+            histr_stack_push(cmd_data.stack, _buf);
+        }
+        fclose(ifp);
+    }
+
+    // Command line parsing
     {
         uint32_t base_addr = 0;
         int cli_pstate = 0;
@@ -2373,7 +2396,21 @@ int main(int argc, char *argv[])
 
     printf("Stopped simulator\n");
 
+    // Save command history
     char *cmd;
+    FILE *ofp = fopen(CMD_HIST_FILE, "w");
+    if (!ofp) {
+        printf("Unable to save history.\n");
+    }
+    else {
+        for (int i = CMD_HIST_ENTRIES - 1; i >= 0; --i) {
+            if (!histr_stack_peeki(cmd_data.stack, &cmd, i)) {
+                fprintf(ofp, "%s\n", cmd);
+            }
+        }
+        fclose(ofp);
+    }
+    
     while (!histr_stack_pop(cmd_data.stack, &cmd)) {
         free(cmd);
     }

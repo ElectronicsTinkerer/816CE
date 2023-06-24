@@ -8,13 +8,15 @@ TODO:
 * Figure out why the program black screen freezes on startup sometimes
   - Update (2023-06-10): I have not had this happen in a long time; it may be fixed
 * Instruction history has blank space at top if all are NOPs/BRKs (i.e. nothing's changing)
-* Add command history
+  - Update (2023-06-24): This happens when the instr hist. is taller than the max inst hist
+                         memory depth. 
 * Update cli parser to use option-parser from SLIME
 * Look into nl()/nonl() in ncurses
 * Allow multiple symbols at same address
 * Disassembler to use symbol table for operands
 * Clean up build system
 * Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
+* Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
 
 TODONE:
 * Help menu (multi-level)
@@ -47,4 +49,5 @@ TODONE:
 * Move cpu core into its own folder
 * Fix bug where `mw2 mem c000` causes a blank window to appear
 * Allow loading a symbol list file for breakpoints
+* Add command history
 
