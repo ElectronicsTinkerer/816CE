@@ -196,7 +196,7 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
         return;
     }
     else { // Otherwise, increment the circular buffer's pointer
-        lines = CMD_HIST_ENTRIES;
+        lines = CPU_HIST_ENTRIES;
         if (hist->entry_count < lines) {
             i = hist->entry_count;
 
