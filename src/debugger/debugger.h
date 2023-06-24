@@ -20,11 +20,11 @@
 #define KEY_ESCAPE 27
 #define KEY_DELETE 127
 
-#define MAX_CMD_LEN 40
+#define MAX_CMD_LEN 60
 
 #define CMD_DISP_X_OFFS 4
 
-#define CMD_HIST_ENTRIES 20
+#define CPU_HIST_ENTRIES 40
 
 #define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 9463 // A big number
 
@@ -64,8 +64,8 @@ typedef struct hist_t {
     int win_width;
     int entry_count;
     int entry_start;
-    CPU_t cpu[CMD_HIST_ENTRIES];
-    memory_t mem[CMD_HIST_ENTRIES][4];
+    CPU_t cpu[CPU_HIST_ENTRIES];
+    memory_t mem[CPU_HIST_ENTRIES][4];
 } hist_t;
     
 
