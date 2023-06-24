@@ -15,6 +15,8 @@
 #define KEY_CTRL_C 3
 #define KEY_CTRL_G 7
 #define KEY_CTRL_H 8
+#define KEY_CTRL_N 14
+#define KEY_CTRL_P 16
 #define KEY_CTRL_X 24
 #define KEY_CR 10
 #define KEY_ESCAPE 27
@@ -23,6 +25,7 @@
 #define MAX_CMD_LEN 60
 
 #define CMD_DISP_X_OFFS 4
+#define CMD_HIST_ENTRIES 100 // Number of entries to keep in the command history when leaving
 
 #define CPU_HIST_ENTRIES 40
 
@@ -30,6 +33,10 @@
 
 #define REPLACE_INST true
 #define PUSH_INST false
+
+#define STACK_DATA_T char*
+#define STACK_DATA_NAME histr
+#include "../util/stack.h"
 
 typedef enum memory_fmt_t {
     MF_BASIC_BIN_BLOCK,
@@ -67,7 +74,15 @@ typedef struct hist_t {
     CPU_t cpu[CPU_HIST_ENTRIES];
     memory_t mem[CPU_HIST_ENTRIES][4];
 } hist_t;
-    
+
+// Command entry structure
+typedef struct cmd_t {
+    WINDOW *win;
+    char cmdbuf[MAX_CMD_LEN];
+    size_t cmdbuf_index;
+    size_t stack_index;
+    histr_stack_t *stack;
+} cmd_t;
 
 // Command input error codes
 // Keep in sync with the cmd_err_msgs[] array in debugger.c

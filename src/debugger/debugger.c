@@ -65,7 +65,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 36, "Unknown symbol or invalid value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 19, 43, "Available commands\n"
+    {"HELP", 20, 43, "Available commands\n"
      " > exit|quit ... Close simulator\n"
      " > mw[1|2] [mem|asm] (pc|addr)\n"
      " > mw[1|2] aaaaaa\n"
@@ -81,7 +81,8 @@ cmd_err_msg cmd_err_msgs[] = {
      " > bp aaaaaa\n"
      " > uart [type] aaaaaa (pppp)\n"
      " ? ... Help Menu\n"
-     " ^G to clear command input"},
+     " ^G to clear command input\n"
+     " ^P|^N to scroll through history"},
     {"HELP?", 3, 13, "Not help."},
     {"ERROR!", 3, 34, "Unknown character encountered."},
     {"ERROR!", 3, 30, "Overflow in numeric value."},
@@ -651,24 +652,24 @@ cmd_err_t load_file_cpu(char *filename, CPU_t *cpu)
  * @param *cmdbuf The command input buffer
  * @param *cmdbuf_index The current command input buffer index
  */
-void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
+void command_clear(cmd_t *cmd_data)
 {
-    wmove(win, 1, CMD_DISP_X_OFFS);
-    wclrtoeol(win);
+    wmove(cmd_data->win, 1, CMD_DISP_X_OFFS);
+    wclrtoeol(cmd_data->win);
 
     for (size_t i = 1; i < MAX_CMD_LEN + 1; ++i) {
-        cmdbuf[i] = '\0';
+        cmd_data->cmdbuf[i] = '\0';
     }
-    *cmdbuf_index = 0;
+    cmd_data->cmdbuf_index = 0;
 
     // Redraw cursor
-    wattron(win, A_BOLD | A_BLINK);
-    mvwaddch(win, 1, CMD_DISP_X_OFFS, '_');
-    wattroff(win, A_BOLD | A_BLINK);
+    wattron(cmd_data->win, A_BOLD | A_BLINK);
+    mvwaddch(cmd_data->win, 1, CMD_DISP_X_OFFS, '_');
+    wattroff(cmd_data->win, A_BOLD | A_BLINK);
 
-    wattron(win, A_DIM);
-    wprintw(win, " ? to view command list");
-    wattroff(win, A_DIM);
+    wattron(cmd_data->win, A_DIM);
+    wprintw(cmd_data->win, " ? to view command list");
+    wattroff(cmd_data->win, A_DIM);
 }
 
 
@@ -682,44 +683,93 @@ void command_clear(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index)
  * @return true if command should be executed
  *         false if command not complete
  */
-bool command_entry(WINDOW *win, char *cmdbuf, size_t *cmdbuf_index, int c)
+bool command_entry(cmd_t *cmd_data, int c)
 {
     if (c == KEY_CR) {
-        cmdbuf[*cmdbuf_index] = '\0';
+        cmd_data->cmdbuf[cmd_data->cmdbuf_index] = '\0';
+        cmd_data->stack_index = 0;
+        char *cmd;
+        // Only add command to history if not a repeat of the last command,
+        // taking into account the possibility of an empty stack
+        if (histr_stack_peek(cmd_data->stack, &cmd) || strcmp(cmd_data->cmdbuf, cmd) != 0) {
+            cmd = malloc(sizeof(*cmd) * (cmd_data->cmdbuf_index + 1));
+            strcpy(cmd, cmd_data->cmdbuf);
+            histr_stack_push(cmd_data->stack, cmd);
+        }
         return true;
     }
 
     // Make sure the command line is cleared if typing
-    if (*cmdbuf_index == 0) {
-        wmove(win, 1, CMD_DISP_X_OFFS);
-        wclrtoeol(win);
+    if (cmd_data->cmdbuf_index == 0) {
+        wmove(cmd_data->win, 1, CMD_DISP_X_OFFS);
+        wclrtoeol(cmd_data->win);
     }
 
-    wattron(win, A_BOLD);
+    wattron(cmd_data->win, A_BOLD);
 
+    // Backspace
     if (c == KEY_BACKSPACE || c == KEY_CTRL_H || c == KEY_DELETE) {
-        if (*cmdbuf_index > 0) {
-            mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, ' '); // Erase cursor
-            cmdbuf[*cmdbuf_index] = '\0';
-            --*cmdbuf_index;
+        if (cmd_data->cmdbuf_index > 0) {
+            mvwaddch(cmd_data->win, 1, cmd_data->cmdbuf_index + CMD_DISP_X_OFFS, ' '); // Erase cursor
+            cmd_data->cmdbuf[cmd_data->cmdbuf_index] = '\0';
+            --(cmd_data->cmdbuf_index);
         }
     }
-    else if (*cmdbuf_index < MAX_CMD_LEN - 1) {
-        cmdbuf[*cmdbuf_index] = (char)c;
-        mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, cmdbuf[*cmdbuf_index]);
-        ++*cmdbuf_index;
+    // Scroll through history (forward)
+    else if (c == KEY_CTRL_N) {
+        if (cmd_data->stack_index == 0) {
+            beep();
+        }
+        else {
+            char *cmd;
+            --(cmd_data->stack_index);            
+            if (!histr_stack_peeki(cmd_data->stack, &cmd, cmd_data->stack_index - 1)) {
+                strncpy(cmd_data->cmdbuf, cmd, MAX_CMD_LEN);
+                cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
+                cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
+                mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
+            }
+
+            if (cmd_data->stack_index == 0) {
+                // Back to top of entry history
+                wmove(cmd_data->win, 1, CMD_DISP_X_OFFS);
+                wclrtoeol(cmd_data->win);
+                cmd_data->cmdbuf_index = 0;
+            }
+        }
+    }
+    // Scroll through history (backward)
+    else if (c == KEY_CTRL_P) {
+        ++(cmd_data->stack_index);
+        char *cmd;
+        if (!histr_stack_peeki(cmd_data->stack, &cmd, cmd_data->stack_index - 1)) {
+            strncpy(cmd_data->cmdbuf, cmd, MAX_CMD_LEN);
+            cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
+            cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
+            mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
+        }
+        else {
+            beep();
+            --(cmd_data->stack_index);
+        }
+    }
+    // Generic char, just add to buffer
+    else if (cmd_data->cmdbuf_index < MAX_CMD_LEN - 1) {
+        cmd_data->cmdbuf[cmd_data->cmdbuf_index] = (char)c;
+        mvwaddch(cmd_data->win, 1, cmd_data->cmdbuf_index + CMD_DISP_X_OFFS, cmd_data->cmdbuf[cmd_data->cmdbuf_index]);
+        ++(cmd_data->cmdbuf_index);
     }
 
-    wattron(win, A_BLINK);
-    mvwaddch(win, 1, (*cmdbuf_index) + CMD_DISP_X_OFFS, '_');
+    wattron(cmd_data->win, A_BLINK);
+    mvwaddch(cmd_data->win, 1, cmd_data->cmdbuf_index + CMD_DISP_X_OFFS, '_');
 
-    wattroff(win, A_BOLD | A_BLINK);
+    wattroff(cmd_data->win, A_BOLD | A_BLINK);
 
     // Print basic help
-    if (*cmdbuf_index == 0) {
-        wattron(win, A_DIM);
-        wprintw(win, " ? to view command list");
-        wattroff(win, A_DIM);
+    if (cmd_data->cmdbuf_index == 0) {
+        wattron(cmd_data->win, A_DIM);
+        wprintw(cmd_data->win, " ? to view command list");
+        wattroff(cmd_data->win, A_DIM);
     }
     return false;
 }
@@ -798,7 +848,16 @@ cmd_err_t command_execute_watch(watch_t *watch, char* tok, symbol_table_t *symbo
  * @param *uart 16C750 UART device
  * @return True if an error occured, false otherwise
  */
-cmd_status_t command_execute(cmd_err_t *status, char *_cmdbuf, int cmdbuf_index, watch_t *watch1, watch_t *watch2, CPU_t *cpu, memory_t *mem, symbol_table_t *symbol_table, tl16c750_t *uart)
+cmd_status_t command_execute( cmd_err_t *status,
+                              char *_cmdbuf,
+                              int cmdbuf_index,
+                              watch_t *watch1,
+                              watch_t *watch2,
+                              CPU_t *cpu,
+                              memory_t *mem,
+                              symbol_table_t *symbol_table,
+                              tl16c750_t *uart
+    )
 {
     if (cmdbuf_index == 0) {
         *status = CMD_OK; // No command
@@ -1709,6 +1768,21 @@ void hist_init(hist_t *h)
 }
 
 
+/**
+ * Initialize a command entry and history structu
+ *
+ * @param *d The struct to initialize
+ */
+void cmd_hist_init(cmd_t *d)
+{
+    d->win = NULL;
+    d->cmdbuf[0] = '\0';
+    d->cmdbuf_index = 0;
+    d->stack_index = 0;
+    histr_stack_init(&(d->stack), CMD_HIST_ENTRIES, STACK_NO_SHRINK);
+}
+
+
 void print_help_and_exit()
 {
     printf(
@@ -1772,12 +1846,12 @@ int main(int argc, char *argv[])
     bool cmd_exit = false;
     bool in_run_mode = false;
     int run_mode_step_count = 0;
-    WINDOW *win_cpu, *win_cmd, *win_msg = NULL;
-    char cmdbuf[MAX_CMD_LEN];
+    WINDOW *win_cpu = NULL, *win_msg = NULL;
+    cmd_t cmd_data;
+    cmd_hist_init(&cmd_data);
     char cmdbuf_dup[MAX_CMD_LEN];
-    char *_cmdbuf = cmdbuf;
+    char *_cmdbuf = cmd_data.cmdbuf;
     char *_cmdbuf_dup = cmdbuf_dup;
-    size_t cmdbuf_index = 0;
     cmd_err_t cmd_err;
     cmd_status_t cmd_stat;
     struct sigaction sigact;
@@ -2013,7 +2087,7 @@ int main(int argc, char *argv[])
     watch1.win = newwin(watch1.win_height, watch1.win_width, 1, 0);
     watch2.win = newwin(watch2.win_height, watch2.win_width, scrh/2, 0);
     win_cpu = newwin(10, scrw/2, 1, scrw/2);
-    win_cmd = newwin(3, scrw/2, scrh-3, scrw/2);
+    cmd_data.win = newwin(3, scrw/2, scrh-3, scrw/2);
     inst_hist.win_height = scrh - 11 - 3;
     inst_hist.win_width = scrw/2;
     inst_hist.win = newwin(inst_hist.win_height, inst_hist.win_width, 11, scrw/2);
@@ -2023,7 +2097,7 @@ int main(int argc, char *argv[])
     update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
 
     // Set up command input
-    command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+    command_clear(&cmd_data);
 
     // Event loop
     prev_c = c = EOF;
@@ -2087,7 +2161,7 @@ int main(int argc, char *argv[])
         case KEY_F(12):
             break; // Handled below
         case KEY_CTRL_G:
-            command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+            command_clear(&cmd_data);
             break;
         case '?': {
             cmd_err_msg *msg = &cmd_err_msgs[CMD_HELP_MAIN];
@@ -2102,14 +2176,14 @@ int main(int argc, char *argv[])
             // Handle message box clean up if user pressed "Enter"
             if (win_msg) {
                 if (c == KEY_CR || c == KEY_ESCAPE) {
-                    wborder(win_msg, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+                    wborder(win_msg, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
                     wrefresh(win_msg);
                     delwin(win_msg);
                     win_msg = NULL;
                 }
             }
             // If the user pressed "Enter" (CR), execute the command
-            else if (command_entry(win_cmd, _cmdbuf, &cmdbuf_index, c)) {
+            else if (command_entry(&cmd_data, c)) {
 
                 // Why duplicate the input string?
                 // This is needed since command_execute mutates
@@ -2120,7 +2194,7 @@ int main(int argc, char *argv[])
                 cmd_stat = command_execute(
                     &cmd_err,
                     _cmdbuf_dup,
-                    cmdbuf_index,
+                    cmd_data.cmdbuf_index,
                     &watch1,
                     &watch2,
                     &cpu,
@@ -2134,13 +2208,13 @@ int main(int argc, char *argv[])
                 }
                 else if (cmd_stat == STAT_OK) {
                     // Only clear the command input if the command was successful
-                    command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                    command_clear(&cmd_data);
                     update_cpu_hist(&inst_hist, &cpu, memory, REPLACE_INST);
                 }
                 else {
                     // Print a message box with the err status value
                     if (cmd_stat == STAT_INFO) { // Not an error
-                        command_clear(win_cmd, _cmdbuf, &cmdbuf_index);
+                        command_clear(&cmd_data);
                     }
 
                     // If there is errors, print an appropiate message
@@ -2223,30 +2297,30 @@ int main(int argc, char *argv[])
             mem_watch_print(&watch2, memory, &cpu, symbol_table);
             print_cpu_hist(&inst_hist);
 
-            mvwprintw(win_cmd, 1, 2, ">"); // Command prompt
+            mvwprintw(cmd_data.win, 1, 2, ">"); // Command prompt
 
             // Window borders (DIM)
             wattron(watch1.win, A_DIM);
             wattron(watch2.win, A_DIM);
             wattron(win_cpu, A_DIM);
-            wattron(win_cmd, A_DIM);
+            wattron(cmd_data.win, A_DIM);
             wattron(inst_hist.win, A_DIM);
             box(watch1.win, 0, 0);
             box(watch2.win, 0, 0);
             box(win_cpu, 0, 0);
-            box(win_cmd, 0, 0);
+            box(cmd_data.win, 0, 0);
             box(inst_hist.win, 0, 0);
 
             // Window Titles (Normal)
             wattroff(watch1.win, A_DIM);
             wattroff(watch2.win, A_DIM);
             wattroff(win_cpu, A_DIM);
-            wattroff(win_cmd, A_DIM);
+            wattroff(cmd_data.win, A_DIM);
             wattroff(inst_hist.win, A_DIM);
             mvwprintw(watch1.win, 0, 3, " MEM WATCH 1 ");
             mvwprintw(watch2.win, 0, 3, " MEM WATCH 2 ");
             mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
-            mvwprintw(win_cmd, 0, 3, " COMMAND ");
+            mvwprintw(cmd_data.win, 0, 3, " COMMAND ");
             mvwprintw(inst_hist.win, 0, 3, " INSTRUCTION HISTORY ");
 
             // If message box, prevent the other windows from updating
@@ -2257,7 +2331,7 @@ int main(int argc, char *argv[])
                 // Order of refresh matters - layering of title bars
                 wrefresh(win_cpu);
                 wrefresh(inst_hist.win);
-                wrefresh(win_cmd);
+                wrefresh(cmd_data.win);
                 wrefresh(watch1.win);
                 wrefresh(watch2.win);
             }
@@ -2285,7 +2359,7 @@ int main(int argc, char *argv[])
     delwin(watch1.win);
     delwin(watch2.win);
     delwin(win_cpu);
-    delwin(win_cmd);
+    delwin(cmd_data.win);
     delwin(inst_hist.win);
     endwin();           // Clean up curses mode
 
@@ -2298,6 +2372,12 @@ int main(int argc, char *argv[])
     st_destroy(&symbol_table);
 
     printf("Stopped simulator\n");
+
+    char *cmd;
+    while (!histr_stack_pop(cmd_data.stack, &cmd)) {
+        free(cmd);
+    }
+    histr_stack_destroy(&(cmd_data.stack));
     
     return 0;
 }
