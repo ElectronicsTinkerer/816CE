@@ -26,6 +26,7 @@
 
 #define CMD_DISP_X_OFFS 4
 #define CMD_HIST_ENTRIES 100 // Number of entries to keep in the command history when leaving
+#define CMD_HIST_FILE ".sim_history"
 
 #define CPU_HIST_ENTRIES 40
 
