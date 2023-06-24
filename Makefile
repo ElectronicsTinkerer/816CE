@@ -13,7 +13,7 @@ PROG := $(BUILD_DIR)/$(BIN_NAME)
 
 # SRCS := $(shell find $(SRC_DIR) -name '*.c')
 SRCQ := debugger/debugger.c debugger/disassembler.c \
-		debugger/hashtable.c debugger/symbols.c \
+		util/hashtable.c debugger/symbols.c \
 		cpu/65816.c cpu/65816-util.c cpu/65816-ops.c \
 		hw/16C750.c
 SRCS := $(SRCQ:%.c=$(SRC_DIR)/%.c)
