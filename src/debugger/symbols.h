@@ -33,7 +33,7 @@ typedef enum st_status_t {
 
 #define HT_DATA_T symbol_t
 #define HT_DATA_NAME sym
-#include "hashtable.h"
+#include "../util/hashtable.h"
 
 #define IS_VALID_IDENT(c) (isalnum(c) || (c) == '_' || (c) == '.')
 
