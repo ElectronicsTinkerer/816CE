@@ -1827,7 +1827,7 @@ void i_pei(CPU_t *cpu, memory_t *mem)
         _cpu_get_immd_byte(cpu, mem, cpu->setacc)
         );
     uint16_t addr_ind = _get_mem_byte(mem, addr_dp, cpu->setacc);
-    addr_ind |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr_dp, 1), cpu->setacc);
+    addr_ind |= _get_mem_byte(mem, _addr_add_val_bank_wrap(addr_dp, 1), cpu->setacc) << 8;
     _stackCPU_pushWord(cpu, mem, addr_ind, CPU_ESTACK_DISABLE, cpu->setacc);
 
     _cpu_update_pc(cpu, 2);
