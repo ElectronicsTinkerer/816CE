@@ -17,6 +17,7 @@ TODO:
 * Clean up build system
 * Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
+* ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
 
 TODONE:
 * Help menu (multi-level)
