@@ -134,6 +134,14 @@ typedef enum tl16c750_regs_t {
     TLA_DLM = 1
 } tl16c750_regs_t;
 
+typedef struct tl_circ_buf_t {
+    int read;
+    int write;
+    int count;
+    uint8_t data[UART_FIFO_LEN];
+} tl_circ_buf_t;
+    
+
 typedef struct tl16c750_t {
     bool enabled;
     uint32_t addr;    // Base address
@@ -142,13 +150,9 @@ typedef struct tl16c750_t {
     unsigned int sock_timeout;
     struct sockaddr_in sock_name;
     int data_socket;
-    int data_rx_fifo_read;
-    int data_rx_fifo_write;
-    uint8_t data_rx_buf[UART_FIFO_LEN];
+    tl_circ_buf_t rx_buf;
+    tl_circ_buf_t tx_buf;
     bool tx_empty_edge;
-    int data_tx_fifo_read;
-    int data_tx_fifo_write;
-    uint8_t data_tx_buf[UART_FIFO_LEN];
 } tl16c750_t;
 
 void reset_16c750(tl16c750_t *);

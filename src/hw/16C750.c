@@ -35,6 +35,77 @@ int trigger_levels[2][4] = {
 };
 
 
+static void init_circ_buf(tl_circ_buf_t *buf)
+{
+    buf->read = 0;
+    buf->write = 0;
+    buf->count = 0;
+}
+
+
+static bool circ_buf_is_full(tl_circ_buf_t *buf)
+{
+    return buf->count == UART_FIFO_LEN;
+}
+
+
+static bool circ_buf_is_empty(tl_circ_buf_t *buf)
+{
+    return buf->count == 0;
+}
+
+
+static bool circ_buf_push(tl_circ_buf_t *buf, char c)
+{
+    if (circ_buf_is_full(buf)) {
+        return true; // Fail
+    }
+    buf->data[buf->write] = c;
+    ++(buf->write);
+    if (buf->write == UART_FIFO_LEN) {
+        buf->write = 0;
+    }
+    ++(buf->count);
+    return false;
+}
+
+
+static bool circ_buf_pop(tl_circ_buf_t *buf, char *c)
+{
+    if (circ_buf_is_empty(buf)) {
+        return true; // Fail
+    }
+    *c = buf->data[buf->read];
+    ++(buf->read);
+    if (buf->read == UART_FIFO_LEN) {
+        buf->read = 0;
+    }
+    --(buf->count);
+    return false;
+}
+
+
+static bool circ_buf_peek(tl_circ_buf_t *buf, char *c)
+{
+    if (circ_buf_is_empty(buf)) {
+        return true; // Fail
+    }
+    *c = buf->data[buf->read];
+    return false;
+}
+
+
+static bool circ_buf_peek_prev(tl_circ_buf_t *buf, char *c)
+{
+    int idx = buf->read - 1;
+    if (idx < 0) {
+        idx = UART_FIFO_LEN - 1;
+    }
+    *c = buf->data[idx];
+    return false;
+}
+
+
 /*
  * "Hardware" reset UART
  * 
@@ -51,10 +122,8 @@ void reset_16c750(tl16c750_t *uart)
     uart->regs[TL_LSR] = 0x60;
     uart->regs[TL_MSR] = 0;
 
-    uart->data_rx_fifo_read = 0;
-    uart->data_rx_fifo_write = 0;
-    uart->data_tx_fifo_read = 0;
-    uart->data_tx_fifo_write = 0;
+    init_circ_buf(&(uart->rx_buf));
+    init_circ_buf(&(uart->tx_buf));
 }
 
 
@@ -201,14 +270,12 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     
     // Check the socket for characters
     // But be sure to not overflow the RX buffer
-    if (uart->data_socket >= 0 && abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) < UART_FIFO_LEN - 1) {
+    if (uart->data_socket >= 0 && !circ_buf_is_full(&(uart->rx_buf))) {
         char buf;
         int read_len = read(uart->data_socket, &buf, 1);
 
         if (read_len > 0) {
-            uart->data_rx_buf[uart->data_rx_fifo_write] = buf;
-            uart->data_rx_fifo_write += 1;
-            uart->data_rx_fifo_write %= UART_FIFO_LEN;
+            circ_buf_push(&(uart->rx_buf), buf);
         }
         else if (read_len == -1 && errno != EAGAIN && errno != EWOULDBLOCK) { // Error
             sock_closed = true;
@@ -255,9 +322,9 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
             // Loopback
             if (uart->regs[TL_MCR] & (1u << MCR_LOOP)) {
                 // Add value to queue
-                uart->data_rx_buf[uart->data_rx_fifo_write] = _get_mem_byte(mem, uart->addr + TLA_THR, false);
-                uart->data_rx_fifo_write += 1;
-                uart->data_rx_fifo_write %= UART_FIFO_LEN;
+                if (!circ_buf_is_full(&(uart->rx_buf))) {
+                    circ_buf_push(&(uart->rx_buf), _get_mem_byte(mem, uart->addr + TLA_THR, false));
+                }
             }
             else {
                 // SEND CHAR OVER SOCKET?
@@ -271,29 +338,33 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
             }
 
             // If tx buffer is empty, enable signaling of TX empty IRQ
-            if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+            if (circ_buf_is_empty(&(uart->tx_buf))) {
                 uart->tx_empty_edge = true;
             }
         }
 
         // RHR
         // Always keep the last char from the RX FIFO available
-        if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) == 0) {
+        if (circ_buf_is_empty(&(uart->rx_buf))) {
             // Reading the RHR after all characters have been read
             // in will result in just reading the last char received.
             // This is accomplished by "subtracting 1" from the index
             // and performing wrapping on it
+            char c;
+            circ_buf_peek_prev(&(uart->rx_buf), &c);
             _set_mem_byte(
                 mem,
                 uart->addr + TLA_RBR,
-                uart->data_rx_buf[(uart->data_rx_fifo_read + UART_FIFO_LEN - 1) % UART_FIFO_LEN],
+                c,
                 false
                 );
         } else {
+            char c;
+            circ_buf_peek(&(uart->rx_buf), &c);
             _set_mem_byte(
                 mem,
                 uart->addr + TLA_RBR,
-                uart->data_rx_buf[uart->data_rx_fifo_read],
+                c,
                 false
                 );
         }
@@ -301,11 +372,8 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
         if (_test_and_reset_mem_flags(mem, uart->addr + TLA_RBR, MEM_FLAG_R).R == 1) {
             
             // Update read buffer pointer
-            if (abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) {
-                uart->data_rx_fifo_read += 1;
-                uart->data_rx_fifo_read %= UART_FIFO_LEN;
-            }
-
+            char c;
+            circ_buf_pop(&(uart->rx_buf), &c);
         }
     }
 
@@ -315,31 +383,27 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
 
         // Changing the FIFO ENable bit clears the FIFOs
         if (uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) {
-            uart->data_rx_fifo_read = 0;
-            uart->data_tx_fifo_read = 0;
-            uart->data_rx_fifo_write = 0;
-            uart->data_tx_fifo_write = 0;
+            init_circ_buf(&(uart->rx_buf));
+            init_circ_buf(&(uart->tx_buf));
         }
         else if (uart->regs[TL_FCR] & (1u << FCR_RXFRST)) {
-            uart->data_rx_fifo_read = 0;
-            uart->data_rx_fifo_write = 0;
+            init_circ_buf(&(uart->rx_buf));
         }
         else if (uart->regs[TL_FCR] & (1u << FCR_TXFRST)) {
-            uart->data_tx_fifo_read = 0;
-            uart->data_tx_fifo_write = 0;
+            init_circ_buf(&(uart->tx_buf));
         }
     }
 
     // LSR
     // If RX FIFO is empty
-    if (uart->data_rx_fifo_read == uart->data_rx_fifo_write) {
+    if (circ_buf_is_empty(&(uart->rx_buf))) {
         uart->regs[TL_LSR] &= ~(1u << LSR_DR); // Clear bit
     } else {
         uart->regs[TL_LSR] |= (1u << LSR_DR); // Set bit
     }
     
     // If TX FIFO is empty
-    if (uart->data_tx_fifo_read == uart->data_tx_fifo_write) {
+    if (circ_buf_is_empty(&(uart->tx_buf))) {
         uart->regs[TL_LSR] |= ((1u << LSR_THRE) | (1u << LSR_TEMT));
     } else {
         uart->regs[TL_LSR] &= ~((1u << LSR_THRE) | (1u << LSR_TEMT));
@@ -351,11 +415,9 @@ bool step_16c750(tl16c750_t *uart, memory_t *mem)
     // IIR
     // If there is received data available, set bit 2
     if (
-        (!(uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) &&
-         abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) > 0) ||
+        (!(uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) && !circ_buf_is_empty(&(uart->rx_buf))) ||
         ((uart->regs[TL_FCR] & (1u << FCR_FIFOEN)) &&
-         abs(uart->data_rx_fifo_write - uart->data_rx_fifo_read) >=
-         trigger_levels[(uart->regs[TL_FCR] >> FCR_64FEN) & 0x1][(uart->regs[TL_FCR] >> FCR_RXTRIGL) & 0x3])
+         uart->rx_buf.count >= trigger_levels[(uart->regs[TL_FCR] >> FCR_64FEN) & 0x1][(uart->regs[TL_FCR] >> FCR_RXTRIGL) & 0x3])
         ) {
         uart->regs[TL_IIR] &= ~(0x2 << 1);
         uart->regs[TL_IIR] |= 0x2 << 1;
