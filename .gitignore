@@ -4,6 +4,11 @@ build
 *.o
 *.out
 *.log
+CMakeFiles
+cmake_install.cmake
+CMakeCache.txt
+.ninja_log
+.ninja_deps
 
 # Backups
 *~

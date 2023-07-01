@@ -16,7 +16,6 @@ TODO:
 * Look into nl()/nonl() in ncurses
 * Allow multiple symbols at same address
 * Disassembler to use symbol table for operands
-* Clean up build system
 * Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
 * ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
@@ -55,4 +54,5 @@ TODONE:
 * Fix bug where `mw2 mem c000` causes a blank window to appear
 * Allow loading a symbol list file for breakpoints
 * Add command history
+* Clean up build system
 
