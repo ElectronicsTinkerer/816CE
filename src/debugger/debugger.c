@@ -656,7 +656,7 @@ void command_clear(cmd_t *cmd_data)
     wmove(cmd_data->win, 1, CMD_DISP_X_OFFS);
     wclrtoeol(cmd_data->win);
 
-    for (size_t i = 1; i < MAX_CMD_LEN + 1; ++i) {
+    for (size_t i = 1; i < CMD_BUF_LEN; ++i) {
         cmd_data->cmdbuf[i] = '\0';
     }
     cmd_data->cmdbuf_index = 0;
@@ -730,8 +730,8 @@ bool command_entry(cmd_t *cmd_data, int c)
             char *cmd;
             --(cmd_data->stack_index);            
             if (!histr_stack_peeki(cmd_data->stack, &cmd, cmd_data->stack_index - 1)) {
-                strncpy(cmd_data->cmdbuf, cmd, MAX_CMD_LEN);
-                cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
+                strncpy(cmd_data->cmdbuf, cmd, CMD_BUF_LEN);
+                cmd_data->cmdbuf[CMD_BUF_LEN - 1] = '\0';
                 cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
                 mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
                 wclrtoeol(cmd_data->win);
@@ -750,8 +750,8 @@ bool command_entry(cmd_t *cmd_data, int c)
         ++(cmd_data->stack_index);
         char *cmd;
         if (!histr_stack_peeki(cmd_data->stack, &cmd, cmd_data->stack_index - 1)) {
-            strncpy(cmd_data->cmdbuf, cmd, MAX_CMD_LEN);
-            cmd_data->cmdbuf[MAX_CMD_LEN] = '\0';
+            strncpy(cmd_data->cmdbuf, cmd, CMD_BUF_LEN);
+            cmd_data->cmdbuf[CMD_BUF_LEN - 1] = '\0';
             cmd_data->cmdbuf_index = strlen(cmd_data->cmdbuf);
             mvwprintw(cmd_data->win, 1, CMD_DISP_X_OFFS, "%s", cmd_data->cmdbuf);
             wclrtoeol(cmd_data->win);
@@ -762,7 +762,7 @@ bool command_entry(cmd_t *cmd_data, int c)
         }
     }
     // Generic char, just add to buffer
-    else if (cmd_data->cmdbuf_index < MAX_CMD_LEN - 1) {
+    else if (cmd_data->cmdbuf_index < CMD_BUF_LEN - 1) {
         cmd_data->cmdbuf[cmd_data->cmdbuf_index] = (char)c;
         mvwaddch(cmd_data->win, 1, cmd_data->cmdbuf_index + CMD_DISP_X_OFFS, cmd_data->cmdbuf[cmd_data->cmdbuf_index]);
         ++(cmd_data->cmdbuf_index);
@@ -822,9 +822,9 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
 
     // Make string lowercase
-    char cmdbuf_lower[MAX_CMD_LEN];
+    char cmdbuf_lower[CMD_BUF_LEN];
     char *_cmdbuf_lower = cmdbuf_lower;
-    strncpy(cmdbuf_lower, _cmdbuf, MAX_CMD_LEN);
+    strncpy(cmdbuf_lower, _cmdbuf, CMD_BUF_LEN);
     while (*_cmdbuf_lower) {
         *_cmdbuf_lower = tolower(*_cmdbuf_lower);
         ++_cmdbuf_lower;
@@ -1846,7 +1846,7 @@ int main(int argc, char *argv[])
     WINDOW *win_cpu = NULL, *win_msg = NULL;
     cmd_t cmd_data;
     cmd_hist_init(&cmd_data);
-    char cmdbuf_dup[MAX_CMD_LEN];
+    char cmdbuf_dup[CMD_BUF_LEN];
     char *_cmdbuf = cmd_data.cmdbuf;
     char *_cmdbuf_dup = cmdbuf_dup;
     cmd_err_t cmd_err;
@@ -1890,10 +1890,10 @@ int main(int argc, char *argv[])
         printf("No history to load.\n");
     }
     else {
-        char buf[MAX_CMD_LEN + 1];
+        char buf[CMD_BUF_LEN];
         char *_buf;
         int len;
-        while (fgets(buf, MAX_CMD_LEN + 1, ifp)) {
+        while (fgets(buf, CMD_BUF_LEN, ifp)) {
             len = strcspn(buf, "\n\r");
             buf[len] = '\0'; // Remove newline
             _buf = malloc(sizeof(*_buf) * (len + 1));
@@ -2000,10 +2000,7 @@ int main(int argc, char *argv[])
 
                 char buf[2048]; // I hope that's long enough!
 
-                while (!feof(fp)) {
-
-                    // Get command
-                    fgets(buf, 2048, fp);
+                while (!feof(fp) && fgets(buf, 2048, fp)) {
 
                     // Parse command
                     cmd_stat = command_execute(
@@ -2205,7 +2202,7 @@ int main(int argc, char *argv[])
                 // Why duplicate the input string?
                 // This is needed since command_execute mutates
                 // the input command string and it may fail.
-                strncpy(_cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
+                strncpy(_cmdbuf_dup, _cmdbuf, CMD_BUF_LEN);
 
                 // Check for errors in the command input and execute it if none
                 cmd_stat = command_execute(

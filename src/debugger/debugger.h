@@ -22,7 +22,7 @@
 #define KEY_ESCAPE 27
 #define KEY_DELETE 127
 
-#define MAX_CMD_LEN 60
+#define CMD_BUF_LEN 60
 
 #define CMD_DISP_X_OFFS 4
 #define CMD_HIST_ENTRIES 100 // Number of entries to keep in the command history when leaving
@@ -79,7 +79,7 @@ typedef struct hist_t {
 // Command entry structure
 typedef struct cmd_t {
     WINDOW *win;
-    char cmdbuf[MAX_CMD_LEN];
+    char cmdbuf[CMD_BUF_LEN];
     size_t cmdbuf_index;
     size_t stack_index;
     histr_stack_t *stack;
