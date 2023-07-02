@@ -632,7 +632,10 @@ cmd_err_t load_file_cpu(char *filename, CPU_t *cpu)
     }
 
     char buf[size];
-    fread(&buf, sizeof(*buf), size, fp);
+    if (fread(&buf, sizeof(*buf), size, fp) == 0) {
+        fclose(fp);
+        return CMD_FILE_IO_ERROR;
+    }
 
     if (fromstrCPU(cpu, (char*)&buf) != CPU_ERR_OK) {
         return CMD_CPU_CORRUPT_FILE;
@@ -1799,6 +1802,10 @@ void print_help_and_exit()
 
 void handle_suspend(int signal)
 {
+    // We don't care about the signal number but the
+    // compiler cares if we don't do something with it
+    (void)signal;
+
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = SIG_DFL;
@@ -1814,6 +1821,10 @@ void handle_suspend(int signal)
 
 void handle_continue(int signal)
 {
+    // We don't care about the signal number but the
+    // compiler cares if we don't do something with it
+    (void)signal;
+
     struct sigaction sigact;
     memset(&sigact, 0, sizeof(sigact));
     sigact.sa_handler = handle_suspend;
@@ -1828,6 +1839,10 @@ void handle_continue(int signal)
 
 void handle_break(int signal)
 {
+    // We don't care about the signal number but the
+    // compiler cares if we don't do something with it
+    (void)signal;
+
     break_hit = true;
 }
 
