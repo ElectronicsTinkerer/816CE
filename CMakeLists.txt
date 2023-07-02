@@ -28,7 +28,7 @@ project(816CE VERSION 0.1.0
 
 set(exe_name 816ce)
             
-set(CMAKE_C_FLAGS "-Wall -pedantic -std=c99 -O0 -g")
+set(CMAKE_C_FLAGS "-Wall -Wextra -pedantic -std=c99 -O0 -g")
 set(LINK_FLAGS "-lncurses -lm")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS}")            
             
