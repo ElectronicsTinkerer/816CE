@@ -112,7 +112,7 @@ cmd_err_msg cmd_err_msgs[] = {
  * @param status_id The identifier of the interface status message to print
  * @param alert true if the status bar should blink
  */
-void print_header(int width, status_t status_id, bool alert)
+void print_header(size_t width, status_t status_id, bool alert)
 {
     wmove(stdscr, 0, 0);
     attron(A_REVERSE);
@@ -183,7 +183,6 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
 {
     uint32_t val;
     size_t i;
-    int lines;
 
     // Clear the history list if the CPU was reset
     if (cpu->P.RST) {
@@ -196,8 +195,7 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
         return;
     }
     else { // Otherwise, increment the circular buffer's pointer
-        lines = CPU_HIST_ENTRIES;
-        if (hist->entry_count < lines) {
+        if (hist->entry_count < CPU_HIST_ENTRIES) {
             i = hist->entry_count;
 
             if (!replace) {
@@ -211,7 +209,7 @@ void update_cpu_hist(hist_t *hist, CPU_t *cpu, memory_t *mem, bool replace)
 
             if (!replace) {
                 hist->entry_start += 1;
-                hist->entry_start %= lines;
+                hist->entry_start %= CPU_HIST_ENTRIES;
             } else {
                 // Subtract 1 from i, wrapping if needed
                 i = (i == 0) ? (hist->entry_count - 1) : (i - 1);
@@ -504,13 +502,13 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, memor
         break;
 
     case MF_LLVM_MOS_SIM: {
-        size_t next_byte_loc = 0;
-        size_t max_len = 0;
+        uint32_t next_byte_loc = 0;
+        uint32_t max_len = 0;
         int tmp_value = 0;
 
         while (true) {
             int base_addr_low, base_addr_high, len_low, len_high;
-            int base_addr, len;
+            uint32_t base_addr, len;
             if ((base_addr_low = fgetc(fp)) == EOF) {
                 // Done with file
                 break;
@@ -529,7 +527,7 @@ cmd_err_t load_file_mem(char *filename, memory_t *mem, uint32_t base_addr, memor
                 fclose(fp);
                 return CMD_FILE_CORRUPT;
             }
-            len = (len_high << 8) | len_low;
+            len = ((len_high & 0xff) << 8) | (len_low & 0xff);
 
             if (len == 0) {
                 continue;
@@ -1557,7 +1555,7 @@ cmd_status_t command_execute( cmd_err_t *status,
  */
 void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symbol_table)
 {
-    size_t cols, col, row;
+    int cols, col, row;
     uint32_t i, pc;
     char buf[32];
     symbol_t *sym;
@@ -1647,7 +1645,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symb
         wattron(w->win, A_DIM);
         for (col = 0; col < cols; ++col) {
             wprintw(w->win, " ");
-            wprintw(w->win, "%02lx", col);
+            wprintw(w->win, "%02x", col);
         }
         wattroff(w->win, A_DIM);
 
@@ -1907,7 +1905,7 @@ int main(int argc, char *argv[])
     {
         uint32_t base_addr = 0;
         int cli_pstate = 0;
-        for (size_t i = 1; i < argc; ++i) {
+        for (int i = 1; i < argc; ++i) {
             switch (cli_pstate) {
             case 0:
                 if (strcmp(argv[i], "--cpu-file") == 0) {
@@ -2039,7 +2037,7 @@ int main(int argc, char *argv[])
                 break;
             default:
                 printf(
-                    "Internal cli parser error!\ni=%ld, argv[%ld]='%s', cli_pstate=%d\n",
+                    "Internal cli parser error!\ni=%d, argv[%d]='%s', cli_pstate=%d\n",
                     i, i, argv[i], cli_pstate);
                 exit(EXIT_FAILURE);
                 break;
