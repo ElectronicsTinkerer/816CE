@@ -916,12 +916,15 @@ uint32_t _addrCPU_getLong(CPU_t *cpu, memory_t *mem, bool setacc)
  * Returns the address of the operand to the current instruction
  * (PC+1)
  * @param cpu The cpu to use for the operation
- * @param mem The memory which will provide the operand address
+ * @param mem The memory which will provide the operand address (UNUSED)
  * @param setacc True to set the "accessed flag" on used memory data
  * @return The address of the immediate operand of the current instruction
  */
 uint32_t _addrCPU_getImmediate(CPU_t *cpu, memory_t *mem, bool setacc)
 {
+    (void)mem;
+    (void)setacc;
+    
     // Get the immediate operand word of the current instruction
     uint32_t address = _cpu_get_effective_pc(cpu);
     address = _addr_add_val_bank_wrap(address, 1);
