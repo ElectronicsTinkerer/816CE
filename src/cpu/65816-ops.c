@@ -1235,7 +1235,7 @@ void i_iny(CPU_t *cpu)
     cpu->cycles += 2;
 }
 
-void i_jmp(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+void i_jmp(CPU_t *cpu, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
 {
     if (mode == CPU_ADDR_ABSL)
     {
@@ -1245,7 +1245,7 @@ void i_jmp(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint
     cpu->cycles += cycles;
 }
 
-void i_jsr(CPU_t *cpu, memory_t *mem, uint8_t cycles, CPU_Addr_Mode_t mode, uint32_t addr)
+void i_jsr(CPU_t *cpu, memory_t *mem, uint8_t cycles, uint32_t addr)
 {
     _stackCPU_pushWord(
         cpu,
