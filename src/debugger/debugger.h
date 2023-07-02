@@ -70,8 +70,8 @@ typedef struct hist_t {
     WINDOW *win;
     int win_height;
     int win_width;
-    int entry_count;
-    int entry_start;
+    size_t entry_count;
+    size_t entry_start;
     CPU_t cpu[CPU_HIST_ENTRIES];
     memory_t mem[CPU_HIST_ENTRIES][4];
 } hist_t;
