@@ -41,8 +41,7 @@ While the simulator is open, press `?` to access the command help menu.
 ```
 Available commands
  > exit|quit
- > mw[1|2] [mem|asm] (pc|addr)
- > mw[1|2] aaaaaa
+ > mw[1|2] [mem|asm|pc|addr|aaaaaa] [...]
  > irq [set|clear]
  > nmi [set|clear]
  > aaaaaa: xx yy zz
@@ -61,6 +60,7 @@ Available commands
 Some explanation:
 
 * `[cat|dog]` - either `cat` or `dog` can be entered but the field is required
+* `[...]` - Optional repetition of the previous field
 * `(value)` - an optional field
 * `aaaaaa` - an address in hex
 * `reg` - a CPU register in all caps (e.g. PC)

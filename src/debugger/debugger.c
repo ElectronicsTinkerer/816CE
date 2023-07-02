@@ -6,7 +6,7 @@
 // For sys/stat operations
 #define _FILE_OFFSET_BITS 64
 
-// Needed for sigaction
+// Needed for sigaction and strtok_r
 // TODO: Figure out a "correct" number for this
 #define _POSIX_C_SOURCE 200000L
 
@@ -65,10 +65,9 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 36, "Unknown symbol or invalid value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 20, 43, "Available commands\n"
+    {"HELP", 19, 43, "Available commands\n"
      " > exit|quit ... Close simulator\n"
-     " > mw[1|2] [mem|asm] (pc|addr)\n"
-     " > mw[1|2] aaaaaa\n"
+     " > mw[1|2] [mem|asm|pc|addr|aaaaaa] [...]\n"
      " > irq [set|clear]\n"
      " > nmi [set|clear]\n"
      " > aaaaaa: xx yy zz\n"
@@ -785,64 +784,6 @@ bool command_entry(cmd_t *cmd_data, int c)
 
 
 /**
- * Parse and execute a command for a memory watch modifier
- * 
- * @param *watch The watch structure to control
- * @param tok The input command buffer
- * @param *symbol_table The symbol table to use for resolving addresses by name
- * @return The error code from execution of the command
- */
-cmd_err_t command_execute_watch(watch_t *watch, char* tok, symbol_table_t *symbol_table)
-{
-    tok = strtok(NULL, " \t\n\r");
-
-    if (!tok) {
-        return CMD_EXPECTED_ARG;
-    }
-
-    // Secondary level command
-    if (strcmp(tok, "mem") == 0) {
-        watch->disasm_mode = false;
-    }
-    else if (strcmp(tok, "asm") == 0) {
-        watch->disasm_mode = true;
-        wclear(watch->win);
-    }
-    else {
-        // Check if user is setting watch start address
-        if (is_addr_do_parse(tok, &(watch->addr_s), symbol_table)) {
-
-            if (watch->addr_s > 0xffffff) {
-                return CMD_VAL_OVERFLOW;
-            }
-        }
-        else {
-            return CMD_UNKNOWN_SYM_OR_VALUE; // Syntax error!
-        }
-    }
-
-    tok = strtok(NULL, " \t\n\r");
-        
-    if (!tok) {
-        return CMD_OK;
-    }
-        
-    // Tertiary level command
-    if (strcmp(tok, "pc") == 0) {
-        watch->follow_pc = true;
-    }
-    else if (strcmp(tok, "addr") == 0) {
-        watch->follow_pc = false;
-    }
-    else {
-        return CMD_UNKNOWN_ARG; // Error!
-    }
-
-    return CMD_OK; // Success?
-}
-
-
-/**
  * Execute a command from the prompt window.
  * This has a very primitive parser.
  * 
@@ -868,6 +809,9 @@ cmd_status_t command_execute( cmd_err_t *status,
                               tl16c750_t *uart
     )
 {
+    watch_t *watch;
+    char *state;
+
     if (cmdbuf_index == 0) {
         *status = CMD_OK; // No command
         return STAT_OK; // No Error
@@ -878,15 +822,21 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
 
     // Make string lowercase
-    char *buf_ptr = _cmdbuf;
-    char cmdbuf_dup[MAX_CMD_LEN];
-    strncpy(cmdbuf_dup, _cmdbuf, MAX_CMD_LEN);
-    while (*buf_ptr) {
-        *buf_ptr = tolower(*buf_ptr);
-        ++buf_ptr;
+    char cmdbuf_lower[MAX_CMD_LEN];
+    char *_cmdbuf_lower = cmdbuf_lower;
+    strncpy(cmdbuf_lower, _cmdbuf, MAX_CMD_LEN);
+    while (*_cmdbuf_lower) {
+        *_cmdbuf_lower = tolower(*_cmdbuf_lower);
+        ++_cmdbuf_lower;
     }
+    _cmdbuf_lower = cmdbuf_lower;
+
+    // Normally, I would not put a define within a function, but since
+    // this deals specifically with this function's buffers, it seems
+    // approprate to do so.
+    #define raw_buf_idx(ptr) ((ptr) - cmdbuf_lower + _cmdbuf)
     
-    char *tok = strtok(_cmdbuf, " \t\n\r");
+    char *tok = strtok_r(_cmdbuf_lower, " \t\n\r", &state);
 
     if (!tok) {
         *status = CMD_OK; // No command
@@ -908,7 +858,7 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "irq") == 0) { // Force IRQ status change
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
@@ -931,7 +881,7 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "nmi") == 0) { // Force NMI status change
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
@@ -952,13 +902,53 @@ cmd_status_t command_execute( cmd_err_t *status,
         *status = CMD_OK;
         return STAT_OK;
     }
-    else if (strcmp(tok, "mw1") == 0) { // Memory Watch 1
-        *status = command_execute_watch(watch1, tok, symbol_table);
-        return (*status == CMD_OK) ? STAT_OK : STAT_ERR;
-    }
-    else if (strcmp(tok, "mw2") == 0) { // Memory Watch 2
-        *status = command_execute_watch(watch2, tok, symbol_table);
-        return (*status == CMD_OK) ? STAT_OK : STAT_ERR;
+    // Cursed comma operator magic to remove code duplication
+    else if ((watch = watch1, strcmp(tok, "mw1") == 0) || (watch = watch2, strcmp(tok, "mw2") == 0)) { // Memory Watch
+
+        tok = strtok_r(NULL, " \t\n\r", &state);
+
+        if (!tok) {
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
+        }
+
+        while (tok) {
+
+            // Secondary level command
+            if (strcmp(tok, "mem") == 0) {
+                watch->disasm_mode = false;
+            }
+            else if (strcmp(tok, "asm") == 0) {
+                watch->disasm_mode = true;
+                wclear(watch->win);
+            }
+            else if (strcmp(tok, "pc") == 0) {
+                watch->follow_pc = true;
+            }
+            else if (strcmp(tok, "addr") == 0) {
+                watch->follow_pc = false;
+            }
+            else {
+                // Check if user is setting watch start address
+                char *tmp = strtok(raw_buf_idx(tok), " \t\n\r"); // Zero terminate the existing token
+                if (is_addr_do_parse(tmp, &(watch->addr_s), symbol_table)) {
+
+                    if (watch->addr_s > 0xffffff) {
+                        *status = CMD_VAL_OVERFLOW;
+                        return STAT_ERR;
+                    }
+                }
+                else {
+                    *status = CMD_UNKNOWN_SYM_OR_VALUE; // Syntax error!
+                    return STAT_ERR;
+                }
+            }
+
+            tok = strtok_r(NULL, " \t\n\r", &state);
+        }
+
+        *status = CMD_OK; // Success?
+        return STAT_OK;
     }
     else if (strcmp(tok, "exit") == 0 ||
              strcmp(tok, "quit") == 0) { // Exit
@@ -967,14 +957,14 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "save") == 0) { // Save
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
         
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
             return STAT_ERR;
         }
 
-        char *filename = strtok(NULL, " \t\n\r");
+        char *filename = strtok_r(NULL, " \t\n\r", &state);
 
         if (!filename) {
             *status = CMD_EXPECTED_FILENAME;
@@ -1032,7 +1022,7 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "load") == 0) {
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
         
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
@@ -1042,7 +1032,7 @@ cmd_status_t command_execute( cmd_err_t *status,
         // Secondary level command
         if (strcmp(tok, "mem") == 0) {
 
-            tok = strtok(NULL, " \t\n\r");
+            tok = strtok_r(NULL, " \t\n\r", &state);
         
             if (!tok) {
                 *status = CMD_EXPECTED_ARG;
@@ -1052,13 +1042,14 @@ cmd_status_t command_execute( cmd_err_t *status,
             memory_fmt_t mf = MF_BASIC_BIN_BLOCK;
             
             if (strcmp(tok, "mos") == 0) {
-                tok = strtok(NULL, " \t\n\r");
+                tok = strtok_r(NULL, " \t\n\r", &state);
                 mf = MF_LLVM_MOS_SIM;
             }
 
             uint32_t base_addr = 0;
 
             // If a load offset is given, parse it
+            tok = strtok(raw_buf_idx(tok), " \t\n\r"); // Zero terminate the existing token
             if (is_addr_do_parse(tok, &base_addr, symbol_table)) {
 
                 if (base_addr > 0xffffff) {
@@ -1066,7 +1057,7 @@ cmd_status_t command_execute( cmd_err_t *status,
                     return STAT_ERR;
                 }
 
-                tok = strtok(NULL, " \t\n\r");
+                tok = strtok_r(NULL, " \t\n\r", &state); // Then get the file name
 
                 if (!tok) {
                     *status = CMD_EXPECTED_FILENAME;
@@ -1085,7 +1076,7 @@ cmd_status_t command_execute( cmd_err_t *status,
         else if (strcmp(tok, "cpu") == 0) { // Write the CPU directly to a file
 
             // Get filename
-            tok = strtok(NULL, " \t\n\r");
+            tok = strtok_r(NULL, " \t\n\r", &state);
 
             if (!tok) {
                 *status = CMD_EXPECTED_FILENAME;
@@ -1104,7 +1095,7 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "sym") == 0) {
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
         
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
@@ -1149,7 +1140,7 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "cpu") == 0) {
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tok) {
             *status = CMD_EXPECTED_REG;
@@ -1159,7 +1150,7 @@ cmd_status_t command_execute( cmd_err_t *status,
         // Check for COP option
         if (strcmp(tok, "cop") == 0) {
 
-            tok = strtok(NULL, " \t\n\r");
+            tok = strtok_r(NULL, " \t\n\r", &state);
 
             // If no arg given, report the current status
             // of the COP option
@@ -1193,7 +1184,7 @@ cmd_status_t command_execute( cmd_err_t *status,
 
         // Else, it's a register assignment
         
-        char *addrtok = strtok(NULL, " \t\n\r");
+        char *addrtok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!addrtok) {
             *status = CMD_EXPECTED_VALUE;
@@ -1203,7 +1194,8 @@ cmd_status_t command_execute( cmd_err_t *status,
         uint32_t val = 0;
         
         // Make sure it's a valid value
-        if (!is_addr_do_parse(addrtok, &val, symbol_table)) {
+        strtok(raw_buf_idx(addrtok), " \t\r\n"); // Zero terminate the existing token
+        if (!is_addr_do_parse(raw_buf_idx(addrtok), &val, symbol_table)) {
             *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
@@ -1394,7 +1386,7 @@ cmd_status_t command_execute( cmd_err_t *status,
              strcmp(tok, "bre") == 0 ||
              strcmp(tok, "break") == 0) { // Break point
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tok) {
             *status = CMD_EXPECTED_VALUE;
@@ -1402,7 +1394,8 @@ cmd_status_t command_execute( cmd_err_t *status,
         }
 
         uint32_t addr;
-        if (!is_addr_do_parse(tok, &addr, symbol_table)) {
+        strtok(raw_buf_idx(tok), " \t\r\n"); // Zero terminate the existing token
+        if (!is_addr_do_parse(raw_buf_idx(tok), &addr, symbol_table)) {
             *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
@@ -1420,14 +1413,14 @@ cmd_status_t command_execute( cmd_err_t *status,
     }
     else if (strcmp(tok, "uart") == 0) {
 
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tok) {
             *status = CMD_EXPECTED_ARG;
             return STAT_ERR;
         }
 
-        char *tmp = strtok(NULL, " \t\n\r");
+        char *tmp = strtok_r(NULL, " \t\n\r", &state);
 
         if (!tmp) {
             *status = CMD_EXPECTED_VALUE;
@@ -1436,15 +1429,14 @@ cmd_status_t command_execute( cmd_err_t *status,
 
         // Get base address for UART device
         uint32_t addr;
-        if (!is_addr_do_parse(tmp, &addr, symbol_table)) {
+        char *raw_ptr = strtok(raw_buf_idx(tmp), " \t\n\r"); // Zero terminate the existing token
+        if (!is_addr_do_parse(raw_ptr, &addr, symbol_table)) {
             *status = CMD_UNKNOWN_SYM_OR_VALUE;
             return STAT_ERR;
         }
 
-        // Get port for UART to listen on (for network connections)
-        // Optional parameter
-        tmp = strtok(NULL, " \t\n\r");
-        
+        tmp = strtok_r(NULL, " \t\n\r", &state); // Get the port if available
+
         uint32_t port;
 
         if (!tmp) {
@@ -1494,14 +1486,10 @@ cmd_status_t command_execute( cmd_err_t *status,
     // Not a named command, maybe it's a memory access?
     static uint32_t addr = 0; // Retain the previous value
     uint32_t val;
-    char *next = cmdbuf_dup;
+    char *next = _cmdbuf;
     char *tok_start;
     char ntmp;
     bool found_store_delim = false;
-    size_t delim_index = strlen(tok);
-
-    // Remove null char from strtok()
-    _cmdbuf[delim_index] = ' ';
 
     // Found delim
     while (*next != '\0') {
