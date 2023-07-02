@@ -15,6 +15,8 @@
  * 2023-03-18: Refactor to add type checking for all 
  *             functions.
  *             Add return status value to put() and sput()
+ * 2023-06-06: Remove reallocation of every item during
+ *             table resize (added __ht_put_nia())
  * 
  * USAGE:
  * Define HT_DATA_T as the data type to be stored in the hashtable structure.

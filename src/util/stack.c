@@ -11,6 +11,8 @@
  * 2023-04-01: Add init param to prevent automatic
  *             shrinking of the internal array
  * 2023-06-24: Correct peeki with index=0 error check
+ * 2023-07-02: Remove index<0 check in peeki since
+ *             size_t is unsigned
  * 
  * USAGE: see stack.h
  */
@@ -142,7 +144,7 @@ bool __stack_peek(_stack_t *stack, size_t element_size, void *element)
  */
 bool __stack_peeki(_stack_t *stack, size_t element_size, void *element, size_t index)
 {
-    if (!element || __stack_is_empty(stack) || index < 0 || (index != 0 && index > stack->number_of_items_in_table - 1)) {
+    if (!element || __stack_is_empty(stack) || (index != 0 && index > stack->number_of_items_in_table - 1)) {
         return true;
     }
     memcpy(element, stack->table + (element_size * (stack->number_of_items_in_table - 1 - index)), element_size);
