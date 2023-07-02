@@ -689,13 +689,19 @@ bool command_entry(cmd_t *cmd_data, int c)
     if (c == KEY_CR) {
         cmd_data->cmdbuf[cmd_data->cmdbuf_index] = '\0';
         cmd_data->stack_index = 0;
-        char *cmd;
+        char *cmd, *ptr;
         // Only add command to history if not a repeat of the last command,
-        // taking into account the possibility of an empty stack
+        // taking into account the possibility of an empty stack, and not whitespace
         if (histr_stack_peek(cmd_data->stack, &cmd) || strcmp(cmd_data->cmdbuf, cmd) != 0) {
-            cmd = malloc(sizeof(*cmd) * (cmd_data->cmdbuf_index + 1));
-            strcpy(cmd, cmd_data->cmdbuf);
-            histr_stack_push(cmd_data->stack, cmd);
+            ptr = cmd_data->cmdbuf;
+            while (isspace(*ptr)) {
+                ++ptr; // Remove whitespace
+            }
+            if (*ptr != '\0') {
+                cmd = malloc(sizeof(*cmd) * (cmd_data->cmdbuf_index + 1));
+                strcpy(cmd, cmd_data->cmdbuf);
+                histr_stack_push(cmd_data->stack, cmd);
+            }
         }
         return true;
     }
