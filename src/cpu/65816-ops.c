@@ -1046,7 +1046,8 @@ void i_eor(CPU_t *cpu, memory_t *mem, uint8_t size, uint8_t cycles, CPU_Addr_Mod
         if (cpu->D & 0xff)
         {
             cpu->cycles += 1;
-        }        
+        }
+        /* Fallthrough */
     case CPU_ADDR_ABS:
     case CPU_ADDR_ABSX:
     case CPU_ADDR_ABSY:
