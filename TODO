@@ -20,7 +20,6 @@ TODO:
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
 * ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
   - Update (2023-06-28): This only *sometimes* happens
-* Pressing "Enter" to execute a blank command still adds that to the history
 
 TODONE:
 * Help menu (multi-level)
@@ -55,4 +54,5 @@ TODONE:
 * Allow loading a symbol list file for breakpoints
 * Add command history
 * Clean up build system
+* Pressing "Enter" to execute a blank command still adds that to the history
 
