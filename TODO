@@ -16,7 +16,6 @@ TODO:
 * Look into nl()/nonl() in ncurses
 * Allow multiple symbols at same address
 * Disassembler to use symbol table for operands
-* Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
 * ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
   - Update (2023-06-28): This only *sometimes* happens
@@ -55,4 +54,5 @@ TODONE:
 * Add command history
 * Clean up build system
 * Pressing "Enter" to execute a blank command still adds that to the history
+* Fix uppercase-auto-lowercased issue with command parser for symbols with upppercase letters
 
