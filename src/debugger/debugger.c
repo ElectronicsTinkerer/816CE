@@ -1084,7 +1084,13 @@ cmd_status_t command_execute( cmd_err_t *status,
                 return STAT_ERR;
             }
 
-            return load_file_cpu(tok, cpu);
+            *status = load_file_cpu(tok, cpu);
+            if (*status == CMD_OK) {
+                return STAT_OK;
+            }
+            else {
+                return STAT_ERR;
+            }
         }
         else {
             *status = CMD_UNKNOWN_ARG;
