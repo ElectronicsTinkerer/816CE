@@ -121,10 +121,10 @@ int main(int argc, char *argv[])
 
         // Reset memory
         while (fd_idx-- > 0) {
-            _set_mem_byte(mem, output_data[fd_idx].addr, output_data[fd_idx].data, false);
+            _set_mem_byte(mem, output_data[fd_idx].addr, 0, false);
         }
         while (id_idx-- > 0) {
-            _set_mem_byte(mem, input_data[id_idx].addr, input_data[id_idx].data, false);
+            _set_mem_byte(mem, input_data[id_idx].addr, 0, false);
         }
 
         test_num += 1;
