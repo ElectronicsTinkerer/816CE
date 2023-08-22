@@ -1738,6 +1738,54 @@ void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int sc
 
 
 /**
+ * Update all window sizes to the terminal view port's size
+ *
+ * @param *scrh The screen height in lines
+ * @param *scrw The screen width in chars
+ * @param *watch1 Memory watch window 1
+ * @param *watch1 Memory watch window 2
+ * @param *cpu_win CPU status window
+ * @param *cmd_win Command entry window
+ * @param *inst_hist_win Instruction history window
+ */
+void resize_windows(int *scrh, int *scrw,
+                    watch_t *watch1, watch_t *watch2,
+                    WINDOW *win_cpu, WINDOW *cmd_win,
+                    hist_t *inst_hist)
+{
+    getmaxyx(stdscr, *scrh, *scrw); // Get screen dimensions
+
+    watch1->win_height = *scrh/2 - 1;
+    watch1->win_width = *scrw/2;
+    mvwin(watch1->win, 1, 0);
+    wresize(watch1->win, watch1->win_height, watch1->win_width);
+    wclear(watch1->win);
+
+    watch2->win_height = ceil(*scrh/2.0);
+    watch2->win_width = *scrw/2;
+    mvwin(watch2->win, *scrh/2, 0);
+    wresize(watch2->win, watch2->win_height, watch2->win_width);
+    wclear(watch2->win);
+
+    mvwin(win_cpu, 1, *scrw/2);
+    wresize(win_cpu, 10, *scrw/2);
+    wclear(win_cpu);
+
+    mvwin(cmd_win, *scrh-3, *scrw/2);
+    wresize(cmd_win, 3, *scrw/2);
+    wclear(cmd_win);
+
+    inst_hist->win_height = *scrh - 11 - 3;
+    inst_hist->win_width = *scrw/2;
+    mvwin(inst_hist->win, 11, *scrw/2);
+    wresize(inst_hist->win, inst_hist->win_height, inst_hist->win_width);
+    wclear(inst_hist->win);
+
+    refresh();  // Necessary for window borders
+}
+
+
+/**
  * Initialize a watch struct
  * 
  * @param *w The watch struct to initialize
@@ -2103,7 +2151,7 @@ int main(int argc, char *argv[])
 
     sigact.sa_handler = handle_continue;
     sigaction(SIGCONT, &sigact, NULL);
-    
+
     initscr();              // Start curses mode
     getmaxyx(stdscr, scrh, scrw); // Get screen dimensions
     cbreak();               // Disable line buffering but pass through signals (ex. ^C/^Z)
@@ -2113,19 +2161,13 @@ int main(int argc, char *argv[])
     curs_set(0);            // Invisible cursor
 
     // Set up each window (height, width, starty, startx)
-    watch1.win_height = scrh/2 - 1;
-    watch1.win_width = scrw/2;
-    watch2.win_height = ceil(scrh/2.0);
-    watch2.win_width = scrw/2;
-    watch1.win = newwin(watch1.win_height, watch1.win_width, 1, 0);
-    watch2.win = newwin(watch2.win_height, watch2.win_width, scrh/2, 0);
-    win_cpu = newwin(10, scrw/2, 1, scrw/2);
-    cmd_data.win = newwin(3, scrw/2, scrh-3, scrw/2);
-    inst_hist.win_height = scrh - 11 - 3;
-    inst_hist.win_width = scrw/2;
-    inst_hist.win = newwin(inst_hist.win_height, inst_hist.win_width, 11, scrw/2);
+    watch1.win    = newwin(1, 1, 1, 1);
+    watch2.win    = newwin(1, 1, 1, 1);
+    win_cpu       = newwin(1, 1, 1, 1);
+    cmd_data.win  = newwin(1, 1, 1, 1);
+    inst_hist.win = newwin(1, 1, 1, 1);
+    resize_windows(&scrh, &scrw, &watch1, &watch2, win_cpu, cmd_data.win, &inst_hist);
 
-    refresh();  // Necessary for window borders
 
     update_cpu_hist(&inst_hist, &cpu, memory, PUSH_INST);
 
@@ -2146,6 +2188,10 @@ int main(int argc, char *argv[])
         case KEY_CTRL_C:
         case KEY_CTRL_X:
         case ERR: // During run mode, ERR is returned from getch if no key is available
+            break;
+        case KEY_RESIZE: // Screen/terminal resize event
+            clear();
+            resize_windows(&scrh, &scrw, &watch1, &watch2, win_cpu, cmd_data.win, &inst_hist);
             break;
         case KEY_F(1): { // Toggle Breakpoint
             uint32_t addr = _cpu_get_effective_pc(&cpu);
