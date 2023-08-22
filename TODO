@@ -19,6 +19,8 @@ TODO:
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
 * ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
   - Update (2023-06-28): This only *sometimes* happens
+* Consider sigwinch handler for screen resize?
+
 
 TODONE:
 * Help menu (multi-level)
