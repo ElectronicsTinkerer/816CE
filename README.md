@@ -53,8 +53,6 @@ Available commands
  > br aaaaaa
  > uart [type] aaaaaa (pppp)
  ? ... Help Menu
- ^G to clear command input
- ^P|^N to scroll through history
 ```
 
 Some explanation:
@@ -82,7 +80,20 @@ F9  - Reset CPU
 F12 - Pressing F12 twice will exit the simulator without saving.
 ^X^C  - Close simulator without saving.
 ESC-Q - Close simulator without closing
+^G  - to clear command input
+^P  - to scroll through history
+^N  - to scroll through history
+M-P - Scroll up selected memory watch window
+M-N - Scroll down selected memory watch window
+^X o  - Switch selected memory watch window
 ```
+
+### Memory Watch Scrolling
+
+One memory watch window can be selected at a time. The currently selected window will have an `*` on the left of the window's title text. Pressing ALT-P (M-P) will decrease the base address of the window by the number of bytes displayed per line (causing it to scroll "up"). Pressing ALT-N (M-N) will add the number of bytes displayed per line to the base address (causing it to scroll "down").
+
+Memory watch windows can only be scrolled while displaying a specific address. (I.e., you can't scroll a window which is tracking the CPU's PC.)
+
 
 ### File loading & saving
 
