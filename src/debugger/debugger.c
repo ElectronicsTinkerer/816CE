@@ -1812,22 +1812,32 @@ void resize_windows(int *scrh, int *scrw,
  */
 void scroll_window(watch_t *watch, scroll_dir_t dir)
 {
-    // TODO: Only move one line (?) if in disasm mode
+    // Don't modify address if the PC is being followed
+    if (watch->follow_pc) {
+        return;
+    }
+
+    uint32_t addr_offs = 1;
+
+    if (!watch->disasm_mode) {
+        addr_offs = watch->bytes_per_line;
+    }
+    
     switch (dir) {
     case SCROLL_UP:
-        if (watch->bytes_per_line > watch->addr_s) {
+        if (addr_offs > watch->addr_s) {
             watch->addr_s = 0;
         }
         else {
-            watch->addr_s -= watch->bytes_per_line;
+            watch->addr_s -= addr_offs;
         }
         break;
     case SCROLL_DOWN:
-        if (watch->bytes_per_line + watch->addr_s >= MEMORY_SIZE) {
-            watch->addr_s = MEMORY_SIZE - watch->bytes_per_line;
+        if (addr_offs + watch->addr_s >= MEMORY_SIZE) {
+            watch->addr_s = MEMORY_SIZE - addr_offs;
         }
         else {
-            watch->addr_s += watch->bytes_per_line;
+            watch->addr_s += addr_offs;
         }
         break;
     }
