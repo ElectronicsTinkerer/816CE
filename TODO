@@ -1,9 +1,10 @@
 TODO:
+_FUNCTIONAL:
 * Verify 65816 core
   - Update (2023-06-28): in progress... waiting on ZEDIAC to be functional so some
     "real HW" tests can be done to verify the online documentation available.
+  - Update (2023-08-22): Some testing is complete. (ProcessorTests)
 * Check 65816 disassembler output
-* Add save (and restore) of full sim state to a file (oh boy...)
 * Figure out how to detect of the socket closed in the UART (almost there...)
 * Clean up UART code
 * Add correct resetting of UART IRQ flags in IIR (16C750)
@@ -12,14 +13,20 @@ TODO:
 * Instruction history has blank space at top if all are NOPs/BRKs (i.e. nothing's changing)
   - Update (2023-06-24): This happens when the instr hist. is taller than the max inst hist
                          memory depth. 
+* ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
+  - Update (2023-06-28): This only *sometimes* happens
+
+_FEATURES:
+* Add save (and restore) of full sim state to a file (oh boy...)
 * Update cli parser to use option-parser from SLIME
 * Look into nl()/nonl() in ncurses
 * Allow multiple symbols at same address
 * Disassembler to use symbol table for operands
 * Improve help menu to have "tabs" which are accessible via the number keys to access multiple pages
-* ^Z does not resume properly if another TUI program is opened during backgrounded time (for example, emacs)
-  - Update (2023-06-28): This only *sometimes* happens
 * Consider sigwinch handler for screen resize?
+* Enable/disable mouse
+* Command to switch mouse scrolling direction
+* Click on CPU flags to toggle (what, you thought this wasn't a GUI? ;)
 
 
 TODONE:

@@ -1751,8 +1751,12 @@ void resize_windows(int *scrh, int *scrw,
         
     watch1->win_height = *scrh/2 - 1;
     watch1->win_width = *scrw/2;
+    watch1->win_y = 1;
+    watch1->win_x = 0;
     watch2->win_height = ceil(*scrh/2.0);
     watch2->win_width = *scrw/2;
+    watch2->win_y = *scrh/2;
+    watch2->win_x = 0;
 
     // For memory watch windows
     // An explanation of magic numbers:
@@ -1776,12 +1780,12 @@ void resize_windows(int *scrh, int *scrw,
     }
 
     watch1->bytes_per_line = bytes_per_line;
-    mvwin(watch1->win, 1, 0);
+    mvwin(watch1->win, watch1->win_y, watch1->win_x);
     wresize(watch1->win, watch1->win_height, watch1->win_width);
     wclear(watch1->win);
 
     watch2->bytes_per_line = bytes_per_line;
-    mvwin(watch2->win, *scrh/2, 0);
+    mvwin(watch2->win, watch2->win_y, watch2->win_x);
     wresize(watch2->win, watch2->win_height, watch2->win_width);
     wclear(watch2->win);
 
@@ -1858,6 +1862,8 @@ void watch_init(watch_t *w, bool disasm_mode, bool follow_pc, bool is_selected)
     w->addr_s = 0;
     w->win_height = 0;
     w->win_width = 0;
+    w->win_y = 0;
+    w->win_x = 0;
     w->bytes_per_line = 8; // Arbitrary
     w->disasm_mode = disasm_mode;
     w->follow_pc = follow_pc;
@@ -1973,6 +1979,7 @@ int main(int argc, char *argv[])
     bool in_run_mode = false;
     int run_mode_step_count = 0;
     WINDOW *win_cpu = NULL, *win_msg = NULL;
+    MEVENT mouse_event;
     cmd_t cmd_data;
     cmd_hist_init(&cmd_data);
     char cmdbuf_dup[CMD_BUF_LEN];
@@ -2221,6 +2228,8 @@ int main(int argc, char *argv[])
     noecho();               // Disable echoing of user-typed characters
     leaveok(stdscr, TRUE);  // Don't care where the cursor is left on screen
     curs_set(0);            // Invisible cursor
+    // Buttons 4 and 5 are scroll wheel as of ncurses 6.0
+    mousemask(REPORT_MOUSE_POSITION | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
 
     // Set up each window (height, width, starty, startx)
     watch1.win    = newwin(1, 1, 1, 1);
@@ -2309,6 +2318,28 @@ int main(int argc, char *argv[])
             msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
         }
             break;
+        case KEY_MOUSE:
+            if (getmouse(&mouse_event) == OK) {
+
+                // Memory watch window scrolling
+                watch_t *w = NULL;
+                if (mouse_event.x >= watch1.win_x && mouse_event.y >= watch1.win_y &&
+                    mouse_event.x < watch1.win_x + watch1.win_width &&
+                    mouse_event.y < watch1.win_y + watch1.win_height) {
+                    w = &watch1;
+                }
+                else if (mouse_event.x >= watch2.win_x && mouse_event.y >= watch2.win_y &&
+                    mouse_event.x < watch2.win_x + watch2.win_width &&
+                    mouse_event.y < watch2.win_y + watch2.win_height) {
+                    w = &watch2;
+                }
+                if (mouse_event.bstate & BUTTON4_PRESSED && w) {
+                    scroll_window(w, SCROLL_UP);
+                } else if (mouse_event.bstate & BUTTON5_PRESSED && w) {
+                    scroll_window(w, SCROLL_DOWN);
+                }   
+            }
+            break;
         default:
             if (c == EOF) {
                 break;
@@ -2326,18 +2357,12 @@ int main(int argc, char *argv[])
             // ALT+key sends ESC+key
             else if (prev_c == KEY_ESCAPE) {
                 if (c == 'n') {
-                    // endwin();
-                    // printf("DOWN\n");
                     watch_t *w = watch1.is_selected ? &watch1 : &watch2;
                     scroll_window(w, SCROLL_DOWN);
-                    // refresh();
                 }
                 else if (c == 'p') {
-                    // endwin();
-                    // printf("UP\n");
                     watch_t *w = watch1.is_selected ? &watch1 : &watch2;
                     scroll_window(w, SCROLL_UP);
-                    // refresh();
                 }
                 break;
             }
