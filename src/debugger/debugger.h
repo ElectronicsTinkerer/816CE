@@ -66,6 +66,8 @@ typedef struct watch_t {
     uint32_t addr_s; // Start address of watch
     int win_height;
     int win_width;
+    int win_y;
+    int win_x;
     unsigned int bytes_per_line; // The number of bytes that are able to be displayed per line
     bool disasm_mode;
     bool follow_pc;
