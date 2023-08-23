@@ -39,6 +39,11 @@
 #define STACK_DATA_NAME histr
 #include "../util/stack.h"
 
+typedef enum scroll_dir_t {
+    SCROLL_DOWN,
+    SCROLL_UP
+} scroll_dir_t;
+
 typedef enum memory_fmt_t {
     MF_BASIC_BIN_BLOCK,
     MF_LLVM_MOS_SIM
@@ -61,8 +66,10 @@ typedef struct watch_t {
     uint32_t addr_s; // Start address of watch
     int win_height;
     int win_width;
+    unsigned int bytes_per_line; // The number of bytes that are able to be displayed per line
     bool disasm_mode;
     bool follow_pc;
+    bool is_selected;
 } watch_t;
 
 // History structure for execution history tracking
