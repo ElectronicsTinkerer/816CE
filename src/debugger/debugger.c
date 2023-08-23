@@ -1564,21 +1564,14 @@ cmd_status_t command_execute( cmd_err_t *status,
  */
 void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symbol_table)
 {
-    int cols, col, row;
+    int col, row, bpl;
     uint32_t i, pc;
     char buf[32];
     symbol_t *sym;
     
     pc = _cpu_get_effective_pc(cpu);
 
-    cols = (w->win_width - 10) / 3;
-    if (cols < 16) {
-        cols = 8;
-    } else if (cols < 32) {
-        cols = 16;
-    } else {
-        cols = 32; // WIDE! screen
-    }
+    bpl = w->bytes_per_line;
 
     if (w->disasm_mode) { // Show disassembly
         
@@ -1632,7 +1625,7 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symb
             mvwprintw(w->win, row, 10, "    %s", buf);
 
             // Print the bytes
-            if (cols > 8) {
+            if (bpl > 8) {
                 wmove(w->win, row, 28);
                 while (effective_pc < i) {
                     wprintw(w->win, " %02x", _get_mem_byte(mem, effective_pc, false));
@@ -1652,26 +1645,26 @@ void mem_watch_print(watch_t *w, memory_t *mem, CPU_t *cpu, symbol_table_t *symb
         wclrtoeol(w->win);
         wmove(w->win, 1, 9);
         wattron(w->win, A_DIM);
-        for (col = 0; col < cols; ++col) {
+        for (col = 0; col < bpl; ++col) {
             wprintw(w->win, " ");
             wprintw(w->win, "%02x", col);
         }
         wattroff(w->win, A_DIM);
 
-        // Since cols will always be a multiple of 8, we
+        // Since bpl will always be a multiple of 8, we
         // can subtract 1 and use it's complement as a mask
         // for making sure that we start on an address that
         // is a multiple of the number of columns (this keeps
         // the column address numbers that we just printed
         // aligned with the correct locations)
-        i = (w->follow_pc ? pc : w->addr_s) & ~(cols-1);
+        i = (w->follow_pc ? pc : w->addr_s) & ~(bpl-1);
 
         // Then print the actual memory contents
         for (row = 1; row < w->win_height - 2; ++row) {
             wattron(w->win, A_DIM);
             mvwprintw(w->win, 1 + row, 2, "%06x:", i);
             wattroff(w->win, A_DIM);
-            for (col = 0; col < cols; ++col) {
+            for (col = 0; col < bpl; ++col) {
                 wprintw(w->win, " ");
 
                 // If the CPU's PC is at this address, highlight it
@@ -1755,14 +1748,39 @@ void resize_windows(int *scrh, int *scrw,
 {
     getmaxyx(stdscr, *scrh, *scrw); // Get screen dimensions
 
+        
     watch1->win_height = *scrh/2 - 1;
     watch1->win_width = *scrw/2;
+    watch2->win_height = ceil(*scrh/2.0);
+    watch2->win_width = *scrw/2;
+
+    // For memory watch windows
+    // An explanation of magic numbers:
+    // 10 = +1 for left window border
+    //      +1 for the left padding
+    //      +6 for the address
+    //      +1 for the ':'
+    //      +1 for the space between the address and the data
+    // 3 = +2 for the byte's hex digits
+    //     +1 for the space between bytes
+    // bytes_per_line MUST ALWAYS BE A POWER OF 2 (see mem_watch_print())
+    unsigned int bytes_per_line = (watch1->win_width - 10) / 3;
+    if (bytes_per_line < 16) {
+        bytes_per_line = 8;
+    } else if (bytes_per_line < 32) {
+        bytes_per_line = 16;
+    } else if (bytes_per_line < 64) {
+        bytes_per_line = 32; 
+    } else {
+        bytes_per_line = 64; // WIDE! screen
+    }
+
+    watch1->bytes_per_line = bytes_per_line;
     mvwin(watch1->win, 1, 0);
     wresize(watch1->win, watch1->win_height, watch1->win_width);
     wclear(watch1->win);
 
-    watch2->win_height = ceil(*scrh/2.0);
-    watch2->win_width = *scrw/2;
+    watch2->bytes_per_line = bytes_per_line;
     mvwin(watch2->win, *scrh/2, 0);
     wresize(watch2->win, watch2->win_height, watch2->win_width);
     wclear(watch2->win);
@@ -1786,20 +1804,54 @@ void resize_windows(int *scrh, int *scrw,
 
 
 /**
+ * Change the memory watch window base address by
+ * one line of displayed data
+ * 
+ * @param *watch The watch window to adjust
+ * @param dir The direction to "scroll" the display
+ */
+void scroll_window(watch_t *watch, scroll_dir_t dir)
+{
+    // TODO: Only move one line (?) if in disasm mode
+    switch (dir) {
+    case SCROLL_UP:
+        if (watch->bytes_per_line > watch->addr_s) {
+            watch->addr_s = 0;
+        }
+        else {
+            watch->addr_s -= watch->bytes_per_line;
+        }
+        break;
+    case SCROLL_DOWN:
+        if (watch->bytes_per_line + watch->addr_s >= MEMORY_SIZE) {
+            watch->addr_s = MEMORY_SIZE - watch->bytes_per_line;
+        }
+        else {
+            watch->addr_s += watch->bytes_per_line;
+        }
+        break;
+    }
+}
+
+
+/**
  * Initialize a watch struct
  * 
  * @param *w The watch struct to initialize
  * @param disasm_mode True to switch to disassembly mode
  * @param follow_pc True to follow the CPU's PC
+ * @param is_selected True to select this watch window
  */
-void watch_init(watch_t *w, bool disasm_mode, bool follow_pc)
+void watch_init(watch_t *w, bool disasm_mode, bool follow_pc, bool is_selected)
 {
     w->win = NULL;
     w->addr_s = 0;
     w->win_height = 0;
     w->win_width = 0;
+    w->bytes_per_line = 8; // Arbitrary
     w->disasm_mode = disasm_mode;
     w->follow_pc = follow_pc;
+    w->is_selected = is_selected;
 }
 
 
@@ -1926,8 +1978,8 @@ int main(int argc, char *argv[])
     }
     
     watch_t watch1, watch2;
-    watch_init(&watch1, false, false);
-    watch_init(&watch2, true, true); // Disasm & follow PC
+    watch_init(&watch1, false, false, true); // Select watch 1
+    watch_init(&watch2, true, true, false); // Disasm & follow PC
 
     hist_t inst_hist;
     hist_init(&inst_hist);
@@ -2261,6 +2313,42 @@ int main(int argc, char *argv[])
                     win_msg = NULL;
                 }
             }
+            // ALT+key sends ESC+key
+            else if (prev_c == KEY_ESCAPE) {
+                if (c == 'n') {
+                    // endwin();
+                    // printf("DOWN\n");
+                    watch_t *w = watch1.is_selected ? &watch1 : &watch2;
+                    scroll_window(w, SCROLL_DOWN);
+                    // refresh();
+                }
+                else if (c == 'p') {
+                    // endwin();
+                    // printf("UP\n");
+                    watch_t *w = watch1.is_selected ? &watch1 : &watch2;
+                    scroll_window(w, SCROLL_UP);
+                    // refresh();
+                }
+                break;
+            }
+            // Ignore extraneous escapes
+            else if (c == KEY_ESCAPE) {
+                break;
+            }
+            // Handle memory watch window switching
+            else if (prev_c == KEY_CTRL_X && c == 'o') {
+                // This logic feels like a bit of a hack but since the
+                // window system (currently) is rather inflexible in how
+                // the windows are laid out, it is probably *fine*
+                if (watch1.is_selected) {
+                    watch1.is_selected = false;
+                    watch2.is_selected = true;
+                }
+                else {
+                    watch1.is_selected = true;
+                    watch2.is_selected = false;
+                }
+            }
             // If the user pressed "Enter" (CR), execute the command
             else if (command_entry(&cmd_data, c)) {
 
@@ -2396,8 +2484,10 @@ int main(int argc, char *argv[])
             wattroff(win_cpu, A_DIM);
             wattroff(cmd_data.win, A_DIM);
             wattroff(inst_hist.win, A_DIM);
-            mvwprintw(watch1.win, 0, 3, " MEM WATCH 1 ");
-            mvwprintw(watch2.win, 0, 3, " MEM WATCH 2 ");
+            mvwprintw(watch1.win, 0, 4, " MEM WATCH 1 ");
+            if (watch1.is_selected) { mvwprintw(watch1.win, 0, 3, "*"); }
+            mvwprintw(watch2.win, 0, 4, " MEM WATCH 2 ");
+            if (watch2.is_selected) { mvwprintw(watch2.win, 0, 3, "*"); }
             mvwprintw(win_cpu, 0, 3, " CPU STATUS ");
             mvwprintw(cmd_data.win, 0, 3, " COMMAND ");
             mvwprintw(inst_hist.win, 0, 3, " INSTRUCTION HISTORY ");
