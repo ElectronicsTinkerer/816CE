@@ -2605,7 +2605,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        refresh();
+        // refresh();
         if (!in_run_mode) {
             status_id = STATUS_NONE;
             alert = false;
