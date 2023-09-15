@@ -30,6 +30,8 @@
 
 #define CPU_HIST_ENTRIES 40
 
+#define MSG_BOX_OK_HORIZ_OFFS 6 // Number of chars horizontally from bottom right to print the "OK" speudo-button
+
 #define RUN_MODE_STEPS_UNTIL_DISP_UPDATE 9463 // A big number
 
 #define REPLACE_INST true

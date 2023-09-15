@@ -1725,7 +1725,7 @@ void msg_box(WINDOW **win, char *msg, char *title, int height, int width, int sc
 
     // OK "box"
     wattron(*win, A_REVERSE);
-    mvwprintw(*win, height-1, width-6, " OK ");
+    mvwprintw(*win, height-1, width-MSG_BOX_OK_HORIZ_OFFS, " OK ");
     wattroff(*win, A_REVERSE);
 }
 
@@ -1979,7 +1979,9 @@ int main(int argc, char *argv[])
     bool in_run_mode = false;
     int run_mode_step_count = 0;
     WINDOW *win_cpu = NULL, *win_msg = NULL;
+#ifdef NCURSES_MOUSE_VERSION
     MEVENT mouse_event;
+#endif /* NCURSES_MOUSE_VERSION */
     cmd_t cmd_data;
     cmd_hist_init(&cmd_data);
     char cmdbuf_dup[CMD_BUF_LEN];
@@ -2228,8 +2230,10 @@ int main(int argc, char *argv[])
     noecho();               // Disable echoing of user-typed characters
     leaveok(stdscr, TRUE);  // Don't care where the cursor is left on screen
     curs_set(0);            // Invisible cursor
+#ifdef NCURSES_MOUSE_VERSION
     // Buttons 4 and 5 are scroll wheel as of ncurses 6.0
-    mousemask(REPORT_MOUSE_POSITION | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
+    mousemask(REPORT_MOUSE_POSITION | BUTTON1_RELEASED | BUTTON4_PRESSED | BUTTON5_PRESSED, NULL);
+#endif /* NCURSES_MOUSE_VERSION */
 
     // Set up each window (height, width, starty, startx)
     watch1.win    = newwin(1, 1, 1, 1);
@@ -2318,28 +2322,48 @@ int main(int argc, char *argv[])
             msg_box(&win_msg, msg->msg, msg->title, msg->win_h, msg->win_w, scrh, scrw);
         }
             break;
+#ifdef NCURSES_MOUSE_VERSION
         case KEY_MOUSE:
             if (getmouse(&mouse_event) == OK) {
 
                 // Memory watch window scrolling
                 watch_t *w = NULL;
-                if (mouse_event.x >= watch1.win_x && mouse_event.y >= watch1.win_y &&
-                    mouse_event.x < watch1.win_x + watch1.win_width &&
-                    mouse_event.y < watch1.win_y + watch1.win_height) {
+                if (wenclose(watch1.win, mouse_event.y, mouse_event.x)) {
                     w = &watch1;
                 }
-                else if (mouse_event.x >= watch2.win_x && mouse_event.y >= watch2.win_y &&
-                    mouse_event.x < watch2.win_x + watch2.win_width &&
-                    mouse_event.y < watch2.win_y + watch2.win_height) {
+                else if (wenclose(watch2.win, mouse_event.y, mouse_event.x)) {
                     w = &watch2;
                 }
                 if (mouse_event.bstate & BUTTON4_PRESSED && w) {
                     scroll_window(w, SCROLL_UP);
+                    break;
                 } else if (mouse_event.bstate & BUTTON5_PRESSED && w) {
                     scroll_window(w, SCROLL_DOWN);
+                    break;
                 }   
+
+                // Check if user clicked on the popup
+                if (win_msg) {
+                    if (mouse_event.bstate & BUTTON1_RELEASED) {
+                        int h, w, x, y;
+                        getmaxyx(win_msg, h, w);
+                        
+                        // See if the user has hit the "OK" button
+                        x = mouse_event.x;
+                        y = mouse_event.y;
+                        // Basically the whole bottom right corner is the button (reduces number of comparisons needed)
+                        if (wmouse_trafo(win_msg, &y, &x, FALSE) && y == h - 1 && x >= w - MSG_BOX_OK_HORIZ_OFFS) {
+                            wborder(win_msg, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ');
+                            wrefresh(win_msg);
+                            delwin(win_msg);
+                            win_msg = NULL;
+                        }
+                    }
+                }
+                
             }
             break;
+#endif /* NCURSES_MOUSE_VERSION */
         default:
             if (c == EOF) {
                 break;
