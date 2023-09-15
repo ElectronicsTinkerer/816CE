@@ -52,6 +52,7 @@ Available commands
  > cpu [option] [enable|disable|status]
  > br aaaaaa
  > uart [type] aaaaaa (pppp)
+ > mouse scroll [default|reverse]
  ? ... Help Menu
 ```
 

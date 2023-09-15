@@ -65,7 +65,7 @@ cmd_err_msg cmd_err_msgs[] = {
     {"ERROR!", 3, 36, "Unknown symbol or invalid value."},
     {"ERROR!", 3, 21, "Unknown argument."},
     {"ERROR!", 3, 20, "Unknown command."},
-    {"HELP", 19, 43, "Available commands\n"
+    {"HELP", 20, 45, "Available commands\n"
      " > exit|quit ... Close simulator\n"
      " > mw[1|2] [mem|asm|pc|addr|aaaaaa] [...]\n"
      " > irq [set|clear]\n"
@@ -79,6 +79,7 @@ cmd_err_msg cmd_err_msgs[] = {
      " > cpu [option] [enable|disable|status]\n"
      " > bp aaaaaa\n"
      " > uart [type] aaaaaa (pppp)\n"
+     " > mouse scroll [default|reverse]\n"
      " ? ... Help Menu\n"
      " ^G to clear command input\n"
      " ^P|^N to scroll through history"},
@@ -797,6 +798,7 @@ bool command_entry(cmd_t *cmd_data, int c)
  * @param *mem The memory to modify if a command needs to
  * @param *symbol_table The global symbol table
  * @param *uart 16C750 UART device
+ * @param *invert_mouse_scroll Controls mouse wheel scroll direction
  * @return True if an error occured, false otherwise
  */
 cmd_status_t command_execute( cmd_err_t *status,
@@ -807,7 +809,8 @@ cmd_status_t command_execute( cmd_err_t *status,
                               CPU_t *cpu,
                               memory_t *mem,
                               symbol_table_t *symbol_table,
-                              tl16c750_t *uart
+                              tl16c750_t *uart,
+                              bool *invert_mouse_scroll
     )
 {
     watch_t *watch;
@@ -1489,6 +1492,39 @@ cmd_status_t command_execute( cmd_err_t *status,
             return STAT_ERR;
         }
     }
+    else if (strcmp(tok, "mouse") == 0) {
+        tok = strtok_r(NULL, " \t\n\r", &state);
+
+        if (!tok) {
+            *status = CMD_EXPECTED_ARG;
+            return STAT_ERR;
+        }
+
+        if (strcmp(tok, "scroll") == 0) {
+            tok = strtok_r(NULL, " \t\n\r", &state);
+
+            if (!tok) {
+                *status = CMD_EXPECTED_ARG;
+                return STAT_ERR;
+            }
+            if (strcmp(tok, "default") == 0) {
+                *invert_mouse_scroll = false;
+            }
+            else if (strcmp(tok, "reverse") == 0) {
+                *invert_mouse_scroll = true;
+            }
+            else {
+                *status = CMD_UNKNOWN_ARG;
+                return STAT_ERR;
+            }
+            *status = CMD_OK;
+            return STAT_OK;
+        }
+        else {
+            *status = CMD_UNKNOWN_ARG;
+            return STAT_ERR;
+        }
+    }
 
     // Not a named command, maybe it's a memory access?
     static uint32_t addr = 0; // Retain the previous value
@@ -1982,6 +2018,7 @@ int main(int argc, char *argv[])
 #ifdef NCURSES_MOUSE_VERSION
     MEVENT mouse_event;
 #endif /* NCURSES_MOUSE_VERSION */
+    bool invert_mouse_scroll = false; // Not in the #ifdef since it is used in command_execute
     cmd_t cmd_data;
     cmd_hist_init(&cmd_data);
     char cmdbuf_dup[CMD_BUF_LEN];
@@ -2106,7 +2143,8 @@ int main(int argc, char *argv[])
                     &cpu,
                     memory,
                     symbol_table,
-                    &uart
+                    &uart,
+                    &invert_mouse_scroll
                     );
 
                 if (cmd_stat != STAT_OK) {
@@ -2149,7 +2187,8 @@ int main(int argc, char *argv[])
                         &cpu,
                         memory,
                         symbol_table,
-                        &uart
+                        &uart,
+                        &invert_mouse_scroll
                         );
 
                     if (cmd_stat != STAT_OK) {
@@ -2335,10 +2374,10 @@ int main(int argc, char *argv[])
                     w = &watch2;
                 }
                 if (mouse_event.bstate & BUTTON4_PRESSED && w) {
-                    scroll_window(w, SCROLL_UP);
+                    scroll_window(w, invert_mouse_scroll ? SCROLL_DOWN : SCROLL_UP);
                     break;
                 } else if (mouse_event.bstate & BUTTON5_PRESSED && w) {
-                    scroll_window(w, SCROLL_DOWN);
+                    scroll_window(w, invert_mouse_scroll ? SCROLL_UP : SCROLL_DOWN);
                     break;
                 }   
 
@@ -2426,7 +2465,8 @@ int main(int argc, char *argv[])
                     &cpu,
                     memory,
                     symbol_table,
-                    &uart
+                    &uart,
+                    &invert_mouse_scroll
                     );
 
                 if (cmd_err == CMD_EXIT) {
