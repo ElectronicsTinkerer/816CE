@@ -42,10 +42,11 @@ include_directories(${BINARY_OUTPUT_DIR})
 
 # Project sources
 include_directories("src")
-file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "src/*")
+file(GLOB_RECURSE SOURCES RELATIVE ${CMAKE_SOURCE_DIR} "src/cpu/*" "src/debugger/*" "src/hw/*")
+file(GLOB_RECURSE SOURCES_UTIL RELATIVE ${CMAKE_SOURCE_DIR} "src/util/hashtable.*" "src/util/stack.*")
 
 # Final executable
-add_executable(${exe_name} ${SOURCES})
+add_executable(${exe_name} ${SOURCES} ${SOURCES_UTIL})
 target_link_libraries(${exe_name} ncurses m)
 
 # Run
